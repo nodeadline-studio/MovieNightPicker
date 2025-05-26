@@ -1,0 +1,21 @@
+# MovieNightPicker robots.txt
+User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /admin/
+Disallow: /private/
+
+# Crawl-delay to prevent server overload
+Crawl-delay: 1
+
+# Allow specific bots with custom rules
+User-agent: Googlebot
+Allow: /
+Crawl-delay: 0.5
+
+User-agent: Bingbot
+Allow: /
+Crawl-delay: 1
+
+# Sitemap location
+Sitemap: https://movienightpicker.com/sitemap.xml
