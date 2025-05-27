@@ -36,52 +36,66 @@ const CookieConsent: React.FC = () => {
 
   return (
     <div 
-      className={`fixed bottom-0 left-0 right-0 bg-gray-900/95 backdrop-blur-sm border-t border-gray-800 p-4 md:p-6 z-[60] transition-all duration-300 ${
-        isClosing ? 'translate-y-full opacity-0' : 'translate-y-0 opacity-100'
+      className={`fixed bottom-4 left-4 right-4 md:bottom-6 md:left-6 md:right-auto md:max-w-md
+                  bg-gradient-to-br from-slate-900/95 via-gray-900/95 to-slate-800/95 
+                  backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl
+                  ring-1 ring-white/5 p-6 z-[60] transition-all duration-500 ease-out ${
+        isClosing ? 'translate-y-full opacity-0 scale-95' : 'translate-y-0 opacity-100 scale-100'
       }`}
     >
-      <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-        <div className="flex items-start md:items-center flex-1">
-          <Cookie size={24} className="text-blue-500 mr-3 flex-shrink-0 mt-1 md:mt-0" />
-          <div className="space-y-2 flex-1">
-            <p className="text-sm text-gray-300 leading-relaxed">
-              {isEU ? (
-                <>
-                  This website uses cookies and similar technologies to help provide you with the best possible online experience. 
-                  Under the GDPR and similar regulations, we need your consent to use non-essential cookies.
-                </>
-              ) : (
-                'We use cookies to enhance your experience. By continuing to visit this site you agree to our use of cookies.'
-              )}
-            </p>
-            <p className="text-sm text-gray-400">
-              Learn more in our{' '}
-              <button
-                onClick={() => window.dispatchEvent(new CustomEvent('show-privacy'))}
-                className="text-blue-500 hover:underline"
-              >
-                Privacy Policy
-              </button>
-            </p>
+      <div className="space-y-4">
+        {/* Header */}
+        <div className="flex items-center gap-3">
+          <div className="p-2 bg-gradient-to-r from-blue-500 to-purple-500 rounded-xl">
+            <Cookie size={20} className="text-white" />
           </div>
+          <h3 className="text-lg font-bold text-white">Cookie Preferences</h3>
         </div>
-        <div className="flex gap-3 w-full md:w-auto items-center">
-          <Button
-            variant="outline"
+        
+        {/* Content */}
+        <div className="space-y-3">
+          <p className="text-sm text-gray-300 leading-relaxed">
+            {isEU ? (
+              'We use cookies to enhance your experience. Under GDPR, we need your consent for non-essential cookies.'
+            ) : (
+              'We use cookies to enhance your experience and improve our service.'
+            )}
+          </p>
+          <p className="text-xs text-gray-400">
+            Read our{' '}
+            <button
+              onClick={() => window.dispatchEvent(new CustomEvent('show-privacy'))}
+              className="text-blue-400 hover:text-blue-300 underline transition-colors"
+            >
+              Privacy Policy
+            </button>
+            {' '}and{' '}
+            <button
+              onClick={() => window.dispatchEvent(new CustomEvent('show-terms'))}
+              className="text-blue-400 hover:text-blue-300 underline transition-colors"
+            >
+              Terms of Service
+            </button>
+          </p>
+        </div>
+        
+        {/* Buttons */}
+        <div className="flex gap-2">
+          <button
             onClick={() => handleConsent('essential')}
-            fullWidth
-            className="md:w-auto"
+            className="flex-1 bg-white/10 hover:bg-white/20 text-white font-medium py-2.5 px-4 rounded-xl 
+                     transition-all duration-200 border border-white/20 hover:border-white/30 text-sm"
           >
-            {isEU ? 'Essential Only' : 'Decline Optional'}
-          </Button>
-          <Button
-            variant="primary"
+            {isEU ? 'Essential' : 'Decline'}
+          </button>
+          <button
             onClick={() => handleConsent('all')}
-            fullWidth
-            className="md:w-auto"
+            className="flex-1 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500
+                     text-white font-medium py-2.5 px-4 rounded-xl transition-all duration-200
+                     shadow-lg hover:shadow-xl hover:shadow-blue-500/25 text-sm"
           >
             Accept All
-          </Button>
+          </button>
         </div>
       </div>
     </div>

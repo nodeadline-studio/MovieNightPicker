@@ -2,6 +2,85 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Modern 2025 Animations */
+@keyframes slideInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+@keyframes glow {
+  0%, 100% {
+    box-shadow: 0 0 20px rgba(139, 92, 246, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 30px rgba(139, 92, 246, 0.6);
+  }
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 3px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: linear-gradient(to bottom, #6366f1, #8b5cf6);
+  border-radius: 3px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(to bottom, #4f46e5, #7c3aed);
+}
+
 :root {
   color-scheme: dark;
   background-color: rgb(3, 7, 18); /* bg-gray-950 */
@@ -30,6 +109,51 @@ body {
 
 .h-screen {
   height: 100dvh;
+}
+
+/* Mobile viewport fixes */
+@supports (height: 100dvh) {
+  .h-screen {
+    height: 100dvh;
+  }
+  
+  .min-h-screen {
+    min-height: 100dvh;
+  }
+}
+
+/* Filter panel mobile optimizations */
+@media (max-width: 767px) {
+  .filter-panel-mobile {
+    height: 100dvh;
+    max-height: 100dvh;
+    padding-bottom: env(safe-area-inset-bottom, 0);
+  }
+  
+  /* Ensure filter content doesn't get cut off by browser chrome */
+  .filter-content-mobile {
+    max-height: calc(100dvh - 140px); /* Account for header + footer + tabs + safe areas */
+    padding-bottom: max(env(safe-area-inset-bottom), 0.5rem);
+  }
+  
+  /* Additional mobile viewport support for older browsers */
+  @supports not (height: 100dvh) {
+    .filter-panel-mobile {
+      height: 100vh;
+      max-height: 100vh;
+    }
+    
+    .filter-content-mobile {
+      max-height: calc(100vh - 140px);
+    }
+  }
+  
+  /* Chrome mobile address bar handling */
+  @media screen and (max-height: 600px) {
+    .filter-content-mobile {
+      max-height: calc(100dvh - 120px);
+    }
+  }
 }
 
 /* Scrollbar styles */
@@ -97,13 +221,7 @@ body {
   min-height: 100px;   /* avoids CLS on initial paint */
 }
 
-body {
-  margin-inline: 300px;        /* keep content centered between sidebars */
-}
-
-@media (max-width:1199px) {
-  body { margin-inline: 0; }
-}
+/* Removed sidebar margins for modern design */
 
 /* Video Ad Modal Styles */
 .ad-modal {

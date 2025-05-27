@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useMediaQuery } from 'react-responsive';
-import { Film, Zap, Shuffle } from 'lucide-react'; 
+import { Film, Zap, Shuffle, Sparkles } from 'lucide-react'; 
 import { useMovieContext } from '../context/MovieContext';
 import { usePickCounter } from '../hooks/usePickCounter';
 import { timers } from '../utils/timers';
@@ -16,14 +16,13 @@ import CookieConsent from '../components/CookieConsent';
 import PrivacyPolicy from '../components/PrivacyPolicy';
 import TermsOfService from '../components/TermsOfService';
 import PlaceholderMovieCard from '../components/PlaceholderMovieCard';
-import SettingsDrawer from '../components/SettingsDrawer';
-import AdUnit from '../components/AdUnit';
 import VideoAd from '../components/VideoAd';
 import Button from '../components/ui/Button';
 import Spinner from '../components/ui/Spinner';
 import LoadingOverlay from '../components/LoadingOverlay';
 import { LoadingState } from '../types';
 import { analytics } from '../utils/analytics';
+import * as gtag from '../utils/gtag';
 
 const Desktop = ({ children }: { children: React.ReactNode }) =>
   useMediaQuery({ minWidth: 1200 }) ? children : null;
@@ -42,12 +41,10 @@ const generateMathProblem = (difficulty: number = 1) => {
       answer = num1 + num2;
       break;
     case '-':
-      // Ensure positive result
       if (num2 > num1) [num1, num2] = [num2, num1];
       answer = num1 - num2;
       break;
     case '*':
-      // Keep multiplication manageable
       num1 = Math.floor(Math.random() * (5 * difficulty)) + 1;
       num2 = Math.floor(Math.random() * (5 * difficulty)) + 1;
       answer = num1 * num2;
@@ -60,13 +57,10 @@ const generateMathProblem = (difficulty: number = 1) => {
 };
 
 const Home: React.FC = () => {
-  // Group all useState hooks together at the top
   const [isHeaderVisible, setIsHeaderVisible] = useState(true);
   const [hasSeenDescription, setHasSeenDescription] = useState(false);
   const [isInitialLoading, setIsInitialLoading] = useState(true);
   const [hasInitiallyLoaded, setHasInitiallyLoaded] = useState(false);
-  const [adsEnabled, setAdsEnabled] = useState(false); // Start with ads disabled
-  const [adKey, setAdKey] = useState(0);
   const [hasUserInteracted, setHasUserInteracted] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const pickCounter = usePickCounter();
@@ -78,7 +72,6 @@ const Home: React.FC = () => {
     loadingState, 
     pickCount,
     getRandomMovie, 
-    getMovieFromCache,
     error, 
     watchlist,
     resetPickCount,
@@ -94,43 +87,36 @@ const Home: React.FC = () => {
     onClose: () => {
       pickCounter.reset();
       getRandomMovie()
-        .then(() => setPickCount(prev => prev + 1))
         .catch(console.error);
     },
     onError: () => {
       getRandomMovie()
-        .then(() => setPickCount(prev => prev + 1))
         .catch(console.error);
     },
     enableTestAds: false
   });
 
-  // Auto-pick movie on initial load
   useEffect(() => {
     if (!isLoadingGenres && !isInitialLoading && !hasInitiallyLoaded) {
       setHasInitiallyLoaded(true);
       handleInitialLoad();
-      // Don't enable ads yet - wait for content
     }
   }, [isLoadingGenres, isInitialLoading, hasInitiallyLoaded]);
 
   const handleInitialLoad = async () => {
     setHasUserInteracted(true);
-    // Disable ads during initial loading
-    setAdsEnabled(false);
     
     try {
       await getRandomMovie();
       if (currentMovie) {
         analytics.setLastMovie(currentMovie.id);
+        gtag.trackMoviePick(currentMovie.id, currentMovie.title);
       }
-      // Ads will be enabled by the useEffect when content loads successfully
     } catch (error) {
       console.error('Failed to get initial movie:', error);
     }
   };
 
-  // Group all useEffect hooks together
   useEffect(() => {
     const timer = setTimeout(() => {
       if (!isLoadingGenres) {
@@ -141,21 +127,10 @@ const Home: React.FC = () => {
   }, [isLoadingGenres]);
 
   useEffect(() => {
-    // Don't show ads on initial load
     if (hasUserInteracted && pickCount > 0 && !isInitialLoading) {
       videoAd.maybeShow(pickCounter.current());
     }
   }, [pickCount, hasUserInteracted, isInitialLoading]);
-
-  // Enable ads only when we have content (successful movie load)
-  useEffect(() => {
-    if (hasUserInteracted && loadingState === LoadingState.SUCCESS && currentMovie) {
-      setAdsEnabled(true);
-    } else if (hasUserInteracted && (loadingState === LoadingState.LOADING || loadingState === LoadingState.ERROR)) {
-      // Disable ads during loading or error states
-      setAdsEnabled(false);
-    }
-  }, [hasUserInteracted, loadingState, currentMovie]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -185,12 +160,8 @@ const Home: React.FC = () => {
 
   const handleGetMovie = () => {
     setHasUserInteracted(true);
-    // Disable ads during loading to prevent showing on empty content
-    setAdsEnabled(false);
-    setAdKey(k => k + 1); // Force new ad instance
     const count = pickCounter.inc();
     
-    // Show ad every 10 picks
     if (count >= 5 && count % 10 === 0) {
       videoAd.maybeShow(count);
     } else if (!videoAd.visible) {
@@ -198,202 +169,136 @@ const Home: React.FC = () => {
         .then(() => {
           if (currentMovie) {
             analytics.setLastMovie(currentMovie.id);
+            gtag.trackMoviePick(currentMovie.id, currentMovie.title);
           }
-          // Ads will be enabled by the useEffect when content loads successfully
         })
         .catch(console.error);
     }
   };
 
   return (
-    <div className="min-h-screen bg-gray-950 text-white relative flex flex-col">
-      {/* sidebars - only show when there's content */}
-      {hasUserInteracted && loadingState === LoadingState.SUCCESS && currentMovie && (
-        <Desktop>
-          {!filterPanelOpen && (
-            <>
-              <aside className="fixed left-0 top-[120px] z-20">
-                <div className="w-full flex justify-center my-2">
-                  <AdUnit slot="6047638216" width={300} height={600} enabled={adsEnabled} />
-                </div>
-              </aside>
-              <aside className="fixed right-0 top-[120px] z-20">
-                <div className="w-full flex justify-center my-2">
-                  <AdUnit slot="1111840457" width={300} height={600} enabled={adsEnabled} />
-                </div>
-              </aside>
-            </>
-          )}
-        </Desktop>
-      )}
+    <div className="min-h-screen bg-gray-950 text-white flex flex-col relative overflow-hidden" itemScope itemType="https://schema.org/WebApplication">
+      {/* Background Effects */}
+      <div className="absolute inset-0 bg-gradient-to-br from-gray-900/30 via-slate-900/30 to-gray-900/30 pointer-events-none" />
+      <div className="absolute top-0 left-1/4 w-96 h-96 bg-purple-500/5 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-indigo-500/5 rounded-full blur-3xl pointer-events-none" />
       
-      <div className="sticky top-0 z-10 bg-gray-950">
-        <header className={`bg-gradient-to-b from-black to-transparent pt-4 md:pt-8 px-4 transition-all duration-500 ease-in-out ${
-          isHeaderVisible ? 'pb-6 md:pb-8 opacity-100' : 'pb-0'
+      <div className="relative z-10">
+        <header className={`pt-6 md:pt-12 px-4 transition-all duration-500 ease-in-out ${
+          isHeaderVisible ? 'pb-8 md:pb-12 opacity-100' : 'pb-4'
         }`}>
           <div className="max-w-6xl mx-auto relative">
-          <div className="flex items-center justify-between mb-3 md:mb-6">
-            <div className="flex items-center">
-              <Film size={30} className="text-red-600 mr-2" aria-hidden="true" />
-              <h1 className="text-xl md:text-2xl font-bold" itemProp="name">MovieNightPicker</h1>
+            <div className="flex items-center justify-between mb-6 md:mb-8">
+              <div className="flex items-center gap-3">
+                <div className="p-3 bg-gradient-to-r from-indigo-600 to-purple-600 rounded-2xl shadow-lg">
+                  <Film size={32} className="text-white" aria-hidden="true" />
+                </div>
+                <div>
+                  <h1 className="text-2xl md:text-3xl font-bold bg-gradient-to-r from-white via-gray-100 to-gray-300 bg-clip-text text-transparent" itemProp="name">
+                    MovieNightPicker
+                  </h1>
+                  <p className="text-sm text-gray-400 hidden md:block">Discover your next favorite movie</p>
+                </div>
+              </div>
+              
+              <div className="flex items-center gap-3">
+                <WatchlistPanel />
+                <FilterPanel isOpen={filterPanelOpen} setIsOpen={setFilterPanelOpen} />
+              </div>
             </div>
-            <div className="flex space-x-2 sticky top-4 z-50">
-              <WatchlistPanel />
-              <FilterPanel isOpen={filterPanelOpen} setIsOpen={setFilterPanelOpen} />
-            </div>
-          </div>
-          
-          <div 
-            className={`text-center transition-all duration-500 ease-in-out overflow-hidden ${
-              isHeaderVisible ? 'h-44 md:h-36 opacity-100 mb-4' : 'h-0 opacity-0 mb-0'
-            }`}
-          >
-            <button 
-              onClick={() => setIsHeaderVisible(false)} 
-              className="text-gray-400 hover:text-white text-sm mb-3">Hide Description</button>
-            <h2 className="text-2xl md:text-4xl font-bold mb-2 md:mb-3" itemProp="description">
-              Discover Your Next Movie Night Pick
-            </h2>
-            <p className="text-gray-400 max-w-2xl mx-auto text-sm md:text-base px-4 leading-relaxed mb-2" itemProp="about">
-              Instantly find the perfect movie to watch tonight with our random movie picker.
-              Apply filters, save to your watchlist, and never waste time browsing again.
-            </p>
-          </div>
-        </div>
-        {!isHeaderVisible && (
-          <button 
-            onClick={() => setIsHeaderVisible(true)}
-            className="absolute bottom-1 left-1/2 -translate-x-1/2 text-gray-400/50 hover:text-white text-sm"
-          >
-            Show Description
-          </button>
-        )}
-        </header>
-      </div>
 
-      <main className="max-w-6xl w-full mx-auto px-2 md:px-4 flex flex-col flex-1">
-        {/* mobile top ad - only show when there's content */}
-        {hasUserInteracted && loadingState === LoadingState.SUCCESS && currentMovie && (
-          <Mobile>
-            <div className="w-full flex justify-center my-2">
-              <AdUnit
-                slot="8008421293"
-                width={320}
-                height={100}
-                enabled={adsEnabled}
-              />
-            </div>
-          </Mobile>
-        )}
-        
-        <div className="flex justify-center my-4 mb-8 md:mb-4">
-            <Button
-              variant="primary"
-              size="lg"
-              icon={loadingState === LoadingState.LOADING ? (
-                <Spinner size="sm" className="mr-1" />
-              ) : (
-                <Shuffle size={18} className="md:w-5 md:h-5" />
-              )}
-              onClick={handleGetMovie}
-              className={`w-full max-w-md md:w-auto bg-red-600 hover:bg-red-700 ${loadingState !== LoadingState.LOADING && 'animate-pulse-slow'} mb-safe`}
-              disabled={loadingState === LoadingState.LOADING}
-            >
-              <span className="text-sm md:text-base">
-                {loadingState === LoadingState.LOADING ? (
-                  <span className="inline-flex items-center">Finding Movie...</span>
-                ) : (
-                  'Pick Another Movie'
-                )}
-              </span>
-            </Button>
-        </div>
-
-        <div className="w-full flex flex-col items-center">
-          <div className="w-full">
-            {!hasUserInteracted && (
-              <PlaceholderMovieCard />
-            )}
-            {hasUserInteracted && loadingState === LoadingState.LOADING && (
-              <MovieCardSkeleton />
-            )}
-
-            {hasUserInteracted && loadingState === LoadingState.ERROR && (
-              <div className="text-center bg-gray-900 p-8 rounded-xl max-w-md">
-                <Zap size={48} className="mx-auto text-red-500 mb-4" />
-                <h3 className="text-xl font-bold mb-2">Oops! Something went wrong</h3>
-                <p className="text-gray-400 mb-4">{error || 'Failed to find a movie. Please try again.'}</p>
-                <Button variant="primary" onClick={handleGetMovie}>Try Again</Button>
+            {isHeaderVisible && (
+              <div className="text-center mb-8 md:mb-12 animate-fadeIn">
+                <div className="max-w-2xl mx-auto">
+                  <h2 className="text-xl md:text-2xl font-semibold mb-4 bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">
+                    Can't decide what to watch?
+                  </h2>
+                  <p className="text-gray-300 text-base md:text-lg leading-relaxed" itemProp="description">
+                    Let our smart movie picker help you discover your next favorite film. 
+                    Filter by genre, year, rating and more to find the perfect movie for your mood.
+                  </p>
+                </div>
               </div>
             )}
-
-            {hasUserInteracted && loadingState === LoadingState.SUCCESS && currentMovie && (
-              <MovieCard movie={currentMovie} isInWatchlist={isInWatchlist} />
-            )}
-            {/* Billboard ad under movie card */}
-            {hasUserInteracted && loadingState === LoadingState.SUCCESS && currentMovie && (
-              <Desktop>
-                <div className="mx-auto mt-10 max-w-[970px]">
-                  <AdUnit
-                    slot="3718732625"
-                    width={970}
-                    height={250}
-                    format="horizontal"
-                    enabled={adsEnabled}
-                  />
-                </div>
-              </Desktop>
-            )}
           </div>
-        </div>
+        </header>
 
-        {/* mobile bottom ad - only show when there's content */}
-        {hasUserInteracted && loadingState === LoadingState.SUCCESS && currentMovie && (
-          <Mobile>
-            <div className="w-full flex justify-center my-4">
-              <AdUnit 
-                slot="9568914971"
-                width={320}
-                height={100}
-                format="horizontal"
-                enabled={adsEnabled}
-              />
+        <main className="flex-1 px-4 pb-8">
+          <div className="max-w-6xl mx-auto">
+            <div className="flex flex-col items-center">
+              {/* Movie Card Section */}
+              <div className="w-full mb-8">
+                {loadingState === LoadingState.LOADING ? (
+                  <MovieCardSkeleton />
+                ) : error ? (
+                  <NoMoviesFound />
+                ) : currentMovie ? (
+                  <MovieCard movie={currentMovie} isInWatchlist={isInWatchlist} />
+                ) : (
+                  <PlaceholderMovieCard />
+                )}
+              </div>
+
+              {/* Action Button */}
+              <div className="mb-8">
+                <button
+                  onClick={handleGetMovie}
+                  disabled={loadingState === LoadingState.LOADING}
+                  className="group relative bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 
+                           hover:from-indigo-500 hover:via-purple-500 hover:to-pink-500
+                           disabled:from-gray-600 disabled:to-gray-600
+                           text-white font-bold px-8 py-4 rounded-2xl text-lg
+                           shadow-2xl hover:shadow-purple-500/25
+                           transform hover:scale-[1.05] active:scale-[0.95]
+                           transition-all duration-300 ease-out
+                           disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none
+                           min-w-[200px]"
+                >
+                  <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                  <div className="relative flex items-center justify-center gap-3">
+                    {loadingState === LoadingState.LOADING ? (
+                      <>
+                        <div className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                        Finding Movie...
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles size={24} className="group-hover:rotate-12 transition-transform duration-300" />
+                        Get Random Movie
+                      </>
+                    )}
+                  </div>
+                </button>
+              </div>
+
+              {/* Stats - Hidden for cleaner UI */}
+              {/* {pickCount > 0 && (
+                <div className="text-center">
+                  <div className="inline-flex items-center gap-2 px-4 py-2 bg-white/10 backdrop-blur-sm rounded-full border border-white/20">
+                    <Shuffle size={16} className="text-purple-400" />
+                    <span className="text-sm font-medium">
+                      {pickCount} movie{pickCount !== 1 ? 's' : ''} discovered
+                    </span>
+                  </div>
+                </div>
+              )} */}
             </div>
-          </Mobile>
-        )}
+          </div>
+        </main>
 
-        {/* Video Ad Modal */}
-        {videoAd.visible && (
-          <VideoAd
-            onClose={videoAd.close}
-            onError={videoAd.close}
-            enableTestAds={false}
-            mockMode={false}
-          />
-        )}
+        <div ref={bottomRef} />
+      </div>
 
-      </main>
+      {/* Video Ad */}
+      {videoAd.visible && (
+        <VideoAd 
+          onClose={videoAd.close}
+          onError={videoAd.close}
+          enableTestAds={false}
+        />
+      )}
 
-      <footer className="py-3 border-t border-gray-800 mt-auto">
-        <div className="max-w-6xl mx-auto px-4 text-center text-gray-500 text-xs md:text-sm">
-          <p>© 2025 MovieNightPicker by <a href="https://nodeadline.studio" target="_blank" rel="noopener noreferrer" className="hover:text-gray-400 transition-colors">nodeadline.studio</a>. All movie data provided by TMDB.</p>
-          <p className="mt-0.5 space-x-2">
-            <button 
-              onClick={() => window.dispatchEvent(new CustomEvent('show-privacy'))}
-              className="underline hover:text-gray-400 transition-colors"
-            >
-              Privacy Policy
-            </button>
-            <span>|</span>
-            <button
-              onClick={() => window.dispatchEvent(new CustomEvent('show-terms'))}
-              className="underline hover:text-gray-400 transition-colors"
-            >
-              Terms of Service
-            </button>
-          </p>
-        </div>
-      </footer>
+      {/* Modals */}
       <CookieConsent />
       <PrivacyPolicy />
       <TermsOfService />

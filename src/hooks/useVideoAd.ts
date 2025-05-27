@@ -53,8 +53,8 @@ export function useVideoAd({ onClose, onError, pickCounter, enableTestAds = true
   }, [close]);
 
   const maybeShow = useCallback((count: number) => {
-    // Only show ad every 10 picks
-    if (!hasUserInteracted.current || count === 0 || count % 10 !== 0) return;
+    // Only show ad every 5 picks
+    if (!hasUserInteracted.current || count === 0 || count % 5 !== 0) return;
     setVisible(true);
     
     const started = { current: false };

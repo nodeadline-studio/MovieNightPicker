@@ -6,7 +6,7 @@
         http://www.sitemaps.org/schemas/sitemap/0.9/sitemap.xsd">
   <url>
     <loc>https://movienightpicker.com/</loc>
-    <lastmod>2024-03-15</lastmod>
+    <lastmod>2024-12-19</lastmod>
     <changefreq>daily</changefreq>
     <priority>1.0</priority>
     <image:image>
@@ -14,22 +14,5 @@
       <image:title>MovieNightPicker - Find Your Perfect Movie</image:title>
     </image:image>
   </url>
-  <url>
-    <loc>https://movienightpicker.com/roadmap</loc>
-    <lastmod>2024-03-15</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://movienightpicker.com/privacy-policy</loc>
-    <lastmod>2024-03-15</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.5</priority>
-  </url>
-  <url>
-    <loc>https://movienightpicker.com/terms-of-service</loc>
-    <lastmod>2024-03-15</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.5</priority>
-  </url>
+
 </urlset>

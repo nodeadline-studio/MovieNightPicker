@@ -142,7 +142,6 @@ export const MovieProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       if (movie) {
         setCurrentMovie(movie);
         setLoadingState(LoadingState.SUCCESS);
-        setPickCount(prev => prev + 1);
         return { success: true, movie };
       }
       return { success: false };
@@ -164,7 +163,7 @@ export const MovieProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         filterOptions,
         error,
         getRandomMovie,
-        getMovieFromCache,
+
         addToWatchlist,
         removeFromWatchlist,
         updateFilterOptions,

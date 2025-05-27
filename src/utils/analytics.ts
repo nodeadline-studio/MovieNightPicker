@@ -4,6 +4,11 @@ interface UserMetrics {
   birthYear?: number;
   lastMovieId?: number;
   watchlistSize: number;
+  cookiePreferences?: {
+    acceptAll: boolean;
+    isEU: boolean;
+    timestamp: string;
+  };
   filterPreferences: {
     genres: number[];
     yearRange: [number, number];
@@ -14,6 +19,7 @@ interface UserMetrics {
     moviesViewed: number;
     captchaAttempts: number;
     captchaScore: number;
+    sharesCount?: number;
   };
 }
 
@@ -101,6 +107,13 @@ class Analytics {
     const metrics = this.getMetrics();
     metrics.sessionData.captchaAttempts = attempts;
     metrics.sessionData.captchaScore = score;
+    this.saveMetrics(metrics);
+  }
+
+  trackShare(platform: string, watchlistSize: number) {
+    // Track sharing activity (anonymous)
+    const metrics = this.getMetrics();
+    metrics.sessionData.sharesCount = (metrics.sessionData.sharesCount || 0) + 1;
     this.saveMetrics(metrics);
   }
 

@@ -26,52 +26,57 @@ const PrivacyPolicy: React.FC = () => {
             size="sm"
             icon={<X size={20} />}
             onClick={() => setIsOpen(false)}
-          />
+          >
+            {""}
+          </Button>
         </div>
         <div className="p-6 overflow-y-auto max-h-[calc(80vh-140px)]">
           <div className="prose prose-invert max-w-none">
             <h3>Data Collection and Usage</h3>
-            <p>We collect and process the following anonymous data to improve our service:</p>
+            <p><strong>MovieNightPicker does NOT collect any personal data or user information.</strong></p>
+            <p>Here's what we do and don't collect:</p>
             <ul>
-              <li>Anonymous user identifier (randomly generated)</li>
-              <li>Birth year (if provided for age verification)</li>
-              <li>Movie preferences and viewing history</li>
-              <li>Watchlist information</li>
-              <li>Filter preferences (genres, years, ratings)</li>
-              <li>Usage metrics (movies viewed, captcha interactions)</li>
+              <li>❌ No personal information (names, emails, addresses)</li>
+              <li>❌ No user tracking or behavior monitoring</li>
+              <li>❌ No analytics or usage statistics</li>
+              <li>❌ No server-side data storage</li>
+              <li>✅ Local browser storage only (preferences, watchlist)</li>
+              <li>✅ All data stays on your device</li>
             </ul>
             
-            <p className="text-sm text-gray-400">Note: All data is collected anonymously and cannot be traced back to individual users.</p>
+            <p className="text-sm text-gray-400">Your privacy is completely protected - we simply don't collect any data about you.</p>
             
-            <h3>Cookies</h3>
-            <p>We use cookies to enhance your experience and analyze our traffic. These include:</p>
+            <h3>Local Storage</h3>
+            <p>MovieNightPicker uses only local browser storage for functionality:</p>
             <ul>
-              <li>Essential cookies for site functionality</li>
-              <li>Analytics cookies to understand usage</li>
-              <li>Preference cookies to remember your settings</li>
-              <li>Anonymous session tracking cookies</li>
+              <li>✅ Local storage for your movie preferences</li>
+              <li>✅ Local storage for your watchlist</li>
+              <li>✅ Local storage for filter settings</li>
+              <li>❌ No tracking cookies</li>
+              <li>❌ No analytics cookies</li>
+              <li>❌ No third-party cookies</li>
             </ul>
 
-            <h3>How We Use Your Information</h3>
-            <p>We use the information we collect to:</p>
+            <h3>How Your Local Data Works</h3>
+            <p>Since we don't collect any data, here's how your local data works:</p>
             <ul>
-              <li>Provide and improve our services</li>
-              <li>Personalize your experience</li>
-              <li>Analyze how our services are used</li>
-              <li>Generate anonymous usage statistics</li>
-              <li>Improve our recommendation algorithms</li>
-              <li>Enhance user experience based on aggregate data</li>
+              <li>✅ All preferences stored locally in your browser</li>
+              <li>✅ Your watchlist never leaves your device</li>
+              <li>✅ Filter settings saved locally for convenience</li>
+              <li>✅ You have full control over your data</li>
+              <li>✅ Clear browser data to remove everything</li>
             </ul>
 
             <h3>Data Retention</h3>
-            <p>Anonymous usage data is retained for up to 12 months. You can clear your local data at any time through your browser settings.</p>
+            <p>Since no data is collected by us, all your preferences and watchlist data remains on your device until you choose to clear it through your browser settings.</p>
 
             <h3>Data Sharing</h3>
-            <p>We may share anonymous, aggregated data with:</p>
+            <p><strong>We do not share any data because we don't collect any data.</strong></p>
             <ul>
-              <li>Analytics service providers</li>
-              <li>Research partners for movie trend analysis</li>
-              <li>Advertising partners for targeting improvement</li>
+              <li>❌ No data shared with analytics providers</li>
+              <li>❌ No data shared with advertising partners</li>
+              <li>❌ No data shared with third parties</li>
+              <li>✅ Your data stays completely private</li>
             </ul>
 
             <h3>Contact Us</h3>
