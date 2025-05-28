@@ -66,7 +66,7 @@ const Button: React.FC<ButtonProps> = ({
     >
       <span className="relative z-10 flex items-center justify-center gap-2">
         {icon && <span>{icon}</span>}
-        {children}
+      {children}
       </span>
     </button>
   );

@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { SlidersHorizontal, X, Clapperboard, Star, Clock, Calendar, Trash2, ChevronRight, AlertTriangle, StarHalf, Shuffle, Sparkles, CheckSquare } from 'lucide-react';
+import { SlidersHorizontal, X, Clapperboard, Star, Calendar, Trash2, ChevronRight, AlertTriangle, StarHalf, Shuffle, Sparkles, CheckSquare, Clock } from 'lucide-react';
 import { useMovieContext } from '../context/MovieContext';
 import Button from './ui/Button';
-import BirthYearVerification from './BirthYearVerification';
 import TimelineSlider from './ui/TimelineSlider';
 import { movieCache } from '../utils/cache';
 import { LoadingState } from '../types';
@@ -15,13 +14,20 @@ interface FilterPanelProps {
 }
 
 const FilterPanel: React.FC<FilterPanelProps> = ({ isOpen, setIsOpen }) => {
-  const { genres, filterOptions, updateFilterOptions, getRandomMovie, loadingState, pickCount } = useMovieContext();
-  const [hasConfirmedAdult, setHasConfirmedAdult] = useState(false);
+  const { 
+    genres, 
+    filterOptions, 
+    updateFilterOptions, 
+    getRandomMovie, 
+    loadingState, 
+    pickCount,
+    isRandomizerEnabled,
+    setIsRandomizerEnabled,
+    applyRandomFilters
+  } = useMovieContext();
   const [isApplyingAndPicking, setIsApplyingAndPicking] = useState(false);
-  const [isRandomizerEnabled, setIsRandomizerEnabled] = useState(true);
   const [excludeWatchlist, setExcludeWatchlist] = useState(false);
   const [activeTab, setActiveTab] = useState<'basic' | 'advanced'>('basic');
-  const [showBirthYearModal, setShowBirthYearModal] = useState(false);
   const [captchaVerified, setCaptchaVerified] = useState(false);
   const [captchaScore, setCaptchaScore] = useState<number | null>(null);
   const [mathProblem, setMathProblem] = useState<{ question: string; answer: number } | null>(null);
@@ -40,7 +46,7 @@ const FilterPanel: React.FC<FilterPanelProps> = ({ isOpen, setIsOpen }) => {
     if (filterOptions.ratingFrom !== 6) count++;
     if (filterOptions.maxRuntime !== 150) count++;
     if (filterOptions.inTheatersOnly) count++;
-    if (filterOptions.includeAdult) count++;
+    if (filterOptions.tvShowsOnly) count++;
     return count;
   };
 
@@ -98,40 +104,9 @@ const FilterPanel: React.FC<FilterPanelProps> = ({ isOpen, setIsOpen }) => {
     if (!isNaN(rating) && rating >= 0 && rating <= 10) {
       setIsRandomizerEnabled(false);
       updateFilterOptions({ 
-        ratingFrom: rating,
-        includeAdult: rating === 0 ? true : filterOptions.includeAdult 
+        ratingFrom: rating
       });
     }
-  };
-
-  const handleAdultContentChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const isChecked = e.target.checked;
-    
-    if (!isChecked) {
-      updateFilterOptions({ includeAdult: false });
-      return;
-    }
-
-    if (!hasConfirmedAdult) {
-      setShowBirthYearModal(true);
-      e.target.checked = false;
-    } else {
-      updateFilterOptions({ includeAdult: true });
-    }
-  };
-
-  const handleBirthYearConfirm = () => {
-    setHasConfirmedAdult(true);
-    updateFilterOptions({ 
-      includeAdult: true,
-      inTheatersOnly: false // Disable theaters when enabling adult content
-    });
-    setShowBirthYearModal(false);
-  };
-
-  const handleBirthYearCancel = () => {
-    updateFilterOptions({ includeAdult: false });
-    setShowBirthYearModal(false);
   };
 
   const handleInTheatersChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -140,69 +115,37 @@ const FilterPanel: React.FC<FilterPanelProps> = ({ isOpen, setIsOpen }) => {
     updateFilterOptions({
       inTheatersOnly: isChecked,
       yearFrom: isChecked ? new Date().getFullYear() : filterOptions.yearFrom,
-      yearTo: isChecked ? new Date().getFullYear() : filterOptions.yearTo,
-      includeAdult: isChecked ? false : filterOptions.includeAdult // Disable adult content when in theaters
+      yearTo: isChecked ? new Date().getFullYear() : filterOptions.yearTo
     });
   };
 
-  const handleRuntimeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = parseInt(e.target.value);
-    if (!isNaN(value) && value >= 60 && value <= 240) {
-      setIsRandomizerEnabled(false);
-      updateFilterOptions({ maxRuntime: value });
-    }
-  };
-
-  const formatRuntime = (minutes: number) => {
-    const hours = Math.floor(minutes / 60);
-    const mins = minutes % 60;
-    return mins > 0 ? `${hours}h ${mins}m` : `${hours}h`;
-  };
-
-  const resetFilters = () => {
+  const resetFilters = async () => {
     setIsRandomizerEnabled(false);
     updateFilterOptions({
       genres: [],
       yearFrom: 1990,
       yearTo: currentYear,
       ratingFrom: 6,
-      includeAdult: false,
+      includeAdult: true,
+      tvShowsOnly: false,
     });
+    
+    // Убрал автоматический поиск фильма - теперь пользователь должен нажать кнопку поиска
   };
 
-  const applyRandomFilters = () => {
-    const numGenres = Math.floor(Math.random() * 3) + 2;
-    const shuffledGenres = [...genres].sort(() => Math.random() - 0.5);
-    const randomGenres = shuffledGenres.slice(0, numGenres).map(g => g.id);
-    
-    const minYear = 1950;
-    const yearFrom = Math.floor(Math.random() * (currentYear - minYear - 10)) + minYear;
-    const yearTo = Math.floor(Math.random() * (currentYear - yearFrom - 10)) + yearFrom + 10;
-    
-    const rating = Math.floor(Math.random() * 3) + 5;
-    const runtime = Math.floor(Math.random() * 90) + 90;
-    
-    updateFilterOptions({
-      genres: randomGenres,
-      yearFrom,
-      yearTo,
-      ratingFrom: rating,
-      maxRuntime: runtime,
-      inTheatersOnly: false,
-      includeAdult: false
-    });
+  const handleSurpriseMe = async () => {
+    if (!isRandomizerEnabled) {
+      applyRandomFilters();
+      // Убрал автоматический поиск фильма - теперь пользователь должен нажать кнопку поиска
+    }
   };
 
-  // Removed auto-randomization on panel open
-  // useEffect(() => {
-  //   if (isOpen && isRandomizerEnabled) {
-  //     applyRandomFilters();
-  //   }
-  // }, [isOpen, isRandomizerEnabled]);
-
-  const handleSurpriseMe = () => {
-    if (isRandomizerEnabled) return;
-    applyRandomFilters();
+  const handleRandomizerToggle = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const isChecked = e.target.checked;
+    setIsRandomizerEnabled(isChecked);
+    if (isChecked) {
+      applyRandomFilters();
+    }
   };
 
   const handleApplyChanges = () => {
@@ -237,6 +180,20 @@ const FilterPanel: React.FC<FilterPanelProps> = ({ isOpen, setIsOpen }) => {
     } finally {
       setIsApplyingAndPicking(false);
     }
+  };
+
+  const formatRuntime = (runtime: number) => {
+    const hours = Math.floor(runtime / 60);
+    const minutes = runtime % 60;
+    return `${hours}h ${minutes}m`;
+  };
+
+  const handleRuntimeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const runtime = parseInt(e.target.value);
+    setIsRandomizerEnabled(false);
+    updateFilterOptions({
+      maxRuntime: runtime
+    });
   };
 
   return (
@@ -278,19 +235,20 @@ const FilterPanel: React.FC<FilterPanelProps> = ({ isOpen, setIsOpen }) => {
         }`}>
           <div className="h-full bg-gradient-to-br from-slate-900/95 via-gray-900/95 to-slate-800/95 
                          backdrop-blur-xl border-l border-white/10 shadow-2xl
-                         ring-1 ring-white/5 flex flex-col max-h-[100dvh] filter-panel-mobile">
+                         ring-1 ring-white/5 flex flex-col
+                         pb-[env(safe-area-inset-bottom)]">
             
-            {/* Header */}
-            <div className="relative p-4 md:p-6 border-b border-white/10 flex-shrink-0">
+            {/* Header - Fixed Height */}
+            <div className="relative p-3 md:p-4 border-b border-white/10 flex-shrink-0 h-16 md:h-20">
               <div className="absolute inset-0 bg-gradient-to-r from-indigo-600/10 via-purple-600/10 to-pink-600/10" />
-              <div className="relative flex justify-between items-center">
+              <div className="relative flex justify-between items-center h-full">
                 <div className="flex items-center gap-3">
                   <div className="p-2 bg-gradient-to-r from-indigo-500 to-purple-500 rounded-xl">
                     <SlidersHorizontal size={20} className="text-white" />
                   </div>
                   <div>
-                    <h3 className="text-xl font-bold text-white">Movie Filters</h3>
-                    <p className="text-sm text-gray-400">{getActiveFilterCount()} filters active</p>
+                    <h3 className="text-lg md:text-xl font-bold text-white">Movie Filters</h3>
+                    <p className="text-xs md:text-sm text-gray-400">{getActiveFilterCount()} filters active</p>
                   </div>
                 </div>
                 <button
@@ -302,10 +260,10 @@ const FilterPanel: React.FC<FilterPanelProps> = ({ isOpen, setIsOpen }) => {
               </div>
             </div>
 
-            {/* Tabs */}
-            <div className="flex border-b border-white/10 bg-white/5 flex-shrink-0">
+            {/* Tabs - Fixed Height */}
+            <div className="flex border-b border-white/10 bg-white/5 flex-shrink-0 h-12">
               <button
-                className={`flex-1 py-2 md:py-3 text-sm font-semibold transition-all duration-200 ${
+                className={`flex-1 py-2 md:py-3 text-xs md:text-sm font-semibold transition-all duration-200 ${
                   activeTab === 'basic'
                     ? 'text-white bg-gradient-to-r from-indigo-500/20 to-purple-500/20 border-b-2 border-purple-500'
                     : 'text-gray-400 hover:text-white hover:bg-white/5'
@@ -315,7 +273,7 @@ const FilterPanel: React.FC<FilterPanelProps> = ({ isOpen, setIsOpen }) => {
                 Basic Filters
               </button>
               <button
-                className={`flex-1 py-2 md:py-3 text-sm font-semibold transition-all duration-200 ${
+                className={`flex-1 py-2 md:py-3 text-xs md:text-sm font-semibold transition-all duration-200 ${
                   activeTab === 'advanced'
                     ? 'text-white bg-gradient-to-r from-indigo-500/20 to-purple-500/20 border-b-2 border-purple-500'
                     : 'text-gray-400 hover:text-white hover:bg-white/5'
@@ -326,20 +284,20 @@ const FilterPanel: React.FC<FilterPanelProps> = ({ isOpen, setIsOpen }) => {
               </button>
             </div>
 
-            {/* Content */}
-            <div className="flex-1 overflow-y-auto custom-scrollbar p-3 md:p-4 min-h-0 filter-content-mobile">
+            {/* Content - Flexible Height */}
+            <div className="flex-1 overflow-y-auto custom-scrollbar p-3 md:p-4 min-h-0">
               {activeTab === 'basic' ? (
-                <div className="space-y-2 md:space-y-3">
+                <div className="h-full flex flex-col gap-4">
                   {/* Year Range */}
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-2">
+                  <div className="flex-shrink-0">
+                    <div className="flex items-center gap-2 mb-2">
                       <Calendar size={16} className="text-blue-400" />
-                      <h4 className="text-sm md:text-base font-semibold text-white">Release Year</h4>
-                      <span className="text-xs text-gray-400">
+                      <h4 className="text-base font-semibold text-white">Release Year</h4>
+                      <span className="text-sm text-gray-400 ml-auto">
                         {filterOptions.yearFrom} - {filterOptions.yearTo}
                       </span>
                     </div>
-                    <div className="bg-white/5 rounded-xl p-2 md:p-3 border border-white/10">
+                    <div className="bg-white/5 rounded-xl p-3 border border-white/10">
                       <TimelineSlider
                         min={1900}
                         max={currentYear}
@@ -359,13 +317,13 @@ const FilterPanel: React.FC<FilterPanelProps> = ({ isOpen, setIsOpen }) => {
                   </div>
 
                   {/* Rating */}
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-2">
+                  <div className="flex-shrink-0">
+                    <div className="flex items-center gap-2 mb-2">
                       <Star size={16} className="text-yellow-400" />
-                      <h4 className="text-sm md:text-base font-semibold text-white">Minimum Rating</h4>
-                      <span className="text-xs text-gray-400">{filterOptions.ratingFrom.toFixed(1)}</span>
+                      <h4 className="text-base font-semibold text-white">Minimum Rating</h4>
+                      <span className="text-sm text-gray-400 ml-auto">{filterOptions.ratingFrom.toFixed(1)}</span>
                     </div>
-                    <div className="bg-white/5 rounded-xl p-2 md:p-3 border border-white/10">
+                    <div className="bg-white/5 rounded-xl p-3 border border-white/10">
                       <div className="relative w-full h-6 cursor-pointer">
                         <div className="absolute inset-y-2 inset-x-0 bg-white/10 rounded-full" />
                         <div 
@@ -389,23 +347,19 @@ const FilterPanel: React.FC<FilterPanelProps> = ({ isOpen, setIsOpen }) => {
                     </div>
                   </div>
 
-                  {/* Runtime Filter */}
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-2">
+                  {/* Runtime */}
+                  <div className="flex-shrink-0">
+                    <div className="flex items-center gap-2 mb-2">
                       <Clock size={16} className="text-green-400" />
-                      <h4 className="text-sm md:text-base font-semibold text-white">Maximum Runtime</h4>
-                      <span className="text-xs text-gray-400">{formatRuntime(filterOptions.maxRuntime)}</span>
+                      <h4 className="text-base font-semibold text-white">Maximum Runtime</h4>
+                      <span className="text-sm text-gray-400 ml-auto">{formatRuntime(filterOptions.maxRuntime)}</span>
                     </div>
-                    <div className="bg-white/5 rounded-xl p-2 md:p-3 border border-white/10">
-                      <div className="relative w-full h-6 cursor-pointer">
+                    <div className="bg-white/5 rounded-xl p-3 border border-white/10">
+                      <div className="relative">
                         <div className="absolute inset-y-2 inset-x-0 bg-white/10 rounded-full" />
                         <div 
-                          className="absolute inset-y-2 left-0 bg-gradient-to-r from-green-500 to-blue-500 rounded-full" 
-                          style={{ width: `${((Math.min(240, filterOptions.maxRuntime) - 60) / (240 - 60)) * 100}%` }} 
-                        />
-                        <div 
-                          className="absolute top-1/2 -translate-y-1/2 w-4 h-4 bg-white rounded-full shadow-lg transform -translate-x-1/2 cursor-grab active:cursor-grabbing transition-transform hover:scale-110" 
-                          style={{ left: `${((Math.min(240, filterOptions.maxRuntime) - 60) / (240 - 60)) * 100}%` }}
+                          className="absolute inset-y-2 left-0 bg-gradient-to-r from-green-500 to-blue-500 rounded-full transition-all duration-200" 
+                          style={{ width: `${((filterOptions.maxRuntime - 60) / (240 - 60)) * 100}%` }} 
                         />
                         <input
                           type="range"
@@ -414,133 +368,182 @@ const FilterPanel: React.FC<FilterPanelProps> = ({ isOpen, setIsOpen }) => {
                           step="15"
                           value={filterOptions.maxRuntime}
                           onChange={handleRuntimeChange}
-                          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                          className="relative w-full h-6 bg-transparent appearance-none cursor-pointer z-10"
+                        />
+                        <div 
+                          className="absolute top-1/2 -translate-y-1/2 w-4 h-4 bg-white rounded-full shadow-lg transform -translate-x-1/2 cursor-grab active:cursor-grabbing transition-transform hover:scale-110 pointer-events-none" 
+                          style={{ left: `${((filterOptions.maxRuntime - 60) / (240 - 60)) * 100}%` }}
                         />
                       </div>
                     </div>
                   </div>
 
-                  {/* Now Playing */}
-                  <div className="space-y-3">
-                    <div className="flex items-center gap-2">
-                      <Clapperboard size={18} className="text-green-400" />
-                      <h4 className="text-base md:text-lg font-semibold text-white">Now Playing</h4>
-                    </div>
-                    <div className="bg-white/5 rounded-xl p-3 md:p-4 border border-white/10">
-                      <label className="flex items-center gap-3 cursor-pointer">
+                  {/* Content Options */}
+                  <div className="flex-shrink-0">
+                    <h4 className="text-base font-semibold text-white flex items-center gap-2 mb-2">
+                      <Clapperboard size={16} className="text-purple-400" />
+                      Content Options
+                    </h4>
+                    <div className="bg-white/5 rounded-xl p-3 border border-white/10">
+                      <label className={`flex items-center gap-3 ${filterOptions.tvShowsOnly ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}`}>
                         <div className="relative">
                           <input
                             type="checkbox"
                             checked={filterOptions.inTheatersOnly}
                             onChange={handleInTheatersChange}
+                            disabled={filterOptions.tvShowsOnly}
                             className="sr-only peer"
                           />
-                          <div className="w-11 h-6 bg-white/20 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-gradient-to-r peer-checked:from-green-500 peer-checked:to-emerald-500" />
+                          <div className="w-5 h-5 bg-white/20 border-2 border-white/30 rounded peer-checked:bg-gradient-to-r peer-checked:from-green-500 peer-checked:to-emerald-500 peer-checked:border-green-500 transition-all duration-200 flex items-center justify-center peer-disabled:opacity-50">
+                            <CheckSquare size={12} className="text-white opacity-0 peer-checked:opacity-100 transition-opacity duration-200" />
+                          </div>
                         </div>
-                        <span className="text-white font-medium">Only show movies in theaters</span>
+                        <div className="flex-1">
+                          <span className="text-white font-medium">Now Playing in Theaters</span>
+                          {filterOptions.inTheatersOnly && !filterOptions.tvShowsOnly && (
+                            <p className="text-xs text-gray-400 mt-1">
+                              Release dates locked to current year
+                            </p>
+                          )}
+                          {filterOptions.tvShowsOnly && (
+                            <p className="text-xs text-yellow-400 mt-1">
+                              ⚠️ Not available for TV shows
+                            </p>
+                          )}
+                        </div>
                       </label>
-                      {filterOptions.inTheatersOnly && (
-                        <p className="mt-2 text-xs text-gray-400">
-                          Release dates are locked to current year for theater releases. Adult content is disabled.
-                        </p>
-                      )}
                     </div>
                   </div>
 
-                  {/* Quick Actions */}
-                  <div className="space-y-3">
-                    <h4 className="text-base md:text-lg font-semibold text-white flex items-center gap-2">
-                      <Sparkles size={18} className="text-pink-400" />
-                      Quick Actions
-                    </h4>
-                    <div className="grid grid-cols-2 gap-3">
-                      <button
-                        onClick={handleSurpriseMe}
-                        className="p-2 md:p-3 bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-400 hover:to-rose-400 
-                                 text-white font-medium rounded-xl transition-all duration-200 
-                                 transform hover:scale-[1.02] active:scale-[0.98] shadow-lg text-sm"
-                      >
-                        <Shuffle size={16} className="inline mr-2" />
-                        Surprise Me
-                      </button>
-                      <button
-                        onClick={resetFilters}
-                        className="p-2 md:p-3 bg-white/10 hover:bg-white/20 text-white font-medium rounded-xl 
-                                 transition-all duration-200 border border-white/20 hover:border-white/30 text-sm"
-                      >
-                        <Trash2 size={16} className="inline mr-2" />
-                        Reset
-                      </button>
+                  {/* Quick Actions - Flexible */}
+                  <div className="flex-1 flex flex-col justify-end">
+                    <div className="space-y-3">
+                      <h4 className="text-base font-semibold text-white flex items-center gap-2">
+                        <Sparkles size={16} className="text-pink-400" />
+                        Quick Actions
+                      </h4>
+                      
+                      {/* Always Surprise Me Toggle */}
+                      <div className="bg-white/5 rounded-xl p-3 border border-white/10">
+                        <label className="flex items-center gap-3 cursor-pointer">
+                          <div className="relative">
+                            <input
+                              type="checkbox"
+                              checked={isRandomizerEnabled}
+                              onChange={handleRandomizerToggle}
+                              className="sr-only peer"
+                            />
+                            <div className="w-11 h-6 bg-white/20 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-gradient-to-r peer-checked:from-pink-500 peer-checked:to-rose-500" />
+                          </div>
+                          <div className="flex-1">
+                            <span className="text-white font-medium">Always surprise me</span>
+                            {isRandomizerEnabled && (
+                              <p className="text-xs text-gray-400 mt-1">
+                                Filters will be randomized automatically
+                              </p>
+                            )}
+                          </div>
+                        </label>
+                      </div>
+                      
+                      <div className="grid grid-cols-2 gap-3">
+                        <button
+                          onClick={handleSurpriseMe}
+                          disabled={isRandomizerEnabled}
+                          className={`p-3 font-medium rounded-xl transition-all duration-200 
+                                   transform hover:scale-[1.02] active:scale-[0.98] shadow-lg text-sm ${
+                            isRandomizerEnabled 
+                              ? 'bg-gray-600 text-gray-400 cursor-not-allowed' 
+                              : 'bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-400 hover:to-rose-400 text-white'
+                          }`}
+                        >
+                          <Shuffle size={16} className="inline mr-2" />
+                          {filterOptions.tvShowsOnly ? 'Random Show' : 'Surprise Me'}
+                        </button>
+                        <button
+                          onClick={resetFilters}
+                          className="p-3 bg-white/10 hover:bg-white/20 text-white font-medium rounded-xl 
+                                   transition-all duration-200 border border-white/20 hover:border-white/30 text-sm"
+                        >
+                          <Trash2 size={16} className="inline mr-2" />
+                          Reset
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </div>
               ) : (
-                <div className="space-y-2 md:space-y-3">
-                  {/* Genres */}
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-2">
+                <div className="h-full flex flex-col gap-3">
+                  {/* Genres - Flexible */}
+                  <div className="flex-1 flex flex-col min-h-0">
+                    <div className="flex items-center gap-2 mb-2 flex-shrink-0">
                       <Clapperboard size={16} className="text-purple-400" />
-                      <h4 className="text-sm font-semibold text-white">Genres</h4>
+                      <h4 className="text-base font-semibold text-white">Genres</h4>
+                      <span className="text-sm text-gray-400 ml-auto">
+                        {filterOptions.genres.length} selected
+                      </span>
                     </div>
-                    <div className="grid grid-cols-2 gap-1.5">
-                      {genres.map((genre, index) => (
-                        <button
-                          key={genre.id}
-                          onClick={(e) => handleGenreToggle(genre.id, e)}
-                          className={`p-1.5 md:p-2 rounded-lg text-xs md:text-sm font-medium transition-all duration-200 ${
-                            filterOptions.genres.includes(genre.id)
-                              ? 'bg-gradient-to-r from-indigo-500 to-purple-500 text-white shadow-lg'
-                              : 'bg-white/5 text-gray-300 hover:bg-white/10 hover:text-white border border-white/10'
-                          }`}
-                          style={{
-                            animationDelay: `${index * 30}ms`,
-                            animation: 'slideInUp 0.3s ease-out forwards'
-                          }}
-                        >
-                          {genre.name}
-                        </button>
-                      ))}
+                    <div className="flex-1 overflow-y-auto">
+                      <div className="grid grid-cols-3 gap-1.5">
+                        {genres.map((genre, index) => (
+                          <button
+                            key={genre.id}
+                            onClick={(e) => handleGenreToggle(genre.id, e)}
+                            className={`p-2 rounded-lg text-xs font-medium transition-all duration-200 ${
+                              filterOptions.genres.includes(genre.id)
+                                ? 'bg-gradient-to-r from-indigo-500 to-purple-500 text-white shadow-lg'
+                                : 'bg-white/5 text-gray-300 hover:bg-white/10 hover:text-white border border-white/10'
+                            }`}
+                          >
+                            {genre.name}
+                          </button>
+                        ))}
+                      </div>
                     </div>
                   </div>
 
-                  {/* Adult Content Filter */}
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-2">
-                      <AlertTriangle size={16} className="text-orange-400" />
-                      <h4 className="text-sm font-semibold text-white">Adult Content</h4>
+                  {/* Content Type - Fixed */}
+                  <div className="flex-shrink-0">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Clapperboard size={16} className="text-blue-400" />
+                      <h4 className="text-base font-semibold text-white">Content Type</h4>
                     </div>
-                    <div className="bg-white/5 rounded-xl p-2 md:p-3 border border-white/10">
+                    <div className="bg-white/5 rounded-xl p-3 border border-white/10">
                       <label className="flex items-center gap-3 cursor-pointer">
                         <div className="relative">
                           <input
                             type="checkbox"
-                            checked={filterOptions.includeAdult}
-                            onChange={handleAdultContentChange}
+                            checked={filterOptions.tvShowsOnly}
+                            onChange={(e) => {
+                              const isChecked = e.target.checked;
+                              setIsRandomizerEnabled(false);
+                              updateFilterOptions({ 
+                                tvShowsOnly: isChecked,
+                                inTheatersOnly: isChecked ? false : filterOptions.inTheatersOnly
+                              });
+                            }}
                             className="sr-only peer"
-                            disabled={filterOptions.inTheatersOnly}
                           />
-                          <div className={`w-11 h-6 bg-white/20 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-gradient-to-r peer-checked:from-orange-500 peer-checked:to-red-500 ${filterOptions.inTheatersOnly ? 'opacity-50 cursor-not-allowed' : ''}`} />
+                          <div className="w-11 h-6 bg-white/20 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-gradient-to-r peer-checked:from-blue-500 peer-checked:to-indigo-500" />
                         </div>
-                        <span className={`font-medium ${filterOptions.inTheatersOnly ? 'text-gray-500' : 'text-white'}`}>Include adult content</span>
+                        <div className="flex-1">
+                          <span className="font-medium text-white">Only TV shows</span>
+                          {filterOptions.tvShowsOnly && (
+                            <p className="text-xs text-gray-400 mt-1">
+                              Searching TV shows instead of movies
+                            </p>
+                          )}
+                        </div>
                       </label>
-                      {filterOptions.includeAdult && (
-                        <p className="mt-1 text-[10px] md:text-xs text-gray-400">
-                          Theater releases disabled
-                        </p>
-                      )}
-                      {filterOptions.inTheatersOnly && (
-                        <p className="mt-1 text-[10px] md:text-xs text-gray-500">
-                          Adult content unavailable
-                        </p>
-                      )}
                     </div>
                   </div>
                 </div>
               )}
             </div>
 
-            {/* Footer */}
-            <div className="p-4 md:p-6 border-t border-white/10 bg-white/5 flex-shrink-0 pb-safe">
+            {/* Footer - Fixed Height */}
+            <div className="p-3 md:p-4 border-t border-white/10 bg-white/5 flex-shrink-0 h-20 md:h-24
+                           pb-[calc(0.75rem+env(safe-area-inset-bottom))] md:pb-4">
               <button
                 onClick={handlePickMovie}
                 disabled={isApplyingAndPicking || loadingState === LoadingState.LOADING}
@@ -551,30 +554,22 @@ const FilterPanel: React.FC<FilterPanelProps> = ({ isOpen, setIsOpen }) => {
                          shadow-lg hover:shadow-xl hover:shadow-purple-500/25
                          transform hover:scale-[1.02] active:scale-[0.98]
                          transition-all duration-200 ease-out
-                         disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+                         disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none
+                         text-sm md:text-base"
               >
                 {isApplyingAndPicking || loadingState === LoadingState.LOADING ? (
                   <div className="flex items-center justify-center gap-2">
-                    <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                    Finding Movie...
+                    <div className="w-4 h-4 md:w-5 md:h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    {filterOptions.tvShowsOnly ? 'Finding Show...' : 'Finding Movie...'}
                   </div>
                 ) : (
-                  'Pick Movie'
+                  filterOptions.tvShowsOnly ? 'Pick Show' : 'Pick Movie'
                 )}
               </button>
             </div>
           </div>
         </div>
       </>
-
-      {/* Birth Year Modal */}
-      {showBirthYearModal && (
-        <BirthYearVerification
-          isOpen={showBirthYearModal}
-          onConfirm={handleBirthYearConfirm}
-          onCancel={handleBirthYearCancel}
-        />
-      )}
     </div>
   );
 };

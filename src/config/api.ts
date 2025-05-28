@@ -1,6 +1,6 @@
-import { Movie } from '../types';
+import { Movie, FilterOptions, Genre, WatchlistMovie } from '../types';
 import { movieCache } from '../utils/cache';
-import { getWatchlist, WatchlistMovie } from '../utils/storage';
+import { getWatchlist } from '../utils/storage';
 
 // Movie API configuration
 // We'll use TMDB API for this project
@@ -13,10 +13,15 @@ const BACKDROP_SIZE = 'original';
 
 const ENDPOINTS = {
   DISCOVER: `${BASE_URL}/discover/movie`,
+  DISCOVER_TV: `${BASE_URL}/discover/tv`,
   MOVIE: `${BASE_URL}/movie`,
+  TV: `${BASE_URL}/tv`,
   GENRES: `${BASE_URL}/genre/movie/list`,
+  TV_GENRES: `${BASE_URL}/genre/tv/list`,
   EXTERNAL_IDS: (id: number) => `${BASE_URL}/movie/${id}/external_ids`,
+  TV_EXTERNAL_IDS: (id: number) => `${BASE_URL}/tv/${id}/external_ids`,
   NOW_PLAYING: `${BASE_URL}/movie/now_playing?region=US`,
+  ON_THE_AIR: `${BASE_URL}/tv/on_the_air?region=US`,
 };
 
 const MAX_RETRIES = 3; // Maximum number of API retries
@@ -31,44 +36,85 @@ export async function fetchRandomMovie(options: FilterOptions): Promise<Movie | 
 
   const watchlist = getWatchlist();
   let retryCount = 0;
+  const maxRetries = 5; // Увеличил количество попыток
 
-  try {
-    while (retryCount < MAX_RETRIES) {
-      const movie = await attemptFetch(options, watchlist);
-      if (movie) return movie;
-      retryCount++;
+  // Создаем последовательность все более мягких фильтров
+  const filterVariations = [
+    // 1. Оригинальные фильтры
+    options,
+    
+    // 2. Слегка смягченные фильтры
+    {
+      ...options,
+      ratingFrom: Math.max(0, options.ratingFrom - 0.5),
+      maxRuntime: Math.min(240, options.maxRuntime + 30)
+    },
+    
+    // 3. Умеренно смягченные фильтры
+    {
+      ...options,
+      ratingFrom: Math.max(0, options.ratingFrom - 1),
+      yearFrom: Math.max(1950, options.yearFrom - 10),
+      yearTo: Math.min(new Date().getFullYear(), options.yearTo + 10),
+      maxRuntime: Math.min(240, options.maxRuntime + 60)
+    },
+    
+    // 4. Сильно смягченные фильтры (убираем жанры)
+    {
+      ...options,
+      genres: options.genres.length > 3 ? options.genres.slice(0, 2) : [], // Оставляем только 2 жанра или убираем совсем
+      ratingFrom: Math.max(0, options.ratingFrom - 1.5),
+      yearFrom: Math.max(1950, options.yearFrom - 20),
+      yearTo: Math.min(new Date().getFullYear(), options.yearTo + 20),
+      maxRuntime: 240
+    },
+    
+    // 5. Минимальные фильтры (гарантированный результат)
+    {
+      ...options,
+      genres: [],
+      ratingFrom: 0,
+      yearFrom: 1950,
+      yearTo: new Date().getFullYear(),
+      maxRuntime: 240,
+      inTheatersOnly: false
     }
-    throw new Error('No movies found after multiple attempts');
-  } catch (error) {
-    if ((error as Error).message.includes('No movies found')) {
-      // Try with slightly relaxed filters
-      const relaxedOptions = {
-        ...options,
-        ratingFrom: Math.max(0, options.ratingFrom - 1),
-        yearFrom: Math.max(1900, options.yearFrom - 5),
-        yearTo: Math.min(new Date().getFullYear(), options.yearTo + 5)
-      };
-      
-      try {
-        return await attemptFetch(relaxedOptions);
-      } catch (secondError) {
-        // If still no results, try with more relaxed filters
-        const moreRelaxedOptions = {
-          ...options,
-          ratingFrom: Math.max(0, options.ratingFrom - 2),
-          yearFrom: Math.max(1900, options.yearFrom - 10),
-          yearTo: Math.min(new Date().getFullYear(), options.yearTo + 10),
-          genres: [] // Remove genre restrictions
-        };
-        
-        try {
-          return await attemptFetch(moreRelaxedOptions);
-        } catch (finalError) {
-          throw new Error('No movies found. Please try relaxing your filters.');
+  ];
+
+  // Пробуем каждый вариант фильтров
+  for (let i = 0; i < filterVariations.length; i++) {
+    const currentFilters = filterVariations[i];
+    console.log(`Trying filter variation ${i + 1}:`, currentFilters);
+    
+    try {
+      const movie = await attemptFetch(currentFilters, watchlist);
+      if (movie) {
+        if (i > 0) {
+          console.log(`Found movie with relaxed filters (variation ${i + 1})`);
         }
+        return movie;
       }
+    } catch (error) {
+      console.warn(`Filter variation ${i + 1} failed:`, error);
+      // Продолжаем со следующим вариантом
     }
-    throw error;
+  }
+
+  // Если даже минимальные фильтры не сработали, делаем последнюю попытку без ограничений
+  try {
+    console.log('Making final attempt with minimal restrictions...');
+    return await attemptFetch({
+      genres: [],
+      yearFrom: 1950,
+      yearTo: new Date().getFullYear(),
+      ratingFrom: 0,
+      maxRuntime: 240,
+      inTheatersOnly: false,
+      includeAdult: true,
+      tvShowsOnly: false
+    });
+  } catch (finalError) {
+    throw new Error('Unable to find any movies. Please check your internet connection.');
   }
 }
 
@@ -108,7 +154,24 @@ async function attemptFetch(options: FilterOptions, watchlist: WatchlistMovie[] 
   }
 
   let url = '';
-  if (options.inTheatersOnly) {
+  if (options.tvShowsOnly) {
+    // For TV shows, use different parameters
+    const tvQueryParams = new URLSearchParams({
+      language: 'en-US',
+      page: randomPage.toString(),
+      'vote_count.gte': '50', // Lower threshold for TV shows
+      'first_air_date.gte': `${normalizedOptions.yearFrom}-01-01`,
+      'first_air_date.lte': `${normalizedOptions.yearTo}-12-31`,
+      'vote_average.gte': (normalizedOptions.ratingFrom - 0.1).toString(),
+      include_adult: normalizedOptions.includeAdult.toString(),
+    });
+
+    if (normalizedOptions.genres.length) {
+      tvQueryParams.append('with_genres', normalizedOptions.genres.join(','));
+    }
+
+    url = `${ENDPOINTS.DISCOVER_TV}?${tvQueryParams.toString()}`;
+  } else if (options.inTheatersOnly) {
     url = `${ENDPOINTS.NOW_PLAYING}&${queryParams.toString()}`;
   } else {
     url = `${ENDPOINTS.DISCOVER}?${queryParams.toString()}`;
@@ -128,9 +191,10 @@ async function attemptFetch(options: FilterOptions, watchlist: WatchlistMovie[] 
   }
   
   if (!data.results?.length) {
+    const contentType = options.tvShowsOnly ? 'TV shows' : 'movies';
     const issues = [];
     if (options.yearFrom > 1990) {
-      issues.push('Try expanding your year range to include older films');
+      issues.push(`Try expanding your year range to include older ${contentType}`);
     }
     if (options.ratingFrom > 6) {
       issues.push('Lower your minimum rating to see more options');
@@ -138,83 +202,108 @@ async function attemptFetch(options: FilterOptions, watchlist: WatchlistMovie[] 
     if (options.genres.length > 0) {
       issues.push('Remove some genre filters to broaden your search');
     }
-    if (options.maxRuntime < 150) {
+    if (options.maxRuntime < 150 && !options.tvShowsOnly) {
       issues.push('Increase the maximum runtime to include longer films');
     }
-    if (options.inTheatersOnly) {
+    if (options.inTheatersOnly && !options.tvShowsOnly) {
       issues.push('Include movies not currently in theaters');
     }
     
     throw new Error(
-      `No movies found! Here's what you can try:\n- ${issues.join('\n- ')}`
+      `No ${contentType} found! Here's what you can try:\n- ${issues.join('\n- ')}`
     );
   }
 
   // Pre-filter movies that don't have required fields
-  const validInitialMovies = data.results.filter(movie => 
-    movie && 
-    movie.id && 
-    movie.title && 
-    movie.poster_path &&
-    movie.vote_average >= normalizedOptions.ratingFrom && // Double-check rating on client side
-    !watchlist.some(w => w.id === movie.id) // Exclude watchlist movies
-  );
+  const validInitialMovies = data.results.filter((movie: any) => {
+    const isTV = options.tvShowsOnly;
+    const title = isTV ? (movie.name || movie.original_name) : movie.title;
+    
+    return movie && 
+      movie.id && 
+      title && 
+      movie.poster_path &&
+      movie.vote_average >= normalizedOptions.ratingFrom && 
+      movie.vote_average < 10.0 && // Exclude movies with perfect 10.0 rating (usually fake/removed)
+      movie.vote_count >= (isTV ? 25 : 100) && // Lower threshold for TV shows
+      !watchlist.some(w => w.id === movie.id); // Exclude watchlist movies
+  });
 
   if (validInitialMovies.length === 0) {
-    throw new Error('No movies found with these filters');
+    const contentType = options.tvShowsOnly ? 'TV shows' : 'movies';
+    throw new Error(`No ${contentType} found with these filters`);
   }
 
   // Fetch full details for pre-filtered movies in parallel
-  const moviePromises = validInitialMovies.map(async (movie) => {
+  const moviePromises = validInitialMovies.map(async (item: any) => {
     try {
-      const movieResponse = await fetch(`${ENDPOINTS.MOVIE}/${movie.id}`, { headers });
-      if (!movieResponse.ok) {
-        console.warn(`Failed to fetch movie details for ID ${movie.id}:`, movieResponse.status);
+      const isTV = options.tvShowsOnly;
+      const endpoint = isTV ? `${ENDPOINTS.TV}/${item.id}` : `${ENDPOINTS.MOVIE}/${item.id}`;
+      const itemResponse = await fetch(endpoint, { headers });
+      
+      if (!itemResponse.ok) {
+        console.warn(`Failed to fetch ${isTV ? 'TV show' : 'movie'} details for ID ${item.id}:`, itemResponse.status);
         return null;
       }
       
-      const movieData = await movieResponse.json();
+      const itemData = await itemResponse.json();
+      
+      // Normalize TV show data to movie format
+      if (isTV) {
+        itemData.title = itemData.name || itemData.original_name;
+        itemData.release_date = itemData.first_air_date;
+        itemData.poster_path = itemData.poster_path;
+        itemData.backdrop_path = itemData.backdrop_path;
+      }
       
       // Ensure vote_average is a valid number and not zero
-      if (typeof movieData.vote_average !== 'number' || movieData.vote_average === 0) {
-        const retryResponse = await fetch(`${ENDPOINTS.MOVIE}/${movie.id}`, { headers });
+      if (typeof itemData.vote_average !== 'number' || itemData.vote_average === 0) {
+        const retryResponse = await fetch(endpoint, { headers });
         if (retryResponse.ok) {
           const retryData = await retryResponse.json();
           if (typeof retryData.vote_average === 'number' && retryData.vote_average > 0) {
-            movieData.vote_average = retryData.vote_average;
+            itemData.vote_average = retryData.vote_average;
           }
         }
       }
       
-      // Additional validation for full movie data
-      if (!movieData.poster_path || !movieData.title || !movieData.id) {
-        console.warn(`Movie data missing required fields for ID ${movie.id}`);
+      // Additional validation for full data
+      if (!itemData.poster_path || !itemData.title || !itemData.id) {
+        console.warn(`${isTV ? 'TV show' : 'Movie'} data missing required fields for ID ${item.id}`);
+        return null;
+      }
+
+      // Exclude items with suspicious ratings (perfect 10.0 or very low vote count)
+      if (itemData.vote_average >= 10.0 || itemData.vote_count < (isTV ? 25 : 50)) {
+        console.warn(`${isTV ? 'TV show' : 'Movie'} ${item.id} has suspicious rating: ${itemData.vote_average} with ${itemData.vote_count} votes`);
         return null;
       }
 
       // Ensure vote_average is a valid number
-      if (typeof movieData.vote_average !== 'number' || movieData.vote_average === 0) {
-        movieData.vote_average = movie.vote_average || 0;
+      if (typeof itemData.vote_average !== 'number' || itemData.vote_average === 0) {
+        itemData.vote_average = item.vote_average || 0;
       }
 
       try {
-        const externalIdsResponse = await fetch(ENDPOINTS.EXTERNAL_IDS(movieData.id), { headers });
+        const externalIdsEndpoint = isTV ? ENDPOINTS.TV_EXTERNAL_IDS(itemData.id) : ENDPOINTS.EXTERNAL_IDS(itemData.id);
+        const externalIdsResponse = await fetch(externalIdsEndpoint, { headers });
+        
         if (!externalIdsResponse.ok) {
-          console.warn(`Failed to fetch external IDs for movie ${movie.id}:`, externalIdsResponse.status);
-          return movieData; // Continue without external IDs rather than rejecting the movie
+          console.warn(`Failed to fetch external IDs for ${isTV ? 'TV show' : 'movie'} ${item.id}:`, externalIdsResponse.status);
+          return itemData; // Continue without external IDs rather than rejecting the item
         }
         
         const externalIds = await externalIdsResponse.json();
         return {
-          ...movieData,
+          ...itemData,
           imdb_id: externalIds.imdb_id || null,
         };
       } catch (error) {
-        console.warn(`Error fetching external IDs for movie ${movie.id}:`, error);
-        return movieData; // Continue without external IDs
+        console.warn(`Error fetching external IDs for ${isTV ? 'TV show' : 'movie'} ${item.id}:`, error);
+        return itemData; // Continue without external IDs
       }
     } catch (error) {
-      console.warn(`Error processing movie ${movie.id}:`, error);
+      console.warn(`Error processing ${options.tvShowsOnly ? 'TV show' : 'movie'} ${item.id}:`, error);
       return null;
     }
   });
@@ -229,7 +318,8 @@ async function attemptFetch(options: FilterOptions, watchlist: WatchlistMovie[] 
     );
 
   if (movies.length === 0) {
-    throw new Error('No movies found with these filters');
+    const contentType = options.tvShowsOnly ? 'TV shows' : 'movies';
+    throw new Error(`No ${contentType} found with these filters`);
   }
 
   console.log('Fetched valid movies:', {
@@ -249,14 +339,41 @@ async function attemptFetch(options: FilterOptions, watchlist: WatchlistMovie[] 
 }
 
 export async function fetchGenres(): Promise<Genre[]> {
-  const response = await fetch(ENDPOINTS.GENRES, { headers });
-  const data = await response.json();
-  
-  if (!response.ok) {
-    throw new Error('Failed to fetch genres');
+  try {
+    // Fetch both movie and TV genres
+    const [movieResponse, tvResponse] = await Promise.all([
+      fetch(ENDPOINTS.GENRES, { headers }),
+      fetch(ENDPOINTS.TV_GENRES, { headers })
+    ]);
+    
+    if (!movieResponse.ok || !tvResponse.ok) {
+      throw new Error('Failed to fetch genres');
+    }
+    
+    const [movieData, tvData] = await Promise.all([
+      movieResponse.json(),
+      tvResponse.json()
+    ]);
+    
+    // Combine and deduplicate genres by ID
+    const allGenres = [...movieData.genres, ...tvData.genres];
+    const uniqueGenres = allGenres.filter((genre, index, self) => 
+      index === self.findIndex(g => g.id === genre.id)
+    );
+    
+    return uniqueGenres;
+  } catch (error) {
+    console.error('Error fetching genres:', error);
+    // Fallback to just movie genres if TV genres fail
+    const response = await fetch(ENDPOINTS.GENRES, { headers });
+    const data = await response.json();
+    
+    if (!response.ok) {
+      throw new Error('Failed to fetch genres');
+    }
+    
+    return data.genres;
   }
-  
-  return data.genres;
 }
 
 export async function fetchMovieDetails(movieId: number): Promise<Movie | null> {

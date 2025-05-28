@@ -81,4 +81,11 @@ export const trackVideoAdSkip = (timeWatched: number) => {
     time_watched: timeWatched,
     event_category: 'monetization',
   });
+};
+
+export const trackVideoAdClick = () => {
+  event('video_ad_click', {
+    event_category: 'monetization',
+    event_label: 'genstockvideo_visit',
+  });
 }; 

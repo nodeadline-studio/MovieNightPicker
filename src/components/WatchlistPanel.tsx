@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { BookMarked, X, Trash2, Star, Share2, Twitter, Facebook, Link, Download, Smartphone } from 'lucide-react';
+import { BookMarked, X, Trash2, Star, Share2, Twitter, Facebook, Link, Download, Smartphone, Film, Tv } from 'lucide-react';
 import { useMovieContext } from '../context/MovieContext';
 import { getImageUrl, fetchMovieDetails } from '../config/api';
 import Button from './ui/Button';
@@ -9,12 +9,33 @@ import { generateWatchlistImage } from '../utils/imageGenerator';
 import { canUseNativeShare, canUseClipboard, canShareWithFiles } from '../utils/shareUtils';
 
 const WatchlistPanel: React.FC = () => {
-  const { watchlist, removeFromWatchlist } = useMovieContext();
+  const { watchlist, removeFromWatchlist, clearWatchlist, debugLocalStorage } = useMovieContext();
   const [isOpen, setIsOpen] = useState(false);
   const [showShareMenu, setShowShareMenu] = useState(false);
   const [updatedMovies, setUpdatedMovies] = useState<Record<number, { vote_average: number; imdb_id: string | null }>>({});
   const [isGeneratingImage, setIsGeneratingImage] = useState(false);
   const [showSuccessMessage, setShowSuccessMessage] = useState(false);
+
+  // Debug mode check
+  const isDebugMode = import.meta.env.DEV;
+
+  // Separate movies and TV shows
+  const movies = watchlist.filter(item => item.contentType === 'movie');
+  const tvShows = watchlist.filter(item => item.contentType === 'tv');
+  
+  // Handle legacy items without contentType (assume they are movies)
+  const legacyItems = watchlist.filter(item => !item.contentType);
+  const allMovies = [...movies, ...legacyItems];
+
+  const getDisplayText = () => {
+    const movieCount = allMovies.length;
+    const tvCount = tvShows.length;
+    
+    if (movieCount === 0 && tvCount === 0) return '0 items';
+    if (movieCount > 0 && tvCount === 0) return `${movieCount} movie${movieCount !== 1 ? 's' : ''}`;
+    if (movieCount === 0 && tvCount > 0) return `${tvCount} show${tvCount !== 1 ? 's' : ''}`;
+    return `${movieCount} movie${movieCount !== 1 ? 's' : ''}, ${tvCount} show${tvCount !== 1 ? 's' : ''}`;
+  };
 
   useEffect(() => {
     if (isOpen && watchlist.length > 0) {
@@ -68,10 +89,10 @@ const WatchlistPanel: React.FC = () => {
   const generateShareText = () => {
     if (watchlist.length === 0) return '';
     
-    const movieTitles = watchlist.slice(0, 5).map(movie => movie.title).join(', ');
+    const titles = watchlist.slice(0, 5).map(movie => movie.title).join(', ');
     const moreText = watchlist.length > 5 ? ` and ${watchlist.length - 5} more` : '';
     
-    return `🎬 My Movie Watchlist: ${movieTitles}${moreText}! Find your perfect movie tonight with MovieNightPicker`;
+    return `🎬 My Watchlist: ${titles}${moreText}! Find your perfect movie or show tonight with MovieNightPicker`;
   };
 
   const handleDownloadImage = async () => {
@@ -86,7 +107,7 @@ const WatchlistPanel: React.FC = () => {
       
       // Create download link
       const link = document.createElement('a');
-      link.download = `my-movie-watchlist-${new Date().toISOString().split('T')[0]}.png`;
+      link.download = `my-watchlist-${new Date().toISOString().split('T')[0]}.png`;
       link.href = imageDataUrl;
       document.body.appendChild(link);
       link.click();
@@ -122,10 +143,10 @@ const WatchlistPanel: React.FC = () => {
       // Convert data URL to blob
       const response = await fetch(imageDataUrl);
       const blob = await response.blob();
-      const file = new File([blob], 'my-movie-watchlist.png', { type: 'image/png' });
+      const file = new File([blob], 'my-watchlist.png', { type: 'image/png' });
       
       const shareData = {
-        title: '🎬 My Movie Watchlist',
+        title: '🎬 My Watchlist',
         text: shareText,
         url: url,
         files: [file]
@@ -166,10 +187,10 @@ const WatchlistPanel: React.FC = () => {
         // Convert data URL to blob
         const response = await fetch(imageDataUrl);
         const blob = await response.blob();
-        const file = new File([blob], 'my-movie-watchlist.png', { type: 'image/png' });
+        const file = new File([blob], 'my-watchlist.png', { type: 'image/png' });
         
         const shareData = {
-          title: '🎬 My Movie Watchlist',
+          title: '🎬 My Watchlist',
           text: shareText,
           url: url,
           files: [file]
@@ -253,7 +274,80 @@ const WatchlistPanel: React.FC = () => {
     gtag.trackShare(platform, watchlist.length);
   };
 
+  // Component for rendering a section of watchlist items
+  const WatchlistSection: React.FC<{
+    title: string;
+    icon: React.ReactNode;
+    items: typeof watchlist;
+    emptyMessage: string;
+  }> = ({ title, icon, items, emptyMessage }) => {
+    if (items.length === 0) return null;
 
+    return (
+      <div className="space-y-3">
+        <div className="flex items-center gap-2 px-2">
+          {icon}
+          <h4 className="text-sm font-semibold text-white">{title}</h4>
+          <span className="text-xs text-gray-400">({items.length})</span>
+        </div>
+        <div className="space-y-3">
+          {items.map((movie, index) => (
+            <div 
+              key={movie.id} 
+              className="group relative bg-white/5 hover:bg-white/10 rounded-2xl p-4 
+                         border border-white/5 hover:border-white/20
+                         transition-all duration-300 ease-out
+                         hover:shadow-lg hover:shadow-purple-500/10"
+              style={{
+                animationDelay: `${index * 50}ms`,
+                animation: 'slideInUp 0.5s ease-out forwards'
+              }}
+            >
+              <div className="flex items-center gap-4">
+                {/* Movie Poster */}
+                <div className="relative flex-shrink-0">
+                  <img
+                    src={getImageUrl(movie.poster_path, 'w92')}
+                    alt={movie.title}
+                    className="w-16 h-24 object-cover rounded-xl shadow-lg"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent rounded-xl" />
+                </div>
+                
+                {/* Movie Info */}
+                <div className="flex-1 min-w-0">
+                  <h4 className="font-semibold text-white text-sm mb-1 truncate group-hover:text-transparent group-hover:bg-clip-text group-hover:bg-gradient-to-r group-hover:from-indigo-400 group-hover:to-purple-400 transition-all duration-300">
+                    {movie.title}
+                  </h4>
+                  <p className="text-gray-400 text-xs mb-2">
+                    {new Date(movie.release_date).getFullYear()}
+                  </p>
+                  <div className="flex items-center gap-1">
+                    <Star size={12} className="text-yellow-400 fill-current" />
+                    <span className="text-yellow-400 text-xs font-medium">
+                      {(updatedMovies[movie.id]?.vote_average ?? movie.vote_average) > 0 
+                        ? (updatedMovies[movie.id]?.vote_average ?? movie.vote_average).toFixed(1)
+                        : 'N/A'}
+                    </span>
+                  </div>
+                </div>
+                
+                {/* Remove Button */}
+                <button
+                  onClick={(e) => handleRemove(movie.id, e)}
+                  className="p-2 text-gray-400 hover:text-red-400 hover:bg-red-500/10 
+                           rounded-xl transition-all duration-200 opacity-0 group-hover:opacity-100"
+                  aria-label={`Remove ${movie.title} from watchlist`}
+                >
+                  <Trash2 size={16} />
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  };
 
   return (
     <div className="relative">
@@ -310,7 +404,7 @@ const WatchlistPanel: React.FC = () => {
                     </div>
                     <div>
                       <h3 className="text-xl font-bold text-white">Your Watchlist</h3>
-                      <p className="text-sm text-gray-400">{watchlist.length} movies saved</p>
+                      <p className="text-sm text-gray-400">{getDisplayText()}</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
@@ -334,33 +428,73 @@ const WatchlistPanel: React.FC = () => {
                             onClick={(e) => e.stopPropagation()}
                           >
                             <div className="space-y-2">
-                              {/* Smart Share - One button for all */}
+                              {/* Smart Share Button */}
                               <button
                                 onClick={() => handleShare('smart')}
                                 disabled={isGeneratingImage}
-                                className="w-full flex items-center gap-3 p-3 text-white bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-400 hover:to-purple-400 rounded-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
+                                className="w-full flex items-center gap-3 p-3 text-left text-white hover:bg-white/10 rounded-xl transition-all duration-200 disabled:opacity-50"
                               >
-                                <Share2 size={18} className="text-white" />
-                                <span className="text-sm font-medium">
-                                  {isGeneratingImage ? 'Preparing Image...' : 'Share with Image'}
+                                <Smartphone size={18} className="text-blue-400" />
+                                <span className="font-medium">Smart Share</span>
+                              </button>
+                              
+                              {/* Download Button */}
+                              <button
+                                onClick={() => handleShare('download')}
+                                disabled={isGeneratingImage}
+                                className="w-full flex items-center gap-3 p-3 text-left text-white hover:bg-white/10 rounded-xl transition-all duration-200 disabled:opacity-50"
+                              >
+                                <Download size={18} className="text-green-400" />
+                                <span className="font-medium">
+                                  {isGeneratingImage ? 'Generating...' : 'Download Image'}
                                 </span>
                               </button>
                               
-                              <div className="border-t border-white/10 my-2" />
-                              
-                              {/* Quick Options */}
+                              {/* Copy Link Button */}
                               <button
                                 onClick={() => handleShare('copy')}
-                                className="w-full flex items-center gap-3 p-2 text-gray-300 hover:text-white hover:bg-white/10 rounded-xl transition-all duration-200"
+                                className="w-full flex items-center gap-3 p-3 text-left text-white hover:bg-white/10 rounded-xl transition-all duration-200"
                               >
-                                <Link size={16} className="text-green-400" />
-                                <span className="text-sm">Copy Link Only</span>
+                                <Link size={18} className="text-purple-400" />
+                                <span className="font-medium">Copy Link</span>
                               </button>
                             </div>
                           </div>
                         )}
                       </div>
                     )}
+                    
+                    {/* Debug Buttons - Only in development */}
+                    {/* Temporarily hidden debug buttons
+                    {isDebugMode && (
+                      <>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            debugLocalStorage();
+                          }}
+                          className="p-2 text-yellow-400 hover:text-yellow-300 hover:bg-yellow-500/10 rounded-xl transition-all duration-200"
+                          title="Debug localStorage"
+                        >
+                          🐛
+                        </button>
+                        {watchlist.length > 0 && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (confirm('Clear all watchlist items?')) {
+                                clearWatchlist();
+                              }
+                            }}
+                            className="p-2 text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-xl transition-all duration-200"
+                            title="Clear watchlist"
+                          >
+                            🗑️
+                          </button>
+                        )}
+                      </>
+                    )}
+                    */}
                     
                     <button
             onClick={togglePanel}
@@ -382,68 +516,36 @@ const WatchlistPanel: React.FC = () => {
                       </div>
                       <div className="absolute inset-0 bg-gradient-to-r from-indigo-500/10 to-purple-500/10 rounded-2xl blur-xl" />
                     </div>
-                    <h4 className="text-lg font-semibold text-white mb-2">No movies yet</h4>
+                    <h4 className="text-lg font-semibold text-white mb-2">No items yet</h4>
                     <p className="text-gray-400 text-sm">
-                      Start building your perfect movie collection
-              </p>
-            </div>
-          ) : (
-                  <div className="space-y-4 max-h-[calc(100vh-20rem)] md:max-h-96 overflow-y-auto custom-scrollbar">
-                    {watchlist.map((movie, index) => (
-                      <div 
-                  key={movie.id} 
-                        className="group relative bg-white/5 hover:bg-white/10 rounded-2xl p-4 
-                                   border border-white/5 hover:border-white/20
-                                   transition-all duration-300 ease-out
-                                   hover:shadow-lg hover:shadow-purple-500/10"
-                        style={{
-                          animationDelay: `${index * 50}ms`,
-                          animation: 'slideInUp 0.5s ease-out forwards'
-                        }}
-                      >
-                        <div className="flex items-center gap-4">
-                          {/* Movie Poster */}
-                          <div className="relative flex-shrink-0">
-                  <img
-                    src={getImageUrl(movie.poster_path, 'w92')}
-                    alt={movie.title}
-                              className="w-16 h-24 object-cover rounded-xl shadow-lg"
-                  />
-                            <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent rounded-xl" />
-                          </div>
-                          
-                          {/* Movie Info */}
-                          <div className="flex-1 min-w-0">
-                            <h4 className="font-semibold text-white text-sm mb-1 truncate group-hover:text-transparent group-hover:bg-clip-text group-hover:bg-gradient-to-r group-hover:from-indigo-400 group-hover:to-purple-400 transition-all duration-300">
-                              {movie.title}
-                            </h4>
-                            <p className="text-gray-400 text-xs mb-2">
-                              {new Date(movie.release_date).getFullYear()}
-                            </p>
-                            <div className="flex items-center gap-1">
-                              <Star size={12} className="text-yellow-400 fill-current" />
-                              <span className="text-yellow-400 text-xs font-medium">
-                                {(updatedMovies[movie.id]?.vote_average ?? movie.vote_average) > 0 
-                                  ? (updatedMovies[movie.id]?.vote_average ?? movie.vote_average).toFixed(1)
-                                  : 'N/A'}
-                              </span>
-                            </div>
-                          </div>
-                          
-                          {/* Remove Button */}
-                      <button
-                        onClick={(e) => handleRemove(movie.id, e)}
-                            className="p-2 text-gray-400 hover:text-red-400 hover:bg-red-500/10 
-                                     rounded-xl transition-all duration-200 opacity-0 group-hover:opacity-100"
-                        aria-label={`Remove ${movie.title} from watchlist`}
-                      >
-                        <Trash2 size={16} />
-                      </button>
-                    </div>
-                    </div>
-                    ))}
+                      Start building your perfect watchlist
+                    </p>
                   </div>
-          )}
+                ) : (
+                  <div className="space-y-4 max-h-[calc(100vh-20rem)] md:max-h-96 overflow-y-auto custom-scrollbar">
+                    {allMovies.length > 0 && (
+                      <WatchlistSection
+                        title="Movies"
+                        icon={<Film size={16} className="text-blue-400" />}
+                        items={allMovies}
+                        emptyMessage="No movies in your watchlist"
+                      />
+                    )}
+                    
+                    {allMovies.length > 0 && tvShows.length > 0 && (
+                      <div className="border-t border-white/10 my-4"></div>
+                    )}
+                    
+                    {tvShows.length > 0 && (
+                      <WatchlistSection
+                        title="TV Shows"
+                        icon={<Tv size={16} className="text-purple-400" />}
+                        items={tvShows}
+                        emptyMessage="No TV shows in your watchlist"
+                      />
+                    )}
+                  </div>
+                )}
         </div>
       </div>
           </div>

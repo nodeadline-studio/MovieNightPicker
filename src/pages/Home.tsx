@@ -66,6 +66,7 @@ const Home: React.FC = () => {
   const [isInitialLoading, setIsInitialLoading] = useState(true);
   const [hasInitiallyLoaded, setHasInitiallyLoaded] = useState(false);
   const [hasUserInteracted, setHasUserInteracted] = useState(false);
+  const [isManuallyOpened, setIsManuallyOpened] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const pickCounter = usePickCounter();
   const isMobile = useMediaQuery({ maxWidth: 767 });
@@ -75,11 +76,13 @@ const Home: React.FC = () => {
     currentMovie, 
     loadingState, 
     pickCount,
-    getRandomMovie, 
+    getRandomMovie,
+    getRandomMovieSafe,
     error, 
     watchlist,
     resetPickCount,
-    setPickCount
+    setPickCount,
+    filterOptions
   } = useMovieContext();
   
   const { isLoading: isLoadingGenres } = useQuery({
@@ -90,11 +93,11 @@ const Home: React.FC = () => {
   const videoAd = useVideoAd({
     onClose: () => {
       pickCounter.reset();
-      getRandomMovie()
+      getRandomMovieSafe()
         .catch(console.error);
     },
     onError: () => {
-      getRandomMovie()
+      getRandomMovieSafe()
         .catch(console.error);
     },
     enableTestAds: false
@@ -114,7 +117,7 @@ const Home: React.FC = () => {
     setHasUserInteracted(true);
     
     try {
-      await getRandomMovie();
+      await getRandomMovieSafe();
       if (currentMovie) {
         analytics.setLastMovie(currentMovie.id);
         gtag.trackMoviePick(currentMovie.id, currentMovie.title);
@@ -164,22 +167,30 @@ const Home: React.FC = () => {
         setTimeout(() => {
           setShowDescriptionButton(false);
           setIsButtonFading(false);
-          // Start the cycle again
-          setTimeout(() => {
-            setIsDescriptionFading(true);
-            setTimeout(() => {
-              setIsHeaderVisible(false);
-              setTimeout(() => {
-                setShowDescriptionButton(true);
-              }, 500); // Reduced from 1000ms
-            }, 500);
-          }, timers.headerVisibilityTimeout);
         }, 300);
       }, timers.headerVisibilityTimeout);
       
       return () => clearTimeout(timer);
     }
   }, [isHeaderVisible, hasSeenDescription, showDescriptionButton]);
+
+  // Auto-hide manually opened description after 5 seconds
+  useEffect(() => {
+    if (isHeaderVisible && isManuallyOpened) {
+      const timer = setTimeout(() => {
+        setIsDescriptionFading(true);
+        setTimeout(() => {
+          setIsHeaderVisible(false);
+          setIsManuallyOpened(false);
+          setTimeout(() => {
+            setShowDescriptionButton(true);
+          }, 500);
+        }, 500);
+      }, 5000); // 5 seconds for manually opened description
+      
+      return () => clearTimeout(timer);
+    }
+  }, [isHeaderVisible, isManuallyOpened]);
 
   useEffect(() => {
     if (!bottomRef.current) return;
@@ -205,7 +216,7 @@ const Home: React.FC = () => {
     if (count >= 5 && count % 10 === 0) {
       videoAd.maybeShow(count);
     } else if (!videoAd.visible) {
-      getRandomMovie()
+      getRandomMovieSafe()
         .then(() => {
           if (currentMovie) {
             analytics.setLastMovie(currentMovie.id);
@@ -220,6 +231,7 @@ const Home: React.FC = () => {
     setShowDescriptionButton(false);
     setIsHeaderVisible(true);
     setIsDescriptionFading(false);
+    setIsManuallyOpened(true);
   };
 
   const handleHideDescription = () => {
@@ -346,12 +358,12 @@ const Home: React.FC = () => {
                     {loadingState === LoadingState.LOADING ? (
                       <>
                         <div className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                        Finding Movie...
+                        {filterOptions.tvShowsOnly ? 'Finding Show...' : 'Finding Movie...'}
                       </>
                     ) : (
                       <>
                         <Sparkles size={24} className="group-hover:rotate-12 transition-transform duration-300" />
-                        Get Random Movie
+                        {filterOptions.tvShowsOnly ? 'Get Random Show' : 'Get Random Movie'}
                       </>
                     )}
                   </div>
@@ -374,6 +386,44 @@ const Home: React.FC = () => {
         </main>
 
         <div ref={bottomRef} />
+        
+        {/* Footer */}
+        <footer className="mt-auto py-6 px-4 border-t border-white/10 bg-gradient-to-r from-gray-900/50 to-slate-900/50 backdrop-blur-sm">
+          <div className="max-w-6xl mx-auto">
+            <div className="flex flex-col md:flex-row items-center justify-between gap-4 text-sm text-gray-400">
+              <div className="flex items-center gap-4">
+                <span>© 2025 MovieNightPicker</span>
+                <span className="hidden md:block">•</span>
+                <a
+                  href="https://nodeadline.studio"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-1 hover:text-white transition-colors hover:bg-white/5 px-2 py-1 rounded-md"
+                >
+                  <span>by nodeadline.studio</span>
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M7 17L17 7M17 7H7M17 7V17"/>
+                  </svg>
+                </a>
+              </div>
+              <div className="flex items-center gap-4">
+                <button
+                  onClick={() => window.dispatchEvent(new CustomEvent('show-privacy'))}
+                  className="hover:text-white transition-colors hover:bg-white/5 px-2 py-1 rounded-md"
+                >
+                  Privacy Policy
+                </button>
+                <span>•</span>
+                <button
+                  onClick={() => window.dispatchEvent(new CustomEvent('show-terms'))}
+                  className="hover:text-white transition-colors hover:bg-white/5 px-2 py-1 rounded-md"
+                >
+                  Terms of Service
+                </button>
+              </div>
+            </div>
+          </div>
+        </footer>
       </div>
 
       {/* Video Ad */}

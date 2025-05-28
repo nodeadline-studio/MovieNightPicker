@@ -7,7 +7,7 @@ export interface Movie {
   release_date: string;
   vote_average: number;
   vote_count: number;
-  imdb_id: string;
+  imdb_id: string | null;
   genres: Genre[];
   in_theaters?: boolean;
 }
@@ -25,11 +25,13 @@ export interface FilterOptions {
   maxRuntime: number;
   inTheatersOnly: boolean;
   includeAdult: boolean;
+  tvShowsOnly: boolean;
 }
 
 export interface WatchlistMovie extends Movie {
   addedAt: string;
   imdb_id: string | null;
+  contentType: 'movie' | 'tv';
 }
 
 export enum LoadingState {
@@ -37,6 +39,11 @@ export enum LoadingState {
   LOADING = 'loading',
   SUCCESS = 'success',
   ERROR = 'error'
+}
+
+export interface CacheResult {
+  success: boolean;
+  movie?: Movie;
 }
 
 export interface MovieActions {

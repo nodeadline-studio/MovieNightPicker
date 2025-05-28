@@ -60,13 +60,13 @@ const MovieCard: React.FC<MovieCardProps> = ({ movie, isInWatchlist = false }) =
             
             {/* Poster Image */}
             <div className="relative w-full h-full overflow-hidden">
-              <img
+            <img
                 className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                src={getImageUrl(movie.poster_path)}
-                alt={`Movie poster for ${movie.title}`}
-                loading="eager"
-                itemProp="image"
-              />
+              src={getImageUrl(movie.poster_path)}
+              alt={`Movie poster for ${movie.title}`}
+              loading="eager"
+              itemProp="image"
+            />
               <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
             </div>
             
@@ -107,12 +107,12 @@ const MovieCard: React.FC<MovieCardProps> = ({ movie, isInWatchlist = false }) =
             <div className="mb-6">
               <h2 className="text-2xl md:text-4xl font-bold text-white leading-tight mb-3 
                            bg-gradient-to-r from-white via-gray-100 to-gray-300 bg-clip-text text-transparent">
-                {movie.title}
+                  {movie.title}
                 {movie.release_date && (
                   <span className="text-gray-400 ml-3 text-xl md:text-2xl">
                     ({getYear(movie.release_date)})
-                  </span>
-                )}
+                        </span>
+                      )}
               </h2>
               
               {/* Movie Meta */}
@@ -120,7 +120,7 @@ const MovieCard: React.FC<MovieCardProps> = ({ movie, isInWatchlist = false }) =
                 <div className="flex items-center gap-2 bg-white/5 px-3 py-2 rounded-xl">
                   <Calendar size={16} className="text-blue-400" />
                   <span>{formatDate(movie.release_date)}</span>
-                </div>
+                  </div>
                 
                 <div className="flex items-center gap-2 bg-white/5 px-3 py-2 rounded-xl">
                   <Star size={16} className="text-yellow-400" />

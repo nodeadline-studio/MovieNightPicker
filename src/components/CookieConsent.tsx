@@ -54,21 +54,21 @@ const CookieConsent: React.FC = () => {
         
         {/* Content */}
         <div className="space-y-3">
-          <p className="text-sm text-gray-300 leading-relaxed">
-            {isEU ? (
+            <p className="text-sm text-gray-300 leading-relaxed">
+              {isEU ? (
               'We use cookies to enhance your experience. Under GDPR, we need your consent for non-essential cookies.'
-            ) : (
+              ) : (
               'We use cookies to enhance your experience and improve our service.'
-            )}
-          </p>
+              )}
+            </p>
           <p className="text-xs text-gray-400">
             Read our{' '}
-            <button
-              onClick={() => window.dispatchEvent(new CustomEvent('show-privacy'))}
+              <button
+                onClick={() => window.dispatchEvent(new CustomEvent('show-privacy'))}
               className="text-blue-400 hover:text-blue-300 underline transition-colors"
-            >
-              Privacy Policy
-            </button>
+              >
+                Privacy Policy
+              </button>
             {' '}and{' '}
             <button
               onClick={() => window.dispatchEvent(new CustomEvent('show-terms'))}

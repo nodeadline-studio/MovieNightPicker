@@ -43,11 +43,13 @@ class MovieCache {
   }
 
   addMovies(movies: Movie[]): void {
-    // Validate movies before adding to cache
+    // Validate movies before adding to cache - exclude suspicious ratings
     const validMovies = movies.filter(movie => 
       movie && 
       movie.poster_path && 
       movie.title && 
+      movie.vote_average < 10.0 && // Exclude perfect 10.0 ratings (usually fake/removed movies)
+      movie.vote_count >= 50 && // Ensure enough votes for reliable rating
       (!this.usedMovies.has(movie.id) || 
         Date.now() - (this.usedMovies.get(movie.id) || 0) > this.cacheLifetime)
     );
@@ -122,20 +124,21 @@ class MovieCache {
   }
 
   clear(): void {
-    console.log(`[Cache ${this.debugId}] Clearing cache`, {
-      hadMovies: this.movies.length,
-      hadUsed: this.usedMovies.size,
-      debugId: this.debugId
-    });
-    
     this.movies = [];
-    
-    // Clear used movies that are older than cache lifetime
-    const now = Date.now();
-    for (const [id, timestamp] of this.usedMovies.entries()) {
-      if (now - timestamp > this.cacheLifetime) {
-        this.usedMovies.delete(id);
-      }
+    this.usedMovies.clear();
+    console.log(`[Cache ${this.debugId}] Cache cleared`);
+  }
+
+  // Clear cache from movies with suspicious ratings
+  clearSuspiciousMovies(): void {
+    const initialCount = this.movies.length;
+    this.movies = this.movies.filter(cached => 
+      cached.movie.vote_average < 10.0 && 
+      cached.movie.vote_count >= 50
+    );
+    const removedCount = initialCount - this.movies.length;
+    if (removedCount > 0) {
+      console.log(`[Cache ${this.debugId}] Removed ${removedCount} suspicious movies from cache`);
     }
   }
 
