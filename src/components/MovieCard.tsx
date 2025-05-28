@@ -47,7 +47,7 @@ const MovieCard: React.FC<MovieCardProps> = ({ movie, isInWatchlist = false }) =
         
         <div className="flex flex-col md:flex-row">
           {/* Movie Poster */}
-          <div className="w-full md:w-1/3 relative aspect-[2/3] md:aspect-auto">
+          <div className="w-full md:w-1/3 relative aspect-[3/4] md:aspect-auto">
             {/* Now Playing Badge */}
             {isInTheaters(movie.release_date) && (
               <div className="absolute top-4 left-4 bg-gradient-to-r from-green-500 to-emerald-500 

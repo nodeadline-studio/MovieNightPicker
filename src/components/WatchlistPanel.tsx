@@ -259,12 +259,11 @@ const WatchlistPanel: React.FC = () => {
     <div className="relative">
       {/* Modern Watchlist Button */}
              <button
-         onClick={togglePanel}
+        onClick={togglePanel}
          className="group fixed z-10 bottom-[calc(env(safe-area-inset-bottom)+2rem)] left-4 md:static
-                    bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 
-                    hover:from-indigo-500 hover:via-purple-500 hover:to-pink-500
+                    bg-transparent border-2 border-white/30 hover:border-white/50
                     text-white font-semibold px-6 py-3 rounded-2xl
-                    shadow-lg hover:shadow-xl hover:shadow-purple-500/25
+                    hover:bg-white/10 backdrop-blur-sm
                     transform hover:scale-[1.02] active:scale-[0.98]
                     transition-all duration-200 ease-out
                     flex items-center gap-3 select-none"
@@ -281,16 +280,21 @@ const WatchlistPanel: React.FC = () => {
       </button>
 
              {/* Modern Dropdown Panel */}
-       {isOpen && (
+      {isOpen && (
          <>
            {/* Overlay for all devices */}
-           <div 
-             className="fixed inset-0 bg-black/40 z-40"
-             onClick={togglePanel}
+        <div 
+             className={`fixed inset-0 bg-black/40 z-40 transition-opacity duration-300 ease-out ${
+               isOpen ? 'opacity-100' : 'opacity-0'
+             }`}
+          onClick={togglePanel}
            />
           
           {/* Panel */}
-          <div className="fixed bottom-0 left-0 right-0 md:absolute md:top-full md:right-0 md:left-auto md:w-96 z-50 md:mt-3">
+          <div className={`fixed bottom-0 left-0 right-0 md:absolute md:top-full md:right-0 md:left-auto md:w-96 z-50 md:mt-3 
+                          transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] ${
+            isOpen ? 'translate-y-0 opacity-100' : 'translate-y-full md:translate-y-2 opacity-0'
+          }`}>
             <div className="bg-gradient-to-br from-slate-900/95 via-gray-900/95 to-slate-800/95 
                            backdrop-blur-xl border border-white/10 
                            rounded-t-3xl md:rounded-3xl shadow-2xl
@@ -359,18 +363,18 @@ const WatchlistPanel: React.FC = () => {
                     )}
                     
                     <button
-                      onClick={togglePanel}
+            onClick={togglePanel}
                       className="p-2 text-gray-400 hover:text-white hover:bg-white/10 rounded-xl transition-all duration-200"
                     >
                       <X size={20} />
                     </button>
                   </div>
                 </div>
-              </div>
+        </div>
 
               {/* Content */}
               <div className="p-6">
-                {watchlist.length === 0 ? (
+          {watchlist.length === 0 ? (
                   <div className="text-center py-12">
                     <div className="relative mb-6">
                       <div className="w-20 h-20 mx-auto bg-gradient-to-r from-indigo-500/20 to-purple-500/20 rounded-2xl flex items-center justify-center">
@@ -381,13 +385,13 @@ const WatchlistPanel: React.FC = () => {
                     <h4 className="text-lg font-semibold text-white mb-2">No movies yet</h4>
                     <p className="text-gray-400 text-sm">
                       Start building your perfect movie collection
-                    </p>
-                  </div>
-                ) : (
-                  <div className="space-y-4 max-h-96 overflow-y-auto custom-scrollbar">
+              </p>
+            </div>
+          ) : (
+                  <div className="space-y-4 max-h-[calc(100vh-20rem)] md:max-h-96 overflow-y-auto custom-scrollbar">
                     {watchlist.map((movie, index) => (
                       <div 
-                        key={movie.id} 
+                  key={movie.id} 
                         className="group relative bg-white/5 hover:bg-white/10 rounded-2xl p-4 
                                    border border-white/5 hover:border-white/20
                                    transition-all duration-300 ease-out
@@ -400,11 +404,11 @@ const WatchlistPanel: React.FC = () => {
                         <div className="flex items-center gap-4">
                           {/* Movie Poster */}
                           <div className="relative flex-shrink-0">
-                            <img
-                              src={getImageUrl(movie.poster_path, 'w92')}
-                              alt={movie.title}
+                  <img
+                    src={getImageUrl(movie.poster_path, 'w92')}
+                    alt={movie.title}
                               className="w-16 h-24 object-cover rounded-xl shadow-lg"
-                            />
+                  />
                             <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent rounded-xl" />
                           </div>
                           
@@ -427,21 +431,21 @@ const WatchlistPanel: React.FC = () => {
                           </div>
                           
                           {/* Remove Button */}
-                          <button
-                            onClick={(e) => handleRemove(movie.id, e)}
+                      <button
+                        onClick={(e) => handleRemove(movie.id, e)}
                             className="p-2 text-gray-400 hover:text-red-400 hover:bg-red-500/10 
                                      rounded-xl transition-all duration-200 opacity-0 group-hover:opacity-100"
-                            aria-label={`Remove ${movie.title} from watchlist`}
-                          >
-                            <Trash2 size={16} />
-                          </button>
-                        </div>
-                      </div>
+                        aria-label={`Remove ${movie.title} from watchlist`}
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
+                    </div>
                     ))}
                   </div>
-                )}
-              </div>
-            </div>
+          )}
+        </div>
+      </div>
           </div>
         </>
       )}

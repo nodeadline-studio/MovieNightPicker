@@ -29,15 +29,30 @@ export const generateWatchlistImage = async ({
     // Background gradient
     const gradient = ctx.createLinearGradient(0, 0, width, height);
     gradient.addColorStop(0, '#0f172a'); // slate-900
-    gradient.addColorStop(0.5, '#1e293b'); // slate-800
-    gradient.addColorStop(1, '#334155'); // slate-700
+    gradient.addColorStop(0.3, '#1e293b'); // slate-800
+    gradient.addColorStop(0.7, '#334155'); // slate-700
+    gradient.addColorStop(1, '#475569'); // slate-600
     
     ctx.fillStyle = gradient;
     ctx.fillRect(0, 0, width, height);
 
-    // Add subtle pattern overlay
-    ctx.fillStyle = 'rgba(99, 102, 241, 0.05)'; // indigo overlay
+    // Add multiple overlay patterns for depth
+    const overlayGradient1 = ctx.createRadialGradient(width/2, height/2, 0, width/2, height/2, Math.max(width, height)/2);
+    overlayGradient1.addColorStop(0, 'rgba(99, 102, 241, 0.15)'); // indigo
+    overlayGradient1.addColorStop(0.5, 'rgba(139, 92, 246, 0.1)'); // purple
+    overlayGradient1.addColorStop(1, 'rgba(236, 72, 153, 0.05)'); // pink
+    
+    ctx.fillStyle = overlayGradient1;
     ctx.fillRect(0, 0, width, height);
+
+    // Add subtle noise texture
+    for (let i = 0; i < 100; i++) {
+      const x = Math.random() * width;
+      const y = Math.random() * height;
+      const size = Math.random() * 2;
+      ctx.fillStyle = `rgba(255, 255, 255, ${Math.random() * 0.03})`;
+      ctx.fillRect(x, y, size, size);
+    }
 
     // Header section
     const headerHeight = 120;
@@ -46,7 +61,20 @@ export const generateWatchlistImage = async ({
     ctx.fillStyle = '#ffffff';
     ctx.font = 'bold 48px Inter, system-ui, sans-serif';
     ctx.textAlign = 'center';
+    
+    // Add text shadow
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
+    ctx.shadowBlur = 10;
+    ctx.shadowOffsetX = 2;
+    ctx.shadowOffsetY = 2;
+    
     ctx.fillText('🎬 My Movie Watchlist', width / 2, 60);
+    
+    // Reset shadow
+    ctx.shadowColor = 'transparent';
+    ctx.shadowBlur = 0;
+    ctx.shadowOffsetX = 0;
+    ctx.shadowOffsetY = 0;
     
     // Subtitle
     ctx.fillStyle = '#94a3b8'; // slate-400

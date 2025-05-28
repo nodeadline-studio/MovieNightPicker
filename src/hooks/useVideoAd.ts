@@ -57,47 +57,15 @@ export function useVideoAd({ onClose, onError, pickCounter, enableTestAds = true
     if (!hasUserInteracted.current || count === 0 || count % 5 !== 0) return;
     setVisible(true);
     
-    const started = { current: false };
-    
-    // Add watchdog for creative load
-    const creativeWatchdog = setTimeout(() => {
-      if (!adRef.current?.querySelector('video, iframe')) {
-        console.warn('No video/iframe found after timeout → closing');
-        close();
-      }
-    }, 4500);
-    
-    timersRef.current.push(creativeWatchdog);
-    
     // If user is offline, allow instant skip
     if (!navigator.onLine) {
       setSkipIn(0);
       return;
     }
 
-    // Set 7-second timeout for ad load
-    const timeout = setTimeout(() => {
-      console.warn('Ad load timeout → fallback');
-      setSkipIn(0);
-      if (!started.current) {
-        handleFallback();
-      }
-    }, 7000);
-    timersRef.current.push(timeout);
-    
-    // Set 3.5-second timeout for creative check
-    const creativeTimeout = setTimeout(() => {
-      if (adRef.current && adRef.current.querySelectorAll('iframe').length === 0) {
-        console.warn('No video ad – closing overlay');
-        if (!started.current) {
-          handleFallback();
-        }
-      }
-    }, 3500);
-    timersRef.current.push(creativeTimeout);
-
-    setTimeoutId(timeout);
-  }, [onError, handleFallback, close]);
+    // Don't auto-close the ad - let user control when to skip
+    // Removed all timeout logic that was causing premature closure
+  }, []);
 
   useEffect(() => {
     return () => {

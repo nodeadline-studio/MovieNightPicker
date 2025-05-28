@@ -244,10 +244,9 @@ const FilterPanel: React.FC<FilterPanelProps> = ({ isOpen, setIsOpen }) => {
       {/* Modern Filters Button */}
       <button
         onClick={togglePanel}
-        className="group relative bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 
-                   hover:from-indigo-500 hover:via-purple-500 hover:to-pink-500
+        className="group relative bg-transparent border-2 border-white/30 hover:border-white/50
                    text-white font-semibold px-6 py-3 rounded-2xl
-                   shadow-lg hover:shadow-xl hover:shadow-purple-500/25
+                   hover:bg-white/10 backdrop-blur-sm
                    transform hover:scale-[1.02] active:scale-[0.98]
                    transition-all duration-200 ease-out
                    flex items-center gap-3 select-none"
@@ -264,309 +263,309 @@ const FilterPanel: React.FC<FilterPanelProps> = ({ isOpen, setIsOpen }) => {
       </button>
 
       {/* Modern Filter Panel */}
-      {isOpen && (
-        <>
-          {/* Overlay */}
-          <div 
-            className="fixed inset-0 bg-black/40 z-40"
-            onClick={togglePanel}
-          />
-          
-          {/* Panel */}
-          <div className={`fixed top-0 right-0 h-[100dvh] w-full md:w-[420px] z-50 transition-transform duration-500 ease-[cubic-bezier(0.4,0,0.2,1)] ${
-            isOpen ? 'translate-x-0' : 'translate-x-full'
-          }`}>
-            <div className="h-full bg-gradient-to-br from-slate-900/95 via-gray-900/95 to-slate-800/95 
-                           backdrop-blur-xl border-l border-white/10 shadow-2xl
-                           ring-1 ring-white/5 flex flex-col max-h-[100dvh] filter-panel-mobile">
-              
-              {/* Header */}
-              <div className="relative p-4 md:p-6 border-b border-white/10 flex-shrink-0">
-                <div className="absolute inset-0 bg-gradient-to-r from-indigo-600/10 via-purple-600/10 to-pink-600/10" />
-                <div className="relative flex justify-between items-center">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 bg-gradient-to-r from-indigo-500 to-purple-500 rounded-xl">
-                      <SlidersHorizontal size={20} className="text-white" />
-                    </div>
-                    <div>
-                      <h3 className="text-xl font-bold text-white">Movie Filters</h3>
-                      <p className="text-sm text-gray-400">{getActiveFilterCount()} filters active</p>
-                    </div>
+      <>
+        {/* Overlay */}
+        <div 
+          className={`fixed inset-0 bg-black/40 z-40 transition-opacity duration-300 ease-out pointer-events-none ${
+            isOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0'
+          }`}
+          onClick={togglePanel}
+        />
+        
+        {/* Panel */}
+        <div className={`fixed top-0 right-0 h-[100dvh] w-full md:w-[420px] z-50 transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] ${
+          isOpen ? 'translate-x-0 opacity-100' : 'translate-x-full opacity-0'
+        }`}>
+          <div className="h-full bg-gradient-to-br from-slate-900/95 via-gray-900/95 to-slate-800/95 
+                         backdrop-blur-xl border-l border-white/10 shadow-2xl
+                         ring-1 ring-white/5 flex flex-col max-h-[100dvh] filter-panel-mobile">
+            
+            {/* Header */}
+            <div className="relative p-4 md:p-6 border-b border-white/10 flex-shrink-0">
+              <div className="absolute inset-0 bg-gradient-to-r from-indigo-600/10 via-purple-600/10 to-pink-600/10" />
+              <div className="relative flex justify-between items-center">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-gradient-to-r from-indigo-500 to-purple-500 rounded-xl">
+                    <SlidersHorizontal size={20} className="text-white" />
                   </div>
-                  <button
-                    onClick={togglePanel}
-                    className="p-2 text-gray-400 hover:text-white hover:bg-white/10 rounded-xl transition-all duration-200"
-                  >
-                    <X size={20} />
-                  </button>
+                  <div>
+                    <h3 className="text-xl font-bold text-white">Movie Filters</h3>
+                    <p className="text-sm text-gray-400">{getActiveFilterCount()} filters active</p>
+                  </div>
                 </div>
-              </div>
-
-              {/* Tabs */}
-              <div className="flex border-b border-white/10 bg-white/5 flex-shrink-0">
                 <button
-                  className={`flex-1 py-2 md:py-3 text-sm font-semibold transition-all duration-200 ${
-                    activeTab === 'basic'
-                      ? 'text-white bg-gradient-to-r from-indigo-500/20 to-purple-500/20 border-b-2 border-purple-500'
-                      : 'text-gray-400 hover:text-white hover:bg-white/5'
-                  }`}
-                  onClick={() => setActiveTab('basic')}
+                  onClick={togglePanel}
+                  className="p-2 text-gray-400 hover:text-white hover:bg-white/10 rounded-xl transition-all duration-200"
                 >
-                  Basic Filters
-                </button>
-                <button
-                  className={`flex-1 py-2 md:py-3 text-sm font-semibold transition-all duration-200 ${
-                    activeTab === 'advanced'
-                      ? 'text-white bg-gradient-to-r from-indigo-500/20 to-purple-500/20 border-b-2 border-purple-500'
-                      : 'text-gray-400 hover:text-white hover:bg-white/5'
-                  }`}
-                  onClick={() => setActiveTab('advanced')}
-                >
-                  Advanced
-                </button>
-              </div>
-
-              {/* Content */}
-              <div className="flex-1 overflow-y-auto custom-scrollbar p-3 md:p-4 min-h-0 filter-content-mobile">
-                {activeTab === 'basic' ? (
-                  <div className="space-y-3 md:space-y-4">
-                    {/* Year Range */}
-                    <div className="space-y-3">
-                      <div className="flex items-center gap-2">
-                        <Calendar size={18} className="text-blue-400" />
-                        <h4 className="text-base md:text-lg font-semibold text-white">Release Year</h4>
-                        <span className="text-sm text-gray-400">
-                          {filterOptions.yearFrom} - {filterOptions.yearTo}
-                        </span>
-                      </div>
-                      <div className="bg-white/5 rounded-xl p-3 md:p-4 border border-white/10">
-                        <TimelineSlider
-                          min={1900}
-                          max={currentYear}
-                          value={[filterOptions.yearFrom, filterOptions.yearTo]}
-                          onChange={([from, to]) => {
-                            if (filterOptions.inTheatersOnly) return;
-                            movieCache.clear();
-                            setIsRandomizerEnabled(false);
-                            updateFilterOptions({
-                              yearFrom: Math.min(from, to),
-                              yearTo: Math.max(from, to)
-                            });
-                          }}
-                          disabled={filterOptions.inTheatersOnly}
-                        />
-                      </div>
-                    </div>
-
-                    {/* Rating */}
-                    <div className="space-y-3">
-                      <div className="flex items-center gap-2">
-                        <Star size={18} className="text-yellow-400" />
-                        <h4 className="text-base md:text-lg font-semibold text-white">Minimum Rating</h4>
-                        <span className="text-sm text-gray-400">{filterOptions.ratingFrom.toFixed(1)}</span>
-                      </div>
-                      <div className="bg-white/5 rounded-xl p-3 md:p-4 border border-white/10">
-                        <div className="relative w-full h-8 cursor-pointer">
-                          <div className="absolute inset-y-3 inset-x-0 bg-white/10 rounded-full" />
-                          <div 
-                            className="absolute inset-y-3 left-0 bg-gradient-to-r from-red-500 via-yellow-500 to-green-500 rounded-full" 
-                            style={{ width: `${(filterOptions.ratingFrom / 10) * 100}%` }} 
-                          />
-                          <div 
-                            className="absolute top-1/2 -translate-y-1/2 w-5 h-5 bg-white rounded-full shadow-lg transform -translate-x-1/2 cursor-grab active:cursor-grabbing transition-transform hover:scale-110" 
-                            style={{ left: `${(filterOptions.ratingFrom / 10) * 100}%` }}
-                          />
-                          <input
-                            type="range"
-                            min="0"
-                            max="10"
-                            step="0.5"
-                            value={filterOptions.ratingFrom}
-                            onChange={handleRatingChange}
-                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                          />
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Runtime Filter */}
-                    <div className="space-y-3">
-                      <div className="flex items-center gap-2">
-                        <Clock size={18} className="text-green-400" />
-                        <h4 className="text-base md:text-lg font-semibold text-white">Maximum Runtime</h4>
-                        <span className="text-sm text-gray-400">{formatRuntime(filterOptions.maxRuntime)}</span>
-                      </div>
-                      <div className="bg-white/5 rounded-xl p-3 md:p-4 border border-white/10">
-                        <div className="relative w-full h-8 cursor-pointer">
-                          <div className="absolute inset-y-3 inset-x-0 bg-white/10 rounded-full" />
-                          <div 
-                            className="absolute inset-y-3 left-0 bg-gradient-to-r from-green-500 to-blue-500 rounded-full" 
-                            style={{ width: `${((Math.min(240, filterOptions.maxRuntime) - 60) / (240 - 60)) * 100}%` }} 
-                          />
-                          <div 
-                            className="absolute top-1/2 -translate-y-1/2 w-5 h-5 bg-white rounded-full shadow-lg transform -translate-x-1/2 cursor-grab active:cursor-grabbing transition-transform hover:scale-110" 
-                            style={{ left: `${((Math.min(240, filterOptions.maxRuntime) - 60) / (240 - 60)) * 100}%` }}
-                          />
-                          <input
-                            type="range"
-                            min="60"
-                            max="240"
-                            step="15"
-                            value={filterOptions.maxRuntime}
-                            onChange={handleRuntimeChange}
-                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                          />
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Now Playing */}
-                    <div className="space-y-3">
-                      <div className="flex items-center gap-2">
-                        <Clapperboard size={18} className="text-green-400" />
-                        <h4 className="text-base md:text-lg font-semibold text-white">Now Playing</h4>
-                      </div>
-                      <div className="bg-white/5 rounded-xl p-3 md:p-4 border border-white/10">
-                        <label className="flex items-center gap-3 cursor-pointer">
-                          <div className="relative">
-                            <input
-                              type="checkbox"
-                              checked={filterOptions.inTheatersOnly}
-                              onChange={handleInTheatersChange}
-                              className="sr-only peer"
-                            />
-                            <div className="w-11 h-6 bg-white/20 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-gradient-to-r peer-checked:from-green-500 peer-checked:to-emerald-500" />
-                          </div>
-                          <span className="text-white font-medium">Only show movies in theaters</span>
-                        </label>
-                        {filterOptions.inTheatersOnly && (
-                          <p className="mt-2 text-xs text-gray-400">
-                            Release dates are locked to current year for theater releases. Adult content is disabled.
-                          </p>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Quick Actions */}
-                    <div className="space-y-3">
-                      <h4 className="text-base md:text-lg font-semibold text-white flex items-center gap-2">
-                        <Sparkles size={18} className="text-pink-400" />
-                        Quick Actions
-                      </h4>
-                      <div className="grid grid-cols-2 gap-3">
-                        <button
-                          onClick={handleSurpriseMe}
-                          className="p-2 md:p-3 bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-400 hover:to-rose-400 
-                                   text-white font-medium rounded-xl transition-all duration-200 
-                                   transform hover:scale-[1.02] active:scale-[0.98] shadow-lg text-sm"
-                        >
-                          <Shuffle size={16} className="inline mr-2" />
-                          Surprise Me
-                        </button>
-                        <button
-                          onClick={resetFilters}
-                          className="p-2 md:p-3 bg-white/10 hover:bg-white/20 text-white font-medium rounded-xl 
-                                   transition-all duration-200 border border-white/20 hover:border-white/30 text-sm"
-                        >
-                          <Trash2 size={16} className="inline mr-2" />
-                          Reset
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="space-y-2 md:space-y-3">
-                    {/* Genres */}
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-2">
-                        <Clapperboard size={16} className="text-purple-400" />
-                        <h4 className="text-sm font-semibold text-white">Genres</h4>
-                      </div>
-                      <div className="grid grid-cols-2 gap-1.5">
-                        {genres.map((genre, index) => (
-                          <button
-                            key={genre.id}
-                            onClick={(e) => handleGenreToggle(genre.id, e)}
-                            className={`p-1.5 md:p-2 rounded-lg text-xs md:text-sm font-medium transition-all duration-200 ${
-                              filterOptions.genres.includes(genre.id)
-                                ? 'bg-gradient-to-r from-indigo-500 to-purple-500 text-white shadow-lg'
-                                : 'bg-white/5 text-gray-300 hover:bg-white/10 hover:text-white border border-white/10'
-                            }`}
-                            style={{
-                              animationDelay: `${index * 30}ms`,
-                              animation: 'slideInUp 0.3s ease-out forwards'
-                            }}
-                          >
-                            {genre.name}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* Adult Content Filter */}
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-2">
-                        <AlertTriangle size={16} className="text-orange-400" />
-                        <h4 className="text-sm font-semibold text-white">Adult Content</h4>
-                      </div>
-                      <div className="bg-white/5 rounded-xl p-2 md:p-3 border border-white/10">
-                        <label className="flex items-center gap-3 cursor-pointer">
-                          <div className="relative">
-                            <input
-                              type="checkbox"
-                              checked={filterOptions.includeAdult}
-                              onChange={handleAdultContentChange}
-                              className="sr-only peer"
-                              disabled={filterOptions.inTheatersOnly}
-                            />
-                            <div className={`w-11 h-6 bg-white/20 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-gradient-to-r peer-checked:from-orange-500 peer-checked:to-red-500 ${filterOptions.inTheatersOnly ? 'opacity-50 cursor-not-allowed' : ''}`} />
-                          </div>
-                          <span className={`font-medium ${filterOptions.inTheatersOnly ? 'text-gray-500' : 'text-white'}`}>Include adult content</span>
-                        </label>
-                        {filterOptions.includeAdult && (
-                          <p className="mt-1 text-[10px] md:text-xs text-gray-400">
-                            Theater releases disabled
-                          </p>
-                        )}
-                        {filterOptions.inTheatersOnly && (
-                          <p className="mt-1 text-[10px] md:text-xs text-gray-500">
-                            Adult content unavailable
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Footer */}
-              <div className="p-4 md:p-6 border-t border-white/10 bg-white/5 flex-shrink-0 pb-safe">
-                <button
-                  onClick={handlePickMovie}
-                  disabled={isApplyingAndPicking || loadingState === LoadingState.LOADING}
-                  className="w-full bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 
-                           hover:from-indigo-500 hover:via-purple-500 hover:to-pink-500
-                           disabled:from-gray-600 disabled:to-gray-600
-                           text-white font-semibold py-3 md:py-4 rounded-2xl
-                           shadow-lg hover:shadow-xl hover:shadow-purple-500/25
-                           transform hover:scale-[1.02] active:scale-[0.98]
-                           transition-all duration-200 ease-out
-                           disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
-                >
-                  {isApplyingAndPicking || loadingState === LoadingState.LOADING ? (
-                    <div className="flex items-center justify-center gap-2">
-                      <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                      Finding Movie...
-                    </div>
-                  ) : (
-                    'Pick Movie'
-                  )}
+                  <X size={20} />
                 </button>
               </div>
             </div>
+
+            {/* Tabs */}
+            <div className="flex border-b border-white/10 bg-white/5 flex-shrink-0">
+              <button
+                className={`flex-1 py-2 md:py-3 text-sm font-semibold transition-all duration-200 ${
+                  activeTab === 'basic'
+                    ? 'text-white bg-gradient-to-r from-indigo-500/20 to-purple-500/20 border-b-2 border-purple-500'
+                    : 'text-gray-400 hover:text-white hover:bg-white/5'
+                }`}
+                onClick={() => setActiveTab('basic')}
+              >
+                Basic Filters
+              </button>
+              <button
+                className={`flex-1 py-2 md:py-3 text-sm font-semibold transition-all duration-200 ${
+                  activeTab === 'advanced'
+                    ? 'text-white bg-gradient-to-r from-indigo-500/20 to-purple-500/20 border-b-2 border-purple-500'
+                    : 'text-gray-400 hover:text-white hover:bg-white/5'
+                }`}
+                onClick={() => setActiveTab('advanced')}
+              >
+                Advanced
+              </button>
+            </div>
+
+            {/* Content */}
+            <div className="flex-1 overflow-y-auto custom-scrollbar p-3 md:p-4 min-h-0 filter-content-mobile">
+              {activeTab === 'basic' ? (
+                <div className="space-y-2 md:space-y-3">
+                  {/* Year Range */}
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      <Calendar size={16} className="text-blue-400" />
+                      <h4 className="text-sm md:text-base font-semibold text-white">Release Year</h4>
+                      <span className="text-xs text-gray-400">
+                        {filterOptions.yearFrom} - {filterOptions.yearTo}
+                      </span>
+                    </div>
+                    <div className="bg-white/5 rounded-xl p-2 md:p-3 border border-white/10">
+                      <TimelineSlider
+                        min={1900}
+                        max={currentYear}
+                        value={[filterOptions.yearFrom, filterOptions.yearTo]}
+                        onChange={([from, to]) => {
+                          if (filterOptions.inTheatersOnly) return;
+                          movieCache.clear();
+                          setIsRandomizerEnabled(false);
+                          updateFilterOptions({
+                            yearFrom: Math.min(from, to),
+                            yearTo: Math.max(from, to)
+                          });
+                        }}
+                        disabled={filterOptions.inTheatersOnly}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Rating */}
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      <Star size={16} className="text-yellow-400" />
+                      <h4 className="text-sm md:text-base font-semibold text-white">Minimum Rating</h4>
+                      <span className="text-xs text-gray-400">{filterOptions.ratingFrom.toFixed(1)}</span>
+                    </div>
+                    <div className="bg-white/5 rounded-xl p-2 md:p-3 border border-white/10">
+                      <div className="relative w-full h-6 cursor-pointer">
+                        <div className="absolute inset-y-2 inset-x-0 bg-white/10 rounded-full" />
+                        <div 
+                          className="absolute inset-y-2 left-0 bg-gradient-to-r from-red-500 via-yellow-500 to-green-500 rounded-full" 
+                          style={{ width: `${(filterOptions.ratingFrom / 10) * 100}%` }} 
+                        />
+                        <div 
+                          className="absolute top-1/2 -translate-y-1/2 w-4 h-4 bg-white rounded-full shadow-lg transform -translate-x-1/2 cursor-grab active:cursor-grabbing transition-transform hover:scale-110" 
+                          style={{ left: `${(filterOptions.ratingFrom / 10) * 100}%` }}
+                        />
+                        <input
+                          type="range"
+                          min="0"
+                          max="10"
+                          step="0.5"
+                          value={filterOptions.ratingFrom}
+                          onChange={handleRatingChange}
+                          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Runtime Filter */}
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      <Clock size={16} className="text-green-400" />
+                      <h4 className="text-sm md:text-base font-semibold text-white">Maximum Runtime</h4>
+                      <span className="text-xs text-gray-400">{formatRuntime(filterOptions.maxRuntime)}</span>
+                    </div>
+                    <div className="bg-white/5 rounded-xl p-2 md:p-3 border border-white/10">
+                      <div className="relative w-full h-6 cursor-pointer">
+                        <div className="absolute inset-y-2 inset-x-0 bg-white/10 rounded-full" />
+                        <div 
+                          className="absolute inset-y-2 left-0 bg-gradient-to-r from-green-500 to-blue-500 rounded-full" 
+                          style={{ width: `${((Math.min(240, filterOptions.maxRuntime) - 60) / (240 - 60)) * 100}%` }} 
+                        />
+                        <div 
+                          className="absolute top-1/2 -translate-y-1/2 w-4 h-4 bg-white rounded-full shadow-lg transform -translate-x-1/2 cursor-grab active:cursor-grabbing transition-transform hover:scale-110" 
+                          style={{ left: `${((Math.min(240, filterOptions.maxRuntime) - 60) / (240 - 60)) * 100}%` }}
+                        />
+                        <input
+                          type="range"
+                          min="60"
+                          max="240"
+                          step="15"
+                          value={filterOptions.maxRuntime}
+                          onChange={handleRuntimeChange}
+                          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Now Playing */}
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2">
+                      <Clapperboard size={18} className="text-green-400" />
+                      <h4 className="text-base md:text-lg font-semibold text-white">Now Playing</h4>
+                    </div>
+                    <div className="bg-white/5 rounded-xl p-3 md:p-4 border border-white/10">
+                      <label className="flex items-center gap-3 cursor-pointer">
+                        <div className="relative">
+                          <input
+                            type="checkbox"
+                            checked={filterOptions.inTheatersOnly}
+                            onChange={handleInTheatersChange}
+                            className="sr-only peer"
+                          />
+                          <div className="w-11 h-6 bg-white/20 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-gradient-to-r peer-checked:from-green-500 peer-checked:to-emerald-500" />
+                        </div>
+                        <span className="text-white font-medium">Only show movies in theaters</span>
+                      </label>
+                      {filterOptions.inTheatersOnly && (
+                        <p className="mt-2 text-xs text-gray-400">
+                          Release dates are locked to current year for theater releases. Adult content is disabled.
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Quick Actions */}
+                  <div className="space-y-3">
+                    <h4 className="text-base md:text-lg font-semibold text-white flex items-center gap-2">
+                      <Sparkles size={18} className="text-pink-400" />
+                      Quick Actions
+                    </h4>
+                    <div className="grid grid-cols-2 gap-3">
+                      <button
+                        onClick={handleSurpriseMe}
+                        className="p-2 md:p-3 bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-400 hover:to-rose-400 
+                                 text-white font-medium rounded-xl transition-all duration-200 
+                                 transform hover:scale-[1.02] active:scale-[0.98] shadow-lg text-sm"
+                      >
+                        <Shuffle size={16} className="inline mr-2" />
+                        Surprise Me
+                      </button>
+                      <button
+                        onClick={resetFilters}
+                        className="p-2 md:p-3 bg-white/10 hover:bg-white/20 text-white font-medium rounded-xl 
+                                 transition-all duration-200 border border-white/20 hover:border-white/30 text-sm"
+                      >
+                        <Trash2 size={16} className="inline mr-2" />
+                        Reset
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-2 md:space-y-3">
+                  {/* Genres */}
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      <Clapperboard size={16} className="text-purple-400" />
+                      <h4 className="text-sm font-semibold text-white">Genres</h4>
+                    </div>
+                    <div className="grid grid-cols-2 gap-1.5">
+                      {genres.map((genre, index) => (
+                        <button
+                          key={genre.id}
+                          onClick={(e) => handleGenreToggle(genre.id, e)}
+                          className={`p-1.5 md:p-2 rounded-lg text-xs md:text-sm font-medium transition-all duration-200 ${
+                            filterOptions.genres.includes(genre.id)
+                              ? 'bg-gradient-to-r from-indigo-500 to-purple-500 text-white shadow-lg'
+                              : 'bg-white/5 text-gray-300 hover:bg-white/10 hover:text-white border border-white/10'
+                          }`}
+                          style={{
+                            animationDelay: `${index * 30}ms`,
+                            animation: 'slideInUp 0.3s ease-out forwards'
+                          }}
+                        >
+                          {genre.name}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Adult Content Filter */}
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      <AlertTriangle size={16} className="text-orange-400" />
+                      <h4 className="text-sm font-semibold text-white">Adult Content</h4>
+                    </div>
+                    <div className="bg-white/5 rounded-xl p-2 md:p-3 border border-white/10">
+                      <label className="flex items-center gap-3 cursor-pointer">
+                        <div className="relative">
+                          <input
+                            type="checkbox"
+                            checked={filterOptions.includeAdult}
+                            onChange={handleAdultContentChange}
+                            className="sr-only peer"
+                            disabled={filterOptions.inTheatersOnly}
+                          />
+                          <div className={`w-11 h-6 bg-white/20 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-gradient-to-r peer-checked:from-orange-500 peer-checked:to-red-500 ${filterOptions.inTheatersOnly ? 'opacity-50 cursor-not-allowed' : ''}`} />
+                        </div>
+                        <span className={`font-medium ${filterOptions.inTheatersOnly ? 'text-gray-500' : 'text-white'}`}>Include adult content</span>
+                      </label>
+                      {filterOptions.includeAdult && (
+                        <p className="mt-1 text-[10px] md:text-xs text-gray-400">
+                          Theater releases disabled
+                        </p>
+                      )}
+                      {filterOptions.inTheatersOnly && (
+                        <p className="mt-1 text-[10px] md:text-xs text-gray-500">
+                          Adult content unavailable
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="p-4 md:p-6 border-t border-white/10 bg-white/5 flex-shrink-0 pb-safe">
+              <button
+                onClick={handlePickMovie}
+                disabled={isApplyingAndPicking || loadingState === LoadingState.LOADING}
+                className="w-full bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 
+                         hover:from-indigo-500 hover:via-purple-500 hover:to-pink-500
+                         disabled:from-gray-600 disabled:to-gray-600
+                         text-white font-semibold py-3 md:py-4 rounded-2xl
+                         shadow-lg hover:shadow-xl hover:shadow-purple-500/25
+                         transform hover:scale-[1.02] active:scale-[0.98]
+                         transition-all duration-200 ease-out
+                         disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+              >
+                {isApplyingAndPicking || loadingState === LoadingState.LOADING ? (
+                  <div className="flex items-center justify-center gap-2">
+                    <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    Finding Movie...
+                  </div>
+                ) : (
+                  'Pick Movie'
+                )}
+              </button>
+            </div>
           </div>
-        </>
-      )}
+        </div>
+      </>
 
       {/* Birth Year Modal */}
       {showBirthYearModal && (

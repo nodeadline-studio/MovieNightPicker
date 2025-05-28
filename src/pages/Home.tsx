@@ -1,10 +1,11 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useMediaQuery } from 'react-responsive';
-import { Film, Zap, Shuffle, Sparkles } from 'lucide-react'; 
+import { Film, Zap, Shuffle, Sparkles, ChevronDown, X } from 'lucide-react'; 
 import { useMovieContext } from '../context/MovieContext';
 import { usePickCounter } from '../hooks/usePickCounter';
 import { timers } from '../utils/timers';
 import { useVideoAd } from '../hooks/useVideoAd';
+import { useVideoPreload } from '../hooks/useVideoPreload';
 import { useQuery } from '@tanstack/react-query';
 import { fetchGenres } from '../config/api';
 import MovieCard from '../components/MovieCard';
@@ -59,6 +60,9 @@ const generateMathProblem = (difficulty: number = 1) => {
 const Home: React.FC = () => {
   const [isHeaderVisible, setIsHeaderVisible] = useState(true);
   const [hasSeenDescription, setHasSeenDescription] = useState(false);
+  const [isDescriptionFading, setIsDescriptionFading] = useState(false);
+  const [showDescriptionButton, setShowDescriptionButton] = useState(false);
+  const [isButtonFading, setIsButtonFading] = useState(false);
   const [isInitialLoading, setIsInitialLoading] = useState(true);
   const [hasInitiallyLoaded, setHasInitiallyLoaded] = useState(false);
   const [hasUserInteracted, setHasUserInteracted] = useState(false);
@@ -95,6 +99,9 @@ const Home: React.FC = () => {
     },
     enableTestAds: false
   });
+
+  // Preload video ad in background
+  useVideoPreload('/ad_preview.mp4');
 
   useEffect(() => {
     if (!isLoadingGenres && !isInitialLoading && !hasInitiallyLoaded) {
@@ -134,12 +141,45 @@ const Home: React.FC = () => {
 
   useEffect(() => {
     const timer = setTimeout(() => {
-      setIsHeaderVisible(false);
-      setHasSeenDescription(true);
+      setIsDescriptionFading(true);
+      // Wait for fade animation to complete before hiding
+      setTimeout(() => {
+        setIsHeaderVisible(false);
+        setHasSeenDescription(true);
+        // Show the button to reveal description again after a delay
+        setTimeout(() => {
+          setShowDescriptionButton(true);
+        }, 500); // Reduced from 1000ms
+      }, 500); // Match animation duration
     }, timers.headerVisibilityTimeout);
     
     return () => clearTimeout(timer);
   }, []);
+
+  // Auto-hide description button after showing description
+  useEffect(() => {
+    if (isHeaderVisible && hasSeenDescription && showDescriptionButton) {
+      const timer = setTimeout(() => {
+        setIsButtonFading(true);
+        setTimeout(() => {
+          setShowDescriptionButton(false);
+          setIsButtonFading(false);
+          // Start the cycle again
+          setTimeout(() => {
+            setIsDescriptionFading(true);
+            setTimeout(() => {
+              setIsHeaderVisible(false);
+              setTimeout(() => {
+                setShowDescriptionButton(true);
+              }, 500); // Reduced from 1000ms
+            }, 500);
+          }, timers.headerVisibilityTimeout);
+        }, 300);
+      }, timers.headerVisibilityTimeout);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [isHeaderVisible, hasSeenDescription, showDescriptionButton]);
 
   useEffect(() => {
     if (!bottomRef.current) return;
@@ -176,6 +216,20 @@ const Home: React.FC = () => {
     }
   };
 
+  const handleShowDescription = () => {
+    setShowDescriptionButton(false);
+    setIsHeaderVisible(true);
+    setIsDescriptionFading(false);
+  };
+
+  const handleHideDescription = () => {
+    setIsButtonFading(true);
+    setTimeout(() => {
+      setShowDescriptionButton(false);
+      setIsButtonFading(false);
+    }, 300);
+  };
+
   return (
     <div className="min-h-screen bg-gray-950 text-white flex flex-col relative overflow-hidden" itemScope itemType="https://schema.org/WebApplication">
       {/* Background Effects */}
@@ -208,7 +262,9 @@ const Home: React.FC = () => {
             </div>
 
             {isHeaderVisible && (
-              <div className="text-center mb-8 md:mb-12 animate-fadeIn">
+              <div className={`text-center mb-8 md:mb-12 transition-all duration-500 ease-out overflow-hidden ${
+                isDescriptionFading ? 'animate-[fadeOut_0.5s_ease-out_forwards]' : 'animate-fadeIn'
+              }`}>
                 <div className="max-w-2xl mx-auto">
                   <h2 className="text-xl md:text-2xl font-semibold mb-4 bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">
                     Can't decide what to watch?
@@ -217,6 +273,37 @@ const Home: React.FC = () => {
                     Let our smart movie picker help you discover your next favorite film. 
                     Filter by genre, year, rating and more to find the perfect movie for your mood.
                   </p>
+                </div>
+              </div>
+            )}
+
+            {/* Show Description Button - Positioned above movie card */}
+            {showDescriptionButton && !isHeaderVisible && (
+              <div className={`flex justify-center mb-2.5 transition-all duration-300 ease-out ${
+                isButtonFading ? 'animate-[slideUp_0.3s_ease-out_forwards]' : 'animate-[slideDown_0.3s_ease-out_forwards]'
+              }`}>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={handleShowDescription}
+                    className="group inline-flex items-center gap-2 px-3 py-1.5 
+                             bg-gradient-to-r from-slate-900/30 via-gray-900/20 to-slate-800/30
+                             hover:from-slate-800/40 hover:via-gray-800/30 hover:to-slate-700/40
+                             border border-white/5 hover:border-white/10 rounded-lg
+                             text-gray-600 hover:text-gray-400 text-xs font-medium
+                             transition-all duration-300 ease-out
+                             hover:scale-105 active:scale-95 backdrop-blur-sm whitespace-nowrap"
+                  >
+                    <span>What's all about?</span>
+                    <ChevronDown size={12} className="group-hover:translate-y-0.5 transition-transform duration-200" />
+                  </button>
+                  <button
+                    onClick={handleHideDescription}
+                    className="p-1.5 text-gray-700 hover:text-gray-500 hover:bg-white/3 rounded-md
+                             transition-all duration-200 ease-out"
+                    aria-label="Hide button"
+                  >
+                    <X size={12} />
+                  </button>
                 </div>
               </div>
             )}
