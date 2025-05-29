@@ -76,7 +76,7 @@ const Home: React.FC = () => {
     currentMovie, 
     loadingState, 
     pickCount,
-    getRandomMovie,
+    getRandomMovie, 
     getRandomMovieSafe,
     error, 
     watchlist,
@@ -116,14 +116,14 @@ const Home: React.FC = () => {
   const handleInitialLoad = async () => {
     setHasUserInteracted(true);
     
-    try {
+      try {
       await getRandomMovieSafe();
-      if (currentMovie) {
-        analytics.setLastMovie(currentMovie.id);
+        if (currentMovie) {
+          analytics.setLastMovie(currentMovie.id);
         gtag.trackMoviePick(currentMovie.id, currentMovie.title);
-      }
-    } catch (error) {
-      console.error('Failed to get initial movie:', error);
+        }
+      } catch (error) {
+        console.error('Failed to get initial movie:', error);
     }
   };
 
@@ -138,17 +138,17 @@ const Home: React.FC = () => {
 
   useEffect(() => {
     if (hasUserInteracted && pickCount > 0 && !isInitialLoading) {
-      videoAd.maybeShow(pickCounter.current());
+      videoAd.maybeShow(pickCount);
     }
-  }, [pickCount, hasUserInteracted, isInitialLoading]);
+  }, [pickCount, hasUserInteracted, isInitialLoading, videoAd]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
       setIsDescriptionFading(true);
       // Wait for fade animation to complete before hiding
       setTimeout(() => {
-        setIsHeaderVisible(false);
-        setHasSeenDescription(true);
+      setIsHeaderVisible(false);
+      setHasSeenDescription(true);
         // Show the button to reveal description again after a delay
         setTimeout(() => {
           setShowDescriptionButton(true);
@@ -211,11 +211,9 @@ const Home: React.FC = () => {
 
   const handleGetMovie = () => {
     setHasUserInteracted(true);
-    const count = pickCounter.inc();
+    pickCounter.inc();
     
-    if (count >= 5 && count % 10 === 0) {
-      videoAd.maybeShow(count);
-    } else if (!videoAd.visible) {
+    if (!videoAd.visible) {
       getRandomMovieSafe()
         .then(() => {
           if (currentMovie) {
@@ -265,14 +263,14 @@ const Home: React.FC = () => {
                   </h1>
                   <p className="text-sm text-gray-400 hidden md:block">Discover your next favorite movie</p>
                 </div>
-              </div>
+            </div>
               
               <div className="flex items-center gap-3">
-                <WatchlistPanel />
-                <FilterPanel isOpen={filterPanelOpen} setIsOpen={setFilterPanelOpen} />
-              </div>
+              <WatchlistPanel />
+              <FilterPanel isOpen={filterPanelOpen} setIsOpen={setFilterPanelOpen} />
             </div>
-
+          </div>
+          
             {isHeaderVisible && (
               <div className={`text-center mb-8 md:mb-12 transition-all duration-500 ease-out overflow-hidden ${
                 isDescriptionFading ? 'animate-[fadeOut_0.5s_ease-out_forwards]' : 'animate-fadeIn'
@@ -280,21 +278,25 @@ const Home: React.FC = () => {
                 <div className="max-w-2xl mx-auto">
                   <h2 className="text-xl md:text-2xl font-semibold mb-4 bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">
                     Can't decide what to watch?
-                  </h2>
+            </h2>
                   <p className="text-gray-300 text-base md:text-lg leading-relaxed" itemProp="description">
                     Let our smart movie picker help you discover your next favorite film. 
                     Filter by genre, year, rating and more to find the perfect movie for your mood.
-                  </p>
-                </div>
-              </div>
+            </p>
+          </div>
+        </div>
             )}
+          </div>
+        </header>
 
-            {/* Show Description Button - Positioned above movie card */}
-            {showDescriptionButton && !isHeaderVisible && (
-              <div className={`flex justify-center mb-2.5 transition-all duration-300 ease-out ${
+        {/* Fixed Description Button - Completely outside header structure */}
+        {showDescriptionButton && !isHeaderVisible && (
+          <div className="absolute top-0 left-0 right-0 z-20 pointer-events-none">
+            <div className="max-w-6xl mx-auto px-4 pointer-events-none">
+              <div className={`flex justify-center pt-32 md:pt-24 transition-all duration-300 ease-out pointer-events-none ${
                 isButtonFading ? 'animate-[slideUp_0.3s_ease-out_forwards]' : 'animate-[slideDown_0.3s_ease-out_forwards]'
               }`}>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 pointer-events-auto">
                   <button
                     onClick={handleShowDescription}
                     className="group inline-flex items-center gap-2 px-3 py-1.5 
@@ -308,25 +310,25 @@ const Home: React.FC = () => {
                     <span>What's all about?</span>
                     <ChevronDown size={12} className="group-hover:translate-y-0.5 transition-transform duration-200" />
                   </button>
-                  <button
+          <button 
                     onClick={handleHideDescription}
                     className="p-1.5 text-gray-700 hover:text-gray-500 hover:bg-white/3 rounded-md
                              transition-all duration-200 ease-out"
                     aria-label="Hide button"
-                  >
+          >
                     <X size={12} />
-                  </button>
+          </button>
                 </div>
               </div>
-            )}
+            </div>
           </div>
-        </header>
+        )}
 
         <main className="flex-1 px-4 pb-8">
           <div className="max-w-6xl mx-auto">
             <div className="flex flex-col items-center">
               {/* Movie Card Section */}
-              <div className="w-full mb-8">
+              <div className="w-full">
                 {loadingState === LoadingState.LOADING ? (
                   <MovieCardSkeleton />
                 ) : error ? (
@@ -337,50 +339,6 @@ const Home: React.FC = () => {
                   <PlaceholderMovieCard />
                 )}
               </div>
-
-              {/* Action Button */}
-              <div className="mb-8">
-                <button
-                  onClick={handleGetMovie}
-                  disabled={loadingState === LoadingState.LOADING}
-                  className="group relative bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 
-                           hover:from-indigo-500 hover:via-purple-500 hover:to-pink-500
-                           disabled:from-gray-600 disabled:to-gray-600
-                           text-white font-bold px-8 py-4 rounded-2xl text-lg
-                           shadow-2xl hover:shadow-purple-500/25
-                           transform hover:scale-[1.05] active:scale-[0.95]
-                           transition-all duration-300 ease-out
-                           disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none
-                           min-w-[200px]"
-                >
-                  <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                  <div className="relative flex items-center justify-center gap-3">
-                    {loadingState === LoadingState.LOADING ? (
-                      <>
-                        <div className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                        {filterOptions.tvShowsOnly ? 'Finding Show...' : 'Finding Movie...'}
-                      </>
-                    ) : (
-                      <>
-                        <Sparkles size={24} className="group-hover:rotate-12 transition-transform duration-300" />
-                        {filterOptions.tvShowsOnly ? 'Get Random Show' : 'Get Random Movie'}
-                      </>
-                    )}
-                  </div>
-                </button>
-              </div>
-
-              {/* Stats - Hidden for cleaner UI */}
-              {/* {pickCount > 0 && (
-                <div className="text-center">
-                  <div className="inline-flex items-center gap-2 px-4 py-2 bg-white/10 backdrop-blur-sm rounded-full border border-white/20">
-                    <Shuffle size={16} className="text-purple-400" />
-                    <span className="text-sm font-medium">
-                      {pickCount} movie{pickCount !== 1 ? 's' : ''} discovered
-                    </span>
-                  </div>
-                </div>
-              )} */}
             </div>
           </div>
         </main>
@@ -388,52 +346,52 @@ const Home: React.FC = () => {
         <div ref={bottomRef} />
         
         {/* Footer */}
-        <footer className="mt-auto py-6 px-4 border-t border-white/10 bg-gradient-to-r from-gray-900/50 to-slate-900/50 backdrop-blur-sm">
+        <footer className="mt-auto py-3 md:py-6 px-4 border-t border-white/10 bg-gradient-to-r from-gray-900/50 to-slate-900/50 backdrop-blur-sm">
           <div className="max-w-6xl mx-auto">
-            <div className="flex flex-col md:flex-row items-center justify-between gap-4 text-sm text-gray-400">
-              <div className="flex items-center gap-4">
+            <div className="flex flex-col md:flex-row items-center justify-between gap-2 md:gap-4 text-xs md:text-sm text-gray-400">
+              <div className="flex flex-col md:flex-row items-center gap-1 md:gap-4 text-center md:text-left">
                 <span>© 2025 MovieNightPicker</span>
                 <span className="hidden md:block">•</span>
                 <a
                   href="https://nodeadline.studio"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex items-center gap-1 hover:text-white transition-colors hover:bg-white/5 px-2 py-1 rounded-md"
+                  className="flex items-center gap-1 hover:text-white transition-colors hover:bg-white/5 px-2 py-1 rounded-md text-xs md:text-sm"
                 >
                   <span>by nodeadline.studio</span>
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="md:w-3 md:h-3">
                     <path d="M7 17L17 7M17 7H7M17 7V17"/>
                   </svg>
                 </a>
               </div>
-              <div className="flex items-center gap-4">
-                <button
+              <div className="flex items-center gap-2 md:gap-4 text-xs md:text-sm">
+                <button 
                   onClick={() => window.dispatchEvent(new CustomEvent('show-privacy'))}
                   className="hover:text-white transition-colors hover:bg-white/5 px-2 py-1 rounded-md"
                 >
-                  Privacy Policy
+                  Privacy
                 </button>
-                <span>•</span>
+                <span className="text-gray-600">•</span>
                 <button
                   onClick={() => window.dispatchEvent(new CustomEvent('show-terms'))}
                   className="hover:text-white transition-colors hover:bg-white/5 px-2 py-1 rounded-md"
                 >
-                  Terms of Service
+                  Terms
                 </button>
-              </div>
-            </div>
+          </div>
+        </div>
           </div>
         </footer>
       </div>
 
       {/* Video Ad */}
-      {videoAd.visible && (
-        <VideoAd 
-          onClose={videoAd.close}
-          onError={videoAd.close}
+        {videoAd.visible && (
+          <VideoAd
+            onClose={videoAd.close}
+            onError={videoAd.close}
           enableTestAds={false}
-        />
-      )}
+          />
+        )}
 
       {/* Modals */}
       <CookieConsent />

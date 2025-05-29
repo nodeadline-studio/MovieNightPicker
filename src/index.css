@@ -129,17 +129,17 @@
 }
 
 .custom-scrollbar::-webkit-scrollbar-track {
-  background: rgba(255, 255, 255, 0.05);
+  background: rgba(255, 255, 255, 0.1);
   border-radius: 3px;
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb {
-  background: linear-gradient(to bottom, #6366f1, #8b5cf6);
+  background: rgba(255, 255, 255, 0.3);
   border-radius: 3px;
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: linear-gradient(to bottom, #4f46e5, #7c3aed);
+  background: rgba(255, 255, 255, 0.5);
 }
 
 :root {
@@ -300,36 +300,36 @@ body {
 @keyframes slideIn {
   from {
     opacity: 0;
-    transform: translateY(30px) scale(0.95);
+    transform: scale(0.95) translateY(20px);
   }
   to {
     opacity: 1;
-    transform: translateY(0) scale(1);
+    transform: scale(1) translateY(0);
   }
 }
 
 @keyframes zoomIn {
   from {
-    transform: scale(1);
+    transform: scale(1.1);
   }
   to {
-    transform: scale(1.05);
+    transform: scale(1);
   }
 }
 
 @keyframes glow {
-  0%, 100% {
-    text-shadow: 0 0 20px rgba(255, 255, 255, 0.5);
+  from {
+    text-shadow: 0 0 20px rgba(168, 85, 247, 0.4);
   }
-  50% {
-    text-shadow: 0 0 30px rgba(255, 255, 255, 0.8), 0 0 40px rgba(139, 92, 246, 0.5);
+  to {
+    text-shadow: 0 0 30px rgba(168, 85, 247, 0.8), 0 0 40px rgba(236, 72, 153, 0.4);
   }
 }
 
 @keyframes fadeInUp {
   from {
     opacity: 0;
-    transform: translateY(20px);
+    transform: translateY(10px);
   }
   to {
     opacity: 1;
@@ -340,7 +340,7 @@ body {
 @keyframes slideInRight {
   from {
     opacity: 0;
-    transform: translateX(30px);
+    transform: translateX(20px);
   }
   to {
     opacity: 1;
@@ -412,4 +412,735 @@ input[type="range"]::-moz-range-thumb {
   cursor: pointer;
   border: none;
   box-shadow: none;
+}
+
+/* Line clamp utility */
+.line-clamp-3 {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.line-clamp-4 {
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* Video Ad Animations */
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95) translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes glow {
+  from {
+    text-shadow: 0 0 20px rgba(168, 85, 247, 0.4);
+  }
+  to {
+    text-shadow: 0 0 30px rgba(168, 85, 247, 0.8), 0 0 40px rgba(236, 72, 153, 0.4);
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+@keyframes zoomIn {
+  from {
+    transform: scale(1.1);
+  }
+  to {
+    transform: scale(1);
+  }
+}
+
+/* Video Ad Modal Specific Styles */
+.ad-modal {
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.ad-modal video {
+  object-fit: cover;
+  width: 100% !important;
+  height: 100% !important;
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+}
+
+/* Ensure video is behind content but visible */
+.ad-modal .video-layer {
+  z-index: 0;
+}
+
+.ad-modal .content-layer {
+  z-index: 10;
+}
+
+.ad-modal .controls-layer {
+  z-index: 20;
+}
+
+/* Mobile optimizations for video ad */
+@media (max-width: 768px) {
+  .ad-modal {
+    padding: 0;
+  }
+  
+  .ad-modal video {
+    object-position: center center;
+  }
+  
+  /* Ensure content is readable on mobile */
+  .ad-modal .content-layer {
+    background: linear-gradient(
+      to top,
+      rgba(0, 0, 0, 0.8) 0%,
+      rgba(0, 0, 0, 0.4) 50%,
+      rgba(0, 0, 0, 0.6) 100%
+    );
+  }
+}
+
+/* Desktop optimizations */
+@media (min-width: 769px) {
+  .ad-modal video {
+    object-position: center 30%;
+  }
+}
+
+/* Shimmer effect for text */
+.shimmer-text {
+  background: linear-gradient(
+    90deg,
+    #fbbf24 0%,
+    #f59e0b 25%,
+    #fbbf24 50%,
+    #f59e0b 75%,
+    #fbbf24 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* Pulse animation for badges */
+.pulse-glow {
+  animation: pulse-glow 2s ease-in-out infinite alternate;
+}
+
+@keyframes pulse-glow {
+  from {
+    box-shadow: 0 0 20px rgba(168, 85, 247, 0.4);
+  }
+  to {
+    box-shadow: 0 0 30px rgba(168, 85, 247, 0.8), 0 0 40px rgba(236, 72, 153, 0.4);
+  }
+}
+
+/* Improved button hover effects */
+.ad-button {
+  position: relative;
+  overflow: hidden;
+  transition: all 0.3s ease;
+}
+
+.ad-button::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.2),
+    transparent
+  );
+  transition: left 0.5s ease;
+}
+
+.ad-button:hover::before {
+  left: 100%;
+}
+
+/* Safe area adjustments for mobile */
+@supports (padding: max(0px)) {
+  .mobile-safe-area {
+    padding-bottom: max(1rem, env(safe-area-inset-bottom));
+    padding-left: max(1rem, env(safe-area-inset-left));
+    padding-right: max(1rem, env(safe-area-inset-right));
+  }
+}
+
+/* Video loading state */
+.video-loading {
+  background: linear-gradient(
+    45deg,
+    #1e293b 25%,
+    #334155 25%,
+    #334155 50%,
+    #1e293b 50%,
+    #1e293b 75%,
+    #334155 75%
+  );
+  background-size: 40px 40px;
+  animation: loading-stripes 1s linear infinite;
+}
+
+@keyframes loading-stripes {
+  0% {
+    background-position: 0 0;
+  }
+  100% {
+    background-position: 40px 40px;
+  }
+}
+
+/* Improved focus states for accessibility */
+.ad-modal button:focus {
+  outline: 2px solid #a855f7;
+  outline-offset: 2px;
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .ad-modal {
+    background: black;
+  }
+  
+  .ad-modal .content-layer {
+    background: rgba(0, 0, 0, 0.9);
+  }
+  
+  .ad-modal button {
+    border: 2px solid white;
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  .ad-modal * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Existing animations */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes fadeOut {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+@keyframes slideUp {
+  from { 
+    opacity: 1; 
+    transform: translateY(0); 
+  }
+  to { 
+    opacity: 0; 
+    transform: translateY(-10px); 
+  }
+}
+
+@keyframes slideDown {
+  from { 
+    opacity: 0; 
+    transform: translateY(-10px); 
+  }
+  to { 
+    opacity: 1; 
+    transform: translateY(0); 
+  }
+}
+
+@keyframes slideInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Modern 2025 Animations */
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+@keyframes pulseSlow {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.5s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+.animate-pulse-slow {
+  animation: pulseSlow 3s infinite ease-in-out;
+}
+
+.adsbygoogle {
+  min-height: 100px;   /* avoids CLS on initial paint */
+}
+
+/* Video Ad Modal Styles */
+.ad-modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.9);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+}
+
+.ad-player {
+  min-height: 240px;
+  max-height: min(720px, calc(90vh - 200px));
+}
+
+@keyframes overlayFadeIn {
+  from {
+    backdrop-filter: blur(0px);
+    -webkit-backdrop-filter: blur(0px);
+    background-color: rgba(0, 0, 0, 0);
+  }
+  to {
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    background-color: rgba(0, 0, 0, 0.8);
+  }
+}
+
+/* Custom slider styles */
+.slider {
+  background: linear-gradient(to right, #10b981 0%, #10b981 var(--value, 50%), rgba(255, 255, 255, 0.1) var(--value, 50%), rgba(255, 255, 255, 0.1) 100%);
+}
+
+.slider::-webkit-slider-thumb {
+  appearance: none;
+  height: 16px;
+  width: 16px;
+  border-radius: 50%;
+  background: #ffffff;
+  cursor: pointer;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+  transition: all 0.2s ease;
+}
+
+.slider::-webkit-slider-thumb:hover {
+  transform: scale(1.1);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+}
+
+.slider::-moz-range-thumb {
+  height: 16px;
+  width: 16px;
+  border-radius: 50%;
+  background: #ffffff;
+  cursor: pointer;
+  border: none;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+  transition: all 0.2s ease;
+}
+
+.slider::-moz-range-thumb:hover {
+  transform: scale(1.1);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+}
+
+/* Custom range input styles */
+input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  background: transparent;
+  cursor: pointer;
+}
+
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 12px;
+  width: 12px;
+  border-radius: 50%;
+  background: transparent;
+  cursor: pointer;
+  border: none;
+}
+
+input[type="range"]::-moz-range-thumb {
+  height: 12px;
+  width: 12px;
+  border-radius: 50%;
+  background: transparent;
+  cursor: pointer;
+  border: none;
+  box-shadow: none;
+}
+
+/* Line clamp utility */
+.line-clamp-4 {
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.line-clamp-3 {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* Video Ad Animations */
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95) translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes glow {
+  from {
+    text-shadow: 0 0 20px rgba(168, 85, 247, 0.4);
+  }
+  to {
+    text-shadow: 0 0 30px rgba(168, 85, 247, 0.8), 0 0 40px rgba(236, 72, 153, 0.4);
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+@keyframes zoomIn {
+  from {
+    transform: scale(1.1);
+  }
+  to {
+    transform: scale(1);
+  }
+}
+
+/* Video Ad Modal Specific Styles */
+.ad-modal {
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.ad-modal video {
+  object-fit: cover;
+  width: 100% !important;
+  height: 100% !important;
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+}
+
+/* Ensure video is behind content but visible */
+.ad-modal .video-layer {
+  z-index: 0;
+}
+
+.ad-modal .content-layer {
+  z-index: 10;
+}
+
+.ad-modal .controls-layer {
+  z-index: 20;
+}
+
+/* Mobile optimizations for video ad */
+@media (max-width: 768px) {
+  .ad-modal {
+    padding: 0;
+  }
+  
+  .ad-modal video {
+    object-position: center center;
+  }
+  
+  /* Ensure content is readable on mobile */
+  .ad-modal .content-layer {
+    background: linear-gradient(
+      to top,
+      rgba(0, 0, 0, 0.8) 0%,
+      rgba(0, 0, 0, 0.4) 50%,
+      rgba(0, 0, 0, 0.6) 100%
+    );
+  }
+}
+
+/* Desktop optimizations */
+@media (min-width: 769px) {
+  .ad-modal video {
+    object-position: center 30%;
+  }
+}
+
+/* Shimmer effect for text */
+.shimmer-text {
+  background: linear-gradient(
+    90deg,
+    #fbbf24 0%,
+    #f59e0b 25%,
+    #fbbf24 50%,
+    #f59e0b 75%,
+    #fbbf24 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* Pulse animation for badges */
+.pulse-glow {
+  animation: pulse-glow 2s ease-in-out infinite alternate;
+}
+
+@keyframes pulse-glow {
+  from {
+    box-shadow: 0 0 20px rgba(168, 85, 247, 0.4);
+  }
+  to {
+    box-shadow: 0 0 30px rgba(168, 85, 247, 0.8), 0 0 40px rgba(236, 72, 153, 0.4);
+  }
+}
+
+/* Improved button hover effects */
+.ad-button {
+  position: relative;
+  overflow: hidden;
+  transition: all 0.3s ease;
+}
+
+.ad-button::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.2),
+    transparent
+  );
+  transition: left 0.5s ease;
+}
+
+.ad-button:hover::before {
+  left: 100%;
+}
+
+/* Safe area adjustments for mobile */
+@supports (padding: max(0px)) {
+  .mobile-safe-area {
+    padding-bottom: max(1rem, env(safe-area-inset-bottom));
+    padding-left: max(1rem, env(safe-area-inset-left));
+    padding-right: max(1rem, env(safe-area-inset-right));
+  }
+}
+
+/* Video loading state */
+.video-loading {
+  background: linear-gradient(
+    45deg,
+    #1e293b 25%,
+    #334155 25%,
+    #334155 50%,
+    #1e293b 50%,
+    #1e293b 75%,
+    #334155 75%
+  );
+  background-size: 40px 40px;
+  animation: loading-stripes 1s linear infinite;
+}
+
+@keyframes loading-stripes {
+  0% {
+    background-position: 0 0;
+  }
+  100% {
+    background-position: 40px 40px;
+  }
+}
+
+/* Improved focus states for accessibility */
+.ad-modal button:focus {
+  outline: 2px solid #a855f7;
+  outline-offset: 2px;
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .ad-modal {
+    background: black;
+  }
+  
+  .ad-modal .content-layer {
+    background: rgba(0, 0, 0, 0.9);
+  }
+  
+  .ad-modal button {
+    border: 2px solid white;
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  .ad-modal * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Existing animations */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes fadeOut {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+@keyframes slideUp {
+  from { 
+    opacity: 1; 
+    transform: translateY(0); 
+  }
+  to { 
+    opacity: 0; 
+    transform: translateY(-10px); 
+  }
+}
+
+@keyframes slideDown {
+  from { 
+    opacity: 0; 
+    transform: translateY(-10px); 
+  }
+  to { 
+    opacity: 1; 
+    transform: translateY(0); 
+  }
+}
+
+@keyframes slideInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }

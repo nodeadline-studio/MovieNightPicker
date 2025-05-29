@@ -22,7 +22,6 @@ export interface FilterOptions {
   yearFrom: number;
   yearTo: number;
   ratingFrom: number;
-  maxRuntime: number;
   inTheatersOnly: boolean;
   includeAdult: boolean;
   tvShowsOnly: boolean;

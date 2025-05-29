@@ -13,13 +13,11 @@ interface MovieContextType {
   loadingState: LoadingState;
   filterOptions: FilterOptions;
   error: string | null;
-  isRandomizerEnabled: boolean;
   getRandomMovie: () => Promise<void>;
   getRandomMovieSafe: () => Promise<void>;
   addToWatchlist: (movie: Movie) => void;
   removeFromWatchlist: (id: number) => void;
   updateFilterOptions: (options: Partial<FilterOptions>) => void;
-  setIsRandomizerEnabled: (enabled: boolean) => void;
   applyRandomFilters: () => void;
   resetPickCount: () => void;
   setPickCount: React.Dispatch<React.SetStateAction<number>>;
@@ -32,7 +30,6 @@ const DEFAULT_FILTER_OPTIONS: FilterOptions = {
   yearFrom: 1990,
   yearTo: new Date().getFullYear(),
   ratingFrom: 6,
-  maxRuntime: 150,
   inTheatersOnly: false,
   includeAdult: true,
   tvShowsOnly: false,
@@ -47,7 +44,6 @@ export const MovieProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [loadingState, setLoadingState] = useState<LoadingState>(LoadingState.IDLE);
   const [filterOptions, setFilterOptions] = useState<FilterOptions>(DEFAULT_FILTER_OPTIONS);
   const [error, setError] = useState<string | null>(null);
-  const [isRandomizerEnabled, setIsRandomizerEnabled] = useState<boolean>(false);
 
   // Fetch genres
   const { data: genres = [] } = useQuery({
@@ -166,14 +162,12 @@ export const MovieProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     const yearTo = Math.min(selectedPeriod.to, currentYear);
     
     const rating = Math.floor(Math.random() * 2.5) + 5.5; // 5.5-8.0 для большего разнообразия
-    const runtime = Math.floor(Math.random() * 120) + 80; // 80-200 minutes
     
     const newFilters = {
       genres: randomGenres,
       yearFrom,
       yearTo,
       ratingFrom: rating,
-      maxRuntime: runtime,
       inTheatersOnly: false,
       includeAdult: true,
       tvShowsOnly: false
@@ -191,10 +185,10 @@ export const MovieProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     movieCache.clearSuspiciousMovies(); // Clear any cached movies with suspicious ratings
     
     // Apply random filters if randomizer is enabled BEFORE making the API call
-    if (isRandomizerEnabled) {
-      applyRandomFilters(); // Теперь просто вызываем функцию, она сама обновит фильтры
-      // Используем текущие фильтры после обновления
-    }
+    // if (isRandomizerEnabled) {
+    //   applyRandomFilters(); // Теперь просто вызываем функцию, она сама обновит фильтры
+    //   // Используем текущие фильтры после обновления
+    // }
     
     try {
       // Use current filters (they were updated by applyRandomFilters if needed)
@@ -208,27 +202,21 @@ export const MovieProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       setLoadingState(LoadingState.ERROR);
       throw e; // Let the component handle the error
     }
-  }, [filterOptions, isRandomizerEnabled, applyRandomFilters])
+  }, [filterOptions, applyRandomFilters]);
 
   const getRandomMovieSafe = useCallback(async () => {
     setLoadingState(LoadingState.LOADING);
     setError(null);
-    movieCache.clear();
-    movieCache.clearSuspiciousMovies();
     
-    // Apply random filters if randomizer is enabled
-    if (isRandomizerEnabled) {
-      applyRandomFilters(); // Теперь просто вызываем функцию, она сама обновит фильтры
-    }
-    
-    // Always use safe filters for the main button (no adult content)
-    const safeFilters = {
-      ...filterOptions,
-      includeAdult: false // Force safe content for main button
-    };
+    // Apply random filters if randomizer is enabled BEFORE making the API call
+    // if (isRandomizerEnabled) {
+    //   applyRandomFilters(); // Теперь просто вызываем функцию, она сама обновит фильтры
+    //   // Используем текущие фильтры после обновления
+    // }
     
     try {
-      const movie = await fetchRandomMovie(safeFilters);
+      // Use current filters (they were updated by applyRandomFilters if needed)
+      const movie = await fetchRandomMovie(filterOptions);
       setCurrentMovie(movie);
       setLoadingState(LoadingState.SUCCESS);
       setPickCount(prev => prev + 1);
@@ -236,9 +224,9 @@ export const MovieProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       const errorMessage = (e as Error).message;
       setError(errorMessage);
       setLoadingState(LoadingState.ERROR);
-      throw e;
+      console.error('Error getting random movie:', errorMessage);
     }
-  }, [filterOptions, isRandomizerEnabled, applyRandomFilters])
+  }, [filterOptions, applyRandomFilters]);
 
   const addToWatchlist = useCallback((movie: Movie) => {
     setWatchlist((prev) => {
@@ -308,13 +296,11 @@ export const MovieProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         loadingState,
         filterOptions,
         error,
-        isRandomizerEnabled,
         getRandomMovie,
         getRandomMovieSafe,
         addToWatchlist,
         removeFromWatchlist,
         updateFilterOptions,
-        setIsRandomizerEnabled,
         applyRandomFilters,
         resetPickCount,
         setPickCount,

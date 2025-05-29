@@ -1,5 +1,5 @@
-import React, { useEffect, useRef, useState } from 'react';
-import { X, Play, Sparkles, Zap, ArrowRight } from 'lucide-react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
+import { X, Play, Sparkles, Zap, ArrowRight, Star, Download, Clock } from 'lucide-react';
 import Button from './ui/Button';
 import * as gtag from '../utils/gtag';
 
@@ -13,277 +13,278 @@ interface VideoAdProps {
 const VideoAd: React.FC<VideoAdProps> = ({ onClose, onError, enableTestAds = true, mockMode = false }) => {
   const [remainingTime, setRemainingTime] = useState(15);
   const [canSkip, setCanSkip] = useState(false);
-  const [isVideoLoaded, setIsVideoLoaded] = useState(false);
   const [startTime] = useState(Date.now());
   const [watchedTime, setWatchedTime] = useState(0);
   const [contentVisible, setContentVisible] = useState(false);
   const [featuresVisible, setFeaturesVisible] = useState(false);
-  const timersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
+  const [isMobile, setIsMobile] = useState(false);
+  const [isHovered, setIsHovered] = useState(false);
+  const [showPlayButton, setShowPlayButton] = useState(false);
+  
   const videoRef = useRef<HTMLVideoElement>(null);
+  const intervalRef = useRef<number>();
+  const onCloseRef = useRef(onClose);
+  const onErrorRef = useRef(onError);
+
+  // Update refs when props change
+  useEffect(() => {
+    onCloseRef.current = onClose;
+    onErrorRef.current = onError;
+  }, [onClose, onError]);
+
+  const handleClose = useCallback(() => {
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+    }
+    onCloseRef.current();
+  }, []);
+
+  const handleError = useCallback(() => {
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+    }
+    onErrorRef.current();
+  }, []);
 
   useEffect(() => {
-    // Start countdown timer
-    const timer = setInterval(() => {
-      setRemainingTime(prev => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+
+  useEffect(() => {
+    // Show content with staggered animation
+    const timer1 = setTimeout(() => setContentVisible(true), 300);
+    const timer2 = setTimeout(() => setFeaturesVisible(true), 600);
+    
+    return () => {
+      clearTimeout(timer1);
+      clearTimeout(timer2);
+    };
+  }, []);
+
+  useEffect(() => {
+    intervalRef.current = window.setInterval(() => {
+      setRemainingTime((prev) => {
         const newTime = prev - 1;
-        setWatchedTime(15 - newTime);
-        
-        // Can skip after 5 seconds
         if (newTime <= 10) {
           setCanSkip(true);
         }
-        
-        // Auto close after 15 seconds
         if (newTime <= 0) {
-          clearInterval(timer);
-          onClose();
+          handleClose();
           return 0;
         }
         return newTime;
       });
+      
+      setWatchedTime((Date.now() - startTime) / 1000);
     }, 1000);
-    
-    timersRef.current.push(timer);
-
-    // Auto-play video when loaded
-    if (videoRef.current) {
-      videoRef.current.play().catch(() => {
-        // Fallback if autoplay fails
-        setIsVideoLoaded(false);
-      });
-    }
-
-    // Staggered content animations
-    setTimeout(() => setContentVisible(true), 500);
-    setTimeout(() => setFeaturesVisible(true), 1000);
 
     return () => {
-      // Clear all timers
-      timersRef.current.forEach(clearInterval);
-      timersRef.current = [];
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
     };
-  }, [onClose]);
+  }, [startTime, handleClose]);
 
-  const handleSkip = () => {
-    if (watchedTime >= 15) {
-      gtag.trackVideoAdView(15);
-    } else {
-      gtag.trackVideoAdSkip(watchedTime);
-    }
-    onClose();
-  };
-
-  const handleVisitSite = () => {
-    window.open('https://www.genstockvideo.com', '_blank', 'noopener,noreferrer');
+  const handleVideoClick = () => {
     gtag.trackVideoAdClick();
-    onClose();
+    window.open('https://genstockvideo.com', '_blank');
   };
 
-  const handleVideoLoad = () => {
-    setIsVideoLoaded(true);
+  const handleCtaClick = () => {
+    gtag.trackVideoAdClick();
+    window.open('https://genstockvideo.com', '_blank');
   };
 
   const handleVideoError = () => {
-    setIsVideoLoaded(false);
+    console.error('Video failed to load');
+    setShowPlayButton(true);
+  };
+
+  const handleVideoLoad = () => {
+    setShowPlayButton(false);
+  };
+
+  const getVideoSource = () => {
+    return isMobile ? '/ad_preview_mobile.mp4' : '/ad_preview_optimized.mp4';
   };
 
   return (
-    <div className="fixed inset-0 bg-black/95 z-50 flex items-center justify-center ad-modal backdrop-blur-sm">
-      <div className="w-full max-w-[95vw] md:max-w-5xl bg-gradient-to-br from-slate-900/98 via-gray-900/98 to-slate-800/98 
-                     backdrop-blur-2xl border border-white/20 rounded-3xl overflow-hidden shadow-2xl
-                     ring-1 ring-white/10 animate-[slideIn_0.4s_ease-out]">
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-2 md:p-4">
+      {/* Backdrop */}
+      <div 
+        className="absolute inset-0 bg-black/80 backdrop-blur-sm"
+        onClick={canSkip ? handleClose : undefined}
+      />
+      
+      {/* Ad Container */}
+      <div className={`
+        relative w-full max-w-sm md:max-w-4xl mx-auto
+        ${isMobile 
+          ? 'flex flex-col h-[85vh] max-h-[600px]' 
+          : 'flex flex-row h-[70vh] max-h-[500px]'
+        }
+        bg-gradient-to-br from-gray-900 via-slate-900 to-gray-900
+        rounded-2xl md:rounded-3xl overflow-hidden
+        shadow-2xl border border-white/10
+        transform transition-all duration-500 ease-out
+        ${contentVisible ? 'scale-100 opacity-100' : 'scale-95 opacity-0'}
+      `}>
         
-        {/* Header */}
-        <div className="p-4 md:p-6 border-b border-white/10 bg-gradient-to-r from-purple-600/10 via-pink-600/10 to-blue-600/10">
-          <div className="flex flex-col md:flex-row gap-3 md:gap-4 items-start md:items-center">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-gradient-to-r from-purple-500 to-pink-500 rounded-xl animate-pulse">
-                <Play size={20} className="text-white" />
+        {/* Skip Button */}
+        {canSkip && (
+          <button
+            onClick={handleClose}
+            className="absolute top-3 right-3 z-50 p-2 bg-black/50 hover:bg-black/70 
+                     rounded-full text-white transition-all duration-200 backdrop-blur-sm
+                     hover:scale-110 active:scale-95"
+            aria-label="Skip ad"
+          >
+            <X size={16} />
+          </button>
+        )}
+
+        {/* Skip Timer */}
+        {!canSkip && (
+          <div className="absolute top-3 right-3 z-50 px-3 py-1.5 bg-black/60 backdrop-blur-sm
+                        rounded-full text-white text-xs font-medium border border-white/20">
+            Skip in {remainingTime}s
+          </div>
+        )}
+
+        {/* Video Section */}
+        <div className={`
+          relative overflow-hidden
+          ${isMobile 
+            ? 'flex-1 min-h-0' 
+            : 'w-3/5 h-full'
+          }
+        `}>
+          <div 
+            className="relative w-full h-full cursor-pointer group"
+            onClick={handleVideoClick}
+            onMouseEnter={() => setIsHovered(true)}
+            onMouseLeave={() => setIsHovered(false)}
+          >
+            <video
+              ref={videoRef}
+              className="w-full h-full object-cover"
+              autoPlay
+              muted
+              loop
+              playsInline
+              poster="/ad_preview_poster.jpg"
+              onError={handleVideoError}
+              onLoadedData={handleVideoLoad}
+            >
+              <source src={getVideoSource()} type="video/mp4" />
+            </video>
+            
+            {/* Video Overlay */}
+            <div className={`
+              absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-black/20
+              transition-opacity duration-300
+              ${isHovered ? 'opacity-100' : 'opacity-60'}
+            `} />
+            
+            {/* Play Button Overlay */}
+            {(showPlayButton || isHovered) && (
+              <div className="absolute inset-0 flex items-center justify-center">
+                <div className={`
+                  p-4 bg-white/20 backdrop-blur-sm rounded-full
+                  transform transition-all duration-300
+                  ${isHovered ? 'scale-110 bg-white/30' : 'scale-100'}
+                `}>
+                  <Play size={32} className="text-white ml-1" fill="currentColor" />
+                </div>
               </div>
-              <h3 className="text-lg md:text-xl font-bold text-white">Premium Content</h3>
-            </div>
-            <div className="flex items-center gap-2 text-sm text-gray-300">
-              <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-              <span>Your movie will be shown after this short ad</span>
+            )}
+
+            {/* Premium Badge */}
+            <div className="absolute top-4 left-4">
+              <div className="flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-yellow-500 to-orange-500 
+                            rounded-full text-black text-xs font-bold shadow-lg">
+                <Sparkles size={12} />
+                <span>PREMIUM STOCK VIDEOS</span>
+                <Sparkles size={12} />
+              </div>
             </div>
           </div>
         </div>
-        
-        {/* Ad Content */}
-        <div className="relative w-full aspect-video bg-black overflow-hidden">
-          {/* Video Background Layer - More Prominent */}
-          <div className="absolute inset-0 z-0">
-              <video
-                ref={videoRef}
-              className="w-full h-full object-cover scale-105 animate-[zoomIn_0.6s_ease-out]"
-                autoPlay
-                muted
-              loop
-                playsInline
-              onLoadedData={handleVideoLoad}
-              onError={handleVideoError}
+
+        {/* Content Section */}
+        <div className={`
+          ${isMobile 
+            ? 'p-4 bg-gradient-to-t from-gray-900 via-slate-900 to-transparent' 
+            : 'w-2/5 p-6 flex flex-col justify-center'
+          }
+          relative
+        `}>
+          <div className={`
+            transform transition-all duration-700 ease-out
+            ${contentVisible ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0'}
+          `}>
+            {/* Brand */}
+            <div className="mb-4">
+              <h2 className="text-2xl md:text-3xl font-bold text-white mb-2">
+                GenStockVideo
+              </h2>
+              <div className="flex items-center gap-2 text-yellow-400 mb-2">
+                <Zap size={16} />
+                <span className="text-sm font-semibold">Professional 4K Videos</span>
+              </div>
+            </div>
+
+            {/* Description */}
+            <p className="text-gray-300 text-sm md:text-base mb-4 leading-relaxed">
+              Transform your creative projects with premium stock footage
+            </p>
+
+            {/* Features */}
+            <div className={`
+              grid grid-cols-2 gap-2 mb-6
+              transform transition-all duration-700 ease-out delay-300
+              ${featuresVisible ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0'}
+            `}>
+              <div className="flex items-center gap-2 text-xs text-gray-400">
+                <Star size={12} className="text-yellow-500" />
+                <span>4K Quality</span>
+              </div>
+              <div className="flex items-center gap-2 text-xs text-gray-400">
+                <Download size={12} className="text-green-500" />
+                <span>Instant Download</span>
+              </div>
+              <div className="flex items-center gap-2 text-xs text-gray-400">
+                <Clock size={12} className="text-blue-500" />
+                <span>Commercial License</span>
+              </div>
+              <div className="flex items-center gap-2 text-xs text-gray-400">
+                <Sparkles size={12} className="text-purple-500" />
+                <span>Creative Freedom</span>
+              </div>
+            </div>
+
+            {/* CTA Button */}
+            <button
+              onClick={handleCtaClick}
+              className="w-full group bg-gradient-to-r from-purple-600 via-violet-600 to-purple-700
+                       hover:from-purple-500 hover:via-violet-500 hover:to-purple-600
+                       text-white font-semibold py-3 px-6 rounded-xl
+                       shadow-lg hover:shadow-xl hover:shadow-purple-500/25
+                       transform hover:scale-[1.02] active:scale-[0.98]
+                       transition-all duration-200 ease-out
+                       flex items-center justify-center gap-2
+                       border border-white/10 hover:border-white/20"
             >
-              <source src="/ad_preview.mp4" type="video/mp4" />
-            </video>
-            {/* Video overlay for better text visibility */}
-            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-black/60" />
-          </div>
-
-          {/* Main Content Overlay */}
-          <div className="absolute inset-0 z-20 flex flex-col justify-center items-center p-6 md:p-8">
-            
-            {/* Animated Badge */}
-            <div className={`mb-6 transition-all duration-700 ease-out ${
-              contentVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
-            }`}>
-              <div className="relative">
-                <div className="absolute -inset-1 bg-gradient-to-r from-yellow-400 via-orange-500 to-red-500 rounded-full blur opacity-75 animate-pulse"></div>
-                <div className="relative px-6 py-3 bg-gradient-to-r from-yellow-400 to-orange-500 rounded-full">
-                  <span className="text-black font-bold text-sm md:text-base tracking-wide flex items-center gap-2">
-                    <Sparkles size={16} className="animate-spin" />
-                    PREMIUM STOCK VIDEOS
-                    <Zap size={16} className="animate-bounce" />
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            {/* Main Title with Enhanced Animation */}
-            <div className={`text-center mb-8 transition-all duration-700 ease-out delay-200 ${
-              contentVisible ? 'opacity-100 translate-y-0 scale-100' : 'opacity-0 translate-y-6 scale-95'
-            }`}>
-              <div className="relative bg-black/90 backdrop-blur-xl rounded-3xl p-6 md:p-8 border border-white/20 shadow-2xl">
-                <div className="absolute -inset-1 bg-gradient-to-r from-purple-600 via-pink-600 to-blue-600 rounded-3xl blur opacity-30 animate-pulse"></div>
-                <div className="relative">
-                  <h2 className="text-4xl md:text-6xl font-black text-transparent bg-clip-text bg-gradient-to-r from-white via-purple-200 to-pink-200 mb-4 tracking-tight animate-[glow_2s_ease-in-out_infinite_alternate]">
-                    GenStockVideo
-                  </h2>
-                  <p className="text-xl md:text-3xl text-yellow-400 font-bold mb-4 animate-[shimmer_1.5s_ease-in-out_infinite]">
-                    🎬 Professional 4K Videos
-                  </p>
-                  <p className="text-gray-200 text-lg md:text-xl max-w-2xl mx-auto leading-relaxed">
-                    Transform your creative projects with premium stock footage
-                  </p>
-                </div>
-              </div>
-            </div>
-            
-            {/* Enhanced Call to Action */}
-            <div className={`relative mb-6 transition-all duration-700 ease-out delay-400 ${
-              contentVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
-            }`}>
-              <Button
-                variant="primary"
-                size="lg"
-                onClick={handleVisitSite}
-                className="relative bg-gradient-to-r from-purple-600 via-pink-600 to-blue-600 
-                         hover:from-purple-500 hover:via-pink-500 hover:to-blue-500
-                         text-white font-bold px-8 md:px-12 py-4 md:py-5 rounded-2xl text-lg md:text-xl
-                         transform hover:scale-110 transition-all duration-300
-                         shadow-2xl border-2 border-white/30 hover:border-white/50
-                         animate-[bounce_2s_infinite] hover:animate-none"
-              >
-                <span className="flex items-center gap-3">
-                  <Sparkles size={24} className="animate-spin" />
-                  Visit GenStockVideo.com
-                  <ArrowRight size={24} className="group-hover:translate-x-1 transition-transform" />
-                </span>
-              </Button>
-            </div>
-
-            {/* Enhanced Features Grid */}
-            <div className={`grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 text-sm md:text-base transition-all duration-700 ease-out delay-600 ${
-              featuresVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
-            }`}>
-              {[
-                { icon: '🎥', text: '4K Quality', delay: '0ms' },
-                { icon: '📄', text: 'Commercial License', delay: '100ms' },
-                { icon: '⚡', text: 'Instant Download', delay: '200ms' },
-                { icon: '🎨', text: 'Creative Freedom', delay: '300ms' }
-              ].map((feature, index) => (
-                <div 
-                  key={index}
-                  className="bg-white/10 backdrop-blur-sm px-3 md:px-4 py-2 md:py-3 rounded-xl text-white border border-white/20 
-                           hover:bg-white/20 transition-all duration-300 hover:scale-105 cursor-pointer
-                           animate-[fadeInUp_0.6s_ease-out] hover:shadow-lg hover:shadow-purple-500/25"
-                  style={{ animationDelay: feature.delay }}
-                >
-                  <span className="text-lg md:text-xl mr-2">{feature.icon}</span>
-                  <span className="font-medium">{feature.text}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Fallback Content Layer */}
-          {!isVideoLoaded && (
-            <div className="absolute inset-0 z-30 bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 flex items-center justify-center">
-              <div className="text-center p-8 animate-[fadeIn_0.5s_ease-out]">
-                <div className="mb-8">
-                  <div className="w-24 h-24 bg-gradient-to-r from-purple-500 to-blue-500 rounded-full mx-auto mb-6 flex items-center justify-center animate-[pulse_2s_infinite]">
-                    <Play size={40} className="text-white ml-1" />
-                  </div>
-                  <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">GenStockVideo</h2>
-                  <p className="text-xl text-gray-200 mb-4">Premium Stock Videos</p>
-                  <p className="text-gray-300 max-w-md mx-auto">
-                    Professional quality videos for your creative projects
-                  </p>
-                </div>
-                
-                <Button
-                  variant="primary"
-                  size="lg"
-                  onClick={handleVisitSite}
-                  className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 
-                           text-white font-semibold px-8 py-3 rounded-2xl transform hover:scale-105 transition-all duration-200
-                           shadow-lg hover:shadow-xl"
-                >
-                  Visit GenStockVideo.com
-                </Button>
-                </div>
-            </div>
-          )}
-
-          {/* Controls Layer */}
-          <div className="absolute inset-0 z-40">
-            {/* Skip button */}
-            {canSkip ? (
-              <button
-                onClick={handleSkip}
-                className="absolute bottom-4 right-4 bg-black/95 hover:bg-black text-white font-bold px-6 py-3 rounded-xl 
-                         transition-all duration-200 border-2 border-white/40 hover:border-white/60
-                         shadow-2xl backdrop-blur-sm text-lg hover:scale-105 animate-[slideInRight_0.3s_ease-out]"
-              >
-                {watchedTime >= 15 ? 'Close Ad' : 'Skip Ad'}
-              </button>
-            ) : (
-              <div className="absolute bottom-4 right-4 bg-black/95 backdrop-blur-sm px-4 py-3 rounded-xl text-white border-2 border-white/40 shadow-2xl">
-                <div className="text-sm font-medium">Skip in {remainingTime - 10}s</div>
-                </div>
-              )}
-
-            {/* Close button */}
-            {canSkip && (
-              <button
-                onClick={handleSkip}
-                className="absolute top-4 right-4 text-white hover:text-gray-200 transition-colors
-                         bg-black/80 hover:bg-black/95 rounded-full p-3 backdrop-blur-sm
-                         shadow-2xl border-2 border-white/30 hover:border-white/50 hover:scale-110
-                         animate-[slideInRight_0.3s_ease-out]"
-              >
-                <X size={24} />
-              </button>
-            )}
-
-            {/* Enhanced Progress Bar */}
-            <div className="absolute bottom-0 left-0 right-0 h-2 bg-white/20">
-              <div 
-                className="h-full bg-gradient-to-r from-purple-500 via-pink-500 to-blue-500 transition-all duration-1000 ease-linear relative overflow-hidden"
-                style={{ width: `${((15 - remainingTime) / 15) * 100}%` }}
-              >
-                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent animate-[shimmer_1s_ease-in-out_infinite]"></div>
-              </div>
-            </div>
+              <Sparkles size={16} />
+              <span>Visit GenStockVideo.com</span>
+              <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform duration-200" />
+            </button>
           </div>
         </div>
       </div>

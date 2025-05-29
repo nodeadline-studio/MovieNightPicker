@@ -52,8 +52,8 @@ export async function fetchRandomMovie(options: FilterOptions): Promise<Movie | 
     
     // 3. Умеренно смягченные фильтры
     {
-      ...options,
-      ratingFrom: Math.max(0, options.ratingFrom - 1),
+        ...options,
+        ratingFrom: Math.max(0, options.ratingFrom - 1),
       yearFrom: Math.max(1950, options.yearFrom - 10),
       yearTo: Math.min(new Date().getFullYear(), options.yearTo + 10),
       maxRuntime: Math.min(240, options.maxRuntime + 60)
@@ -71,7 +71,7 @@ export async function fetchRandomMovie(options: FilterOptions): Promise<Movie | 
     
     // 5. Минимальные фильтры (гарантированный результат)
     {
-      ...options,
+          ...options,
       genres: [],
       ratingFrom: 0,
       yearFrom: 1950,
@@ -113,7 +113,7 @@ export async function fetchRandomMovie(options: FilterOptions): Promise<Movie | 
       includeAdult: true,
       tvShowsOnly: false
     });
-  } catch (finalError) {
+        } catch (finalError) {
     throw new Error('Unable to find any movies. Please check your internet connection.');
   }
 }
@@ -220,9 +220,9 @@ async function attemptFetch(options: FilterOptions, watchlist: WatchlistMovie[] 
     const title = isTV ? (movie.name || movie.original_name) : movie.title;
     
     return movie && 
-      movie.id && 
+    movie.id && 
       title && 
-      movie.poster_path &&
+    movie.poster_path &&
       movie.vote_average >= normalizedOptions.ratingFrom && 
       movie.vote_average < 10.0 && // Exclude movies with perfect 10.0 rating (usually fake/removed)
       movie.vote_count >= (isTV ? 25 : 100) && // Lower threshold for TV shows
@@ -365,14 +365,14 @@ export async function fetchGenres(): Promise<Genre[]> {
   } catch (error) {
     console.error('Error fetching genres:', error);
     // Fallback to just movie genres if TV genres fail
-    const response = await fetch(ENDPOINTS.GENRES, { headers });
-    const data = await response.json();
-    
-    if (!response.ok) {
-      throw new Error('Failed to fetch genres');
-    }
-    
-    return data.genres;
+  const response = await fetch(ENDPOINTS.GENRES, { headers });
+  const data = await response.json();
+  
+  if (!response.ok) {
+    throw new Error('Failed to fetch genres');
+  }
+  
+  return data.genres;
   }
 }
 
