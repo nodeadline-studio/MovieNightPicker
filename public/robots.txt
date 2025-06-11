@@ -1,9 +1,11 @@
-# MovieNightPicker robots.txt
+# MovieNightPicker robots.txt - 2025 SEO Optimized
 User-agent: *
 Allow: /
 Disallow: /api/
 Disallow: /admin/
 Disallow: /private/
+Disallow: /tests/
+Disallow: /docs/
 
 # Crawl-delay to prevent server overload
 Crawl-delay: 1
@@ -17,5 +19,25 @@ User-agent: Bingbot
 Allow: /
 Crawl-delay: 1
 
+# Social media bots
+User-agent: facebookexternalhit
+Allow: /
+
+User-agent: Twitterbot
+Allow: /
+
+User-agent: LinkedInBot
+Allow: /
+
+# SEO crawler bots
+User-agent: AhrefsBot
+Allow: /
+
+User-agent: SemrushBot
+Allow: /
+
 # Sitemap location
 Sitemap: https://movienightpicker.com/sitemap.xml
+
+# Host directive
+Host: https://movienightpicker.com

@@ -6,12 +6,13 @@
         http://www.sitemaps.org/schemas/sitemap/0.9/sitemap.xsd">
   <url>
     <loc>https://movienightpicker.com/</loc>
-    <lastmod>2024-12-19</lastmod>
+    <lastmod>2025-01-22</lastmod>
     <changefreq>daily</changefreq>
     <priority>1.0</priority>
     <image:image>
       <image:loc>https://movienightpicker.com/og-image.jpg</image:loc>
-      <image:title>MovieNightPicker - Find Your Perfect Movie</image:title>
+      <image:title>Random Movie Generator - What to Watch Tonight</image:title>
+      <image:caption>Free AI-powered movie picker with 50,000+ films. Perfect for finding random movies when you can't decide what to watch.</image:caption>
     </image:image>
   </url>
 
