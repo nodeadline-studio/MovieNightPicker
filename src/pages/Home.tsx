@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { useMediaQuery } from 'react-responsive';
 import { Film, Zap, Shuffle, Sparkles, ChevronDown, X } from 'lucide-react'; 
 import { useMovieContext } from '../context/MovieContext';
@@ -106,26 +106,26 @@ const Home: React.FC = () => {
   // Preload video ad in background
   useVideoPreload('/ad_preview.mp4');
 
+  const handleInitialLoad = useCallback(async () => {
+    setHasUserInteracted(true);
+    
+    try {
+      await getRandomMovieSafe();
+      if (currentMovie) {
+        analytics.setLastMovie(currentMovie.id);
+        gtag.trackMoviePick(currentMovie.id, currentMovie.title);
+      }
+    } catch (error) {
+      console.error('Failed to get initial movie:', error);
+    }
+  }, [getRandomMovieSafe, currentMovie]);
+
   useEffect(() => {
     if (!isLoadingGenres && !isInitialLoading && !hasInitiallyLoaded) {
       setHasInitiallyLoaded(true);
       handleInitialLoad();
     }
-  }, [isLoadingGenres, isInitialLoading, hasInitiallyLoaded]);
-
-  const handleInitialLoad = async () => {
-    setHasUserInteracted(true);
-    
-      try {
-      await getRandomMovieSafe();
-        if (currentMovie) {
-          analytics.setLastMovie(currentMovie.id);
-        gtag.trackMoviePick(currentMovie.id, currentMovie.title);
-        }
-      } catch (error) {
-        console.error('Failed to get initial movie:', error);
-    }
-  };
+  }, [isLoadingGenres, isInitialLoading, hasInitiallyLoaded, handleInitialLoad]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -192,24 +192,8 @@ const Home: React.FC = () => {
     }
   }, [isHeaderVisible, isManuallyOpened]);
 
-  useEffect(() => {
-    if (!bottomRef.current) return;
-    const io = new IntersectionObserver(
-      ([e]) => e.isIntersecting && io.disconnect(),
-      { threshold: 0.1 }
-    );
-    io.observe(bottomRef.current);
-  }, []);
-
-  if (isInitialLoading || isLoadingGenres) {
-    return <LoadingOverlay message="Loading Movie Picker..." />;
-  }
-
-  const isInWatchlist = currentMovie 
-    ? watchlist.some((movie) => movie.id === currentMovie.id)
-    : false;
-
-  const handleGetMovie = () => {
+  // All handlers defined before any conditional returns
+  const handleGetMovie = useCallback(() => {
     setHasUserInteracted(true);
     pickCounter.inc();
     
@@ -223,22 +207,40 @@ const Home: React.FC = () => {
         })
         .catch(console.error);
     }
-  };
+  }, [pickCounter, videoAd.visible, getRandomMovieSafe, currentMovie]);
 
-  const handleShowDescription = () => {
+  const handleShowDescription = useCallback(() => {
     setShowDescriptionButton(false);
     setIsHeaderVisible(true);
     setIsDescriptionFading(false);
     setIsManuallyOpened(true);
-  };
+  }, []);
 
-  const handleHideDescription = () => {
+  const handleHideDescription = useCallback(() => {
     setIsButtonFading(true);
     setTimeout(() => {
       setShowDescriptionButton(false);
       setIsButtonFading(false);
     }, 300);
-  };
+  }, []);
+
+  useEffect(() => {
+    if (!bottomRef.current) return;
+    const io = new IntersectionObserver(
+      ([e]) => e.isIntersecting && io.disconnect(),
+      { threshold: 0.1 }
+    );
+    io.observe(bottomRef.current);
+  }, []);
+
+  // Early return after all hooks are defined
+  if (isInitialLoading || isLoadingGenres) {
+    return <LoadingOverlay message="Loading Movie Picker..." />;
+  }
+
+  const isInWatchlist = currentMovie 
+    ? watchlist.some((movie) => movie.id === currentMovie.id)
+    : false;
 
   return (
     <div className="min-h-screen bg-gray-950 text-white flex flex-col relative overflow-hidden" itemScope itemType="https://schema.org/WebApplication">

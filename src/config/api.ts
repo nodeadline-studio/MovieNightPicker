@@ -6,6 +6,16 @@ import { getWatchlist } from '../utils/storage';
 // We'll use TMDB API for this project
 const API_KEY = import.meta.env.VITE_TMDB_API_KEY || '';
 
+// Security: Validate API key
+if (!API_KEY && import.meta.env.MODE === 'production') {
+  console.error('SECURITY WARNING: TMDB API key is not configured for production');
+}
+
+// Security: Basic API key format validation
+if (API_KEY && API_KEY.length < 10) {
+  console.warn('SECURITY WARNING: API key appears to be invalid or too short');
+}
+
 const BASE_URL = 'https://api.themoviedb.org/3';
 const IMAGE_BASE_URL = 'https://image.tmdb.org/t/p';
 const POSTER_SIZE = 'w500';

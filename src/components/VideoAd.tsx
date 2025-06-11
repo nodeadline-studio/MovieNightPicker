@@ -93,12 +93,12 @@ const VideoAd: React.FC<VideoAdProps> = ({ onClose, onError, enableTestAds = tru
 
   const handleVideoClick = () => {
     gtag.trackVideoAdClick();
-    window.open('https://genstockvideo.com', '_blank');
+    window.open('https://saasbackground.com', '_blank');
   };
 
   const handleCtaClick = () => {
     gtag.trackVideoAdClick();
-    window.open('https://genstockvideo.com', '_blank');
+    window.open('https://saasbackground.com', '_blank');
   };
 
   const handleVideoError = () => {
@@ -210,7 +210,7 @@ const VideoAd: React.FC<VideoAdProps> = ({ onClose, onError, enableTestAds = tru
               <div className="flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-yellow-500 to-orange-500 
                             rounded-full text-black text-xs font-bold shadow-lg">
                 <Sparkles size={12} />
-                <span>PREMIUM STOCK VIDEOS</span>
+                <span>PREMIUM SAAS TOOLS</span>
                 <Sparkles size={12} />
               </div>
             </div>
@@ -232,17 +232,17 @@ const VideoAd: React.FC<VideoAdProps> = ({ onClose, onError, enableTestAds = tru
             {/* Brand */}
             <div className="mb-4">
               <h2 className="text-2xl md:text-3xl font-bold text-white mb-2">
-                GenStockVideo
+                SaaSBackground
               </h2>
               <div className="flex items-center gap-2 text-yellow-400 mb-2">
                 <Zap size={16} />
-                <span className="text-sm font-semibold">Professional 4K Videos</span>
+                <span className="text-sm font-semibold">Premium SaaS Solutions</span>
               </div>
             </div>
 
             {/* Description */}
             <p className="text-gray-300 text-sm md:text-base mb-4 leading-relaxed">
-              Transform your creative projects with premium stock footage
+              Accelerate your SaaS development with enterprise-grade solutions
             </p>
 
             {/* Features */}
@@ -253,19 +253,19 @@ const VideoAd: React.FC<VideoAdProps> = ({ onClose, onError, enableTestAds = tru
             `}>
               <div className="flex items-center gap-2 text-xs text-gray-400">
                 <Star size={12} className="text-yellow-500" />
-                <span>4K Quality</span>
+                <span>Enterprise Grade</span>
               </div>
               <div className="flex items-center gap-2 text-xs text-gray-400">
                 <Download size={12} className="text-green-500" />
-                <span>Instant Download</span>
+                <span>Instant Setup</span>
               </div>
               <div className="flex items-center gap-2 text-xs text-gray-400">
                 <Clock size={12} className="text-blue-500" />
-                <span>Commercial License</span>
+                <span>24/7 Support</span>
               </div>
               <div className="flex items-center gap-2 text-xs text-gray-400">
                 <Sparkles size={12} className="text-purple-500" />
-                <span>Creative Freedom</span>
+                <span>Full Scalability</span>
               </div>
             </div>
 
@@ -282,7 +282,7 @@ const VideoAd: React.FC<VideoAdProps> = ({ onClose, onError, enableTestAds = tru
                        border border-white/10 hover:border-white/20"
             >
               <Sparkles size={16} />
-              <span>Visit GenStockVideo.com</span>
+              <span>Visit SaaSBackground.com</span>
               <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform duration-200" />
             </button>
           </div>

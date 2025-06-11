@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { BookMarked, X, Trash2, Star, Share2, Twitter, Facebook, Link, Download, Smartphone, Film, Tv, Calendar, Clock, ExternalLink, Eye } from 'lucide-react';
+import { 
+  BookMarked, X, Share2, 
+  Film, Tv, Star, Clock, Calendar, ExternalLink, Trash2, Eye, EyeOff 
+} from 'lucide-react';
 import { useMovieContext } from '../context/MovieContext';
-import { getImageUrl, fetchMovieDetails } from '../config/api';
-import Button from './ui/Button';
+import { generateWatchlistImage } from '../utils/imageGenerator';
 import { analytics } from '../utils/analytics';
 import * as gtag from '../utils/gtag';
-import { generateWatchlistImage } from '../utils/imageGenerator';
-import { canUseNativeShare, canUseClipboard, canShareWithFiles } from '../utils/shareUtils';
+import { fetchMovieDetails, getImageUrl } from '../config/api';
+import { canUseNativeShare, canShareWithFiles, canUseClipboard } from '../utils/shareUtils';
 
 const WatchlistPanel: React.FC = () => {
   const { watchlist, removeFromWatchlist, clearWatchlist, debugLocalStorage } = useMovieContext();
@@ -16,6 +18,7 @@ const WatchlistPanel: React.FC = () => {
   const [isGeneratingImage, setIsGeneratingImage] = useState(false);
   const [showSuccessMessage, setShowSuccessMessage] = useState(false);
   const [previewMovie, setPreviewMovie] = useState<number | null>(null);
+  const [hasAnimated, setHasAnimated] = useState(false);
 
   // Debug mode check
   const isDebugMode = import.meta.env.DEV;
@@ -59,6 +62,15 @@ const WatchlistPanel: React.FC = () => {
       });
     }
   }, [isOpen, watchlist]);
+
+  // Animation control - only animate once when panel opens
+  useEffect(() => {
+    if (isOpen && !hasAnimated) {
+      setHasAnimated(true);
+    } else if (!isOpen) {
+      setHasAnimated(false);
+    }
+  }, [isOpen]);
 
   // Close share menu when clicking outside
   useEffect(() => {
@@ -188,11 +200,69 @@ const WatchlistPanel: React.FC = () => {
     }
   };
 
+  const handleClipboardShare = async () => {
+    if (watchlist.length === 0) return;
+    
+    try {
+      const shareText = generateShareText();
+      const url = window.location.origin;
+      const fullText = `${shareText}\n\n${url}`;
+      
+      // Generate image
+      const imageDataUrl = await generateWatchlistImage({ 
+        movies: watchlist,
+        maxMovies: 6 
+      });
+      
+      // Convert to blob
+      const response = await fetch(imageDataUrl);
+      const blob = await response.blob();
+      
+      // Try to copy both image and text if supported
+      if (navigator.clipboard?.write) {
+        try {
+          // Create clipboard items with both text and image
+          const clipboardItems = [
+            new ClipboardItem({
+              'text/plain': new Blob([fullText], { type: 'text/plain' }),
+              'image/png': blob
+            })
+          ];
+          
+          await navigator.clipboard.write(clipboardItems);
+          setShowSuccessMessage(true);
+          setTimeout(() => setShowSuccessMessage(false), 3000);
+        } catch (error) {
+          console.warn('Failed to copy both text and image, trying text only:', error);
+          // Fallback to text only
+          await navigator.clipboard.writeText(fullText);
+          setShowSuccessMessage(true);
+          setTimeout(() => setShowSuccessMessage(false), 3000);
+        }
+      } else if (canUseClipboard()) {
+        // Fallback to text only
+        await navigator.clipboard.writeText(fullText);
+        setShowSuccessMessage(true);
+        setTimeout(() => setShowSuccessMessage(false), 3000);
+      } else {
+        throw new Error('Clipboard not supported');
+      }
+      
+      setShowShareMenu(false);
+      analytics.trackShare('clipboard', watchlist.length);
+      gtag.trackShare('clipboard', watchlist.length);
+    } catch (error) {
+      console.error('Error copying to clipboard:', error);
+      // Fallback to download
+      await handleDownloadImage();
+    }
+  };
+
   const handleSmartShare = async () => {
     try {
       setIsGeneratingImage(true);
       
-      // Try native share first (mobile)
+      // Mobile: Try native share first
       if (canUseNativeShare()) {
         const shareText = generateShareText();
         const url = window.location.origin;
@@ -217,46 +287,19 @@ const WatchlistPanel: React.FC = () => {
         if (canShareWithFiles([file])) {
           await navigator.share(shareData);
           setShowShareMenu(false);
-          analytics.trackShare('smart', watchlist.length);
-          gtag.trackShare('smart', watchlist.length);
-          return;
+          analytics.trackShare('native', watchlist.length);
+          gtag.trackShare('native', watchlist.length);
+        } else {
+          // Fallback to clipboard
+          await handleClipboardShare();
         }
+      } else {
+        // Desktop: copy to clipboard with both text and image
+        await handleClipboardShare();
       }
-      
-      // Fallback: Copy to clipboard (desktop)
-      if (canUseClipboard()) {
-        const shareText = generateShareText();
-        const imageDataUrl = await generateWatchlistImage({ 
-          movies: watchlist,
-          maxMovies: 6 
-        });
-        
-        const response = await fetch(imageDataUrl);
-        const blob = await response.blob();
-        await navigator.clipboard.write([
-          new ClipboardItem({ 'image/png': blob })
-        ]);
-        
-        // Also copy text to clipboard
-        await navigator.clipboard.writeText(`${shareText} ${window.location.origin}`);
-        
-        setShowShareMenu(false);
-        
-        // Show success message
-        setShowSuccessMessage(true);
-        setTimeout(() => setShowSuccessMessage(false), 3000);
-        
-        analytics.trackShare('smart', watchlist.length);
-        gtag.trackShare('smart', watchlist.length);
-        return;
-      }
-      
-      // Final fallback: Download
-      await handleDownloadImage();
-      
     } catch (error) {
       console.error('Error with smart share:', error);
-      // Ultimate fallback
+      // Final fallback to download
       await handleDownloadImage();
     } finally {
       setIsGeneratingImage(false);
@@ -279,13 +322,10 @@ const WatchlistPanel: React.FC = () => {
       return;
     }
 
-    // Simple copy link functionality
+    // Simple copy link functionality - DEPRECATED (now integrated into smart share)
     if (platform === 'copy') {
-      const shareText = generateShareText();
-      const url = window.location.origin;
-      navigator.clipboard.writeText(`${shareText} ${url}`).then(() => {
-        setShowShareMenu(false);
-      });
+      await handleClipboardShare();
+      return;
     }
     
     analytics.trackShare(platform, watchlist.length);
@@ -312,13 +352,19 @@ const WatchlistPanel: React.FC = () => {
           {items.map((movie, index) => (
             <div 
               key={movie.id} 
-              className="group relative bg-white/5 hover:bg-white/10 rounded-2xl p-4 
+              className={`group relative bg-white/5 hover:bg-white/10 rounded-2xl p-4 
                          border border-white/5 hover:border-white/20
-                         transition-all duration-300 ease-out
-                         hover:shadow-lg hover:shadow-purple-500/10"
+                         transition-all duration-200 ease-out
+                         hover:shadow-lg hover:shadow-purple-500/10
+                         ${hasAnimated ? '' : 'opacity-0 translate-y-4'}`}
               style={{
-                animationDelay: `${index * 50}ms`,
-                animation: 'slideInUp 0.5s ease-out forwards'
+                ...(hasAnimated ? {} : {
+                  animationName: 'slideInUp',
+                  animationDuration: '0.5s',
+                  animationTimingFunction: 'ease-out',
+                  animationFillMode: 'forwards',
+                  animationDelay: `${index * 50}ms`
+                })
               }}
             >
               <div className="flex items-center gap-4">
@@ -334,45 +380,69 @@ const WatchlistPanel: React.FC = () => {
                 
                 {/* Movie Info */}
                 <div className="flex-1 min-w-0">
-                  <h4 className="font-semibold text-white text-sm mb-1 truncate group-hover:text-transparent group-hover:bg-clip-text group-hover:bg-gradient-to-r group-hover:from-indigo-400 group-hover:to-purple-400 transition-all duration-300">
+                  <h4 className="font-semibold text-white text-sm mb-1 truncate group-hover:text-transparent group-hover:bg-clip-text group-hover:bg-gradient-to-r group-hover:from-indigo-400 group-hover:to-purple-400 transition-all duration-200">
                     {movie.title}
                   </h4>
-                  <p className="text-gray-400 text-xs mb-2">
-                    {new Date(movie.release_date).getFullYear()}
-                  </p>
-                  <div className="flex items-center gap-1">
-                    <Star size={12} className="text-yellow-400 fill-current" />
-                    <span className="text-yellow-400 text-xs font-medium">
-                      {(updatedMovies[movie.id]?.vote_average ?? movie.vote_average) > 0 
-                        ? (updatedMovies[movie.id]?.vote_average ?? movie.vote_average).toFixed(1)
-                        : 'N/A'}
-                    </span>
+                  
+                  <div className="flex items-center gap-3 text-xs text-gray-400 mb-3">
+                    <div className="flex items-center gap-1">
+                      <Calendar size={12} />
+                      <span>{new Date(movie.release_date).getFullYear()}</span>
+                    </div>
+                    
+                    {(updatedMovies[movie.id]?.vote_average !== undefined ? updatedMovies[movie.id]?.vote_average : movie.vote_average) && (
+                      <div className="flex items-center gap-1">
+                        <Star size={12} className="text-yellow-400 fill-current" />
+                        <span>{(updatedMovies[movie.id]?.vote_average !== undefined ? updatedMovies[movie.id]?.vote_average : movie.vote_average).toFixed(1)}</span>
+                      </div>
+                    )}
+                    
+                    {(movie as any).runtime && (
+                      <div className="flex items-center gap-1">
+                        <Clock size={12} />
+                        <span>{(movie as any).runtime}m</span>
+                      </div>
+                    )}
+                  </div>
+                  
+                  {/* Action Buttons */}
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={(e) => handlePreviewClick(movie.id, e)}
+                      className="text-indigo-400 hover:text-indigo-300 p-1 rounded transition-colors duration-200"
+                      title={previewMovie === movie.id ? "Hide details" : "Show details"}
+                    >
+                      {previewMovie === movie.id ? <EyeOff size={16} /> : <Eye size={16} />}
+                    </button>
+                    
+                    {(updatedMovies[movie.id]?.imdb_id || movie.imdb_id) && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          window.open(`https://www.imdb.com/title/${updatedMovies[movie.id]?.imdb_id || movie.imdb_id}`, '_blank');
+                        }}
+                        className="text-yellow-400 hover:text-yellow-300 p-1 rounded transition-colors duration-200"
+                        title="View on IMDb"
+                      >
+                        <ExternalLink size={16} />
+                      </button>
+                    )}
+                    
+                    <button
+                      onClick={(e) => handleRemove(movie.id, e)}
+                      className="text-red-400 hover:text-red-300 p-1 rounded transition-colors duration-200 ml-auto"
+                      title="Remove from watchlist"
+                    >
+                      <Trash2 size={16} />
+                    </button>
                   </div>
                 </div>
-                
-                {/* Action Buttons */}
-                <div className="flex items-center gap-2">
-                  {/* Preview Button */}
-                  <button
-                    onClick={(e) => handlePreviewClick(movie.id, e)}
-                    className="p-2 text-gray-400 hover:text-blue-400 hover:bg-blue-500/10 
-                             rounded-xl transition-all duration-200 opacity-0 group-hover:opacity-100"
-                    aria-label={`Preview ${movie.title}`}
-                  >
-                    <Eye size={16} />
-                  </button>
-                  
-                  {/* Remove Button */}
-                  <button
-                    onClick={(e) => handleRemove(movie.id, e)}
-                    className="p-2 text-gray-400 hover:text-red-400 hover:bg-red-500/10 
-                             rounded-xl transition-all duration-200 opacity-0 group-hover:opacity-100"
-                    aria-label={`Remove ${movie.title} from watchlist`}
-                  >
-                    <Trash2 size={16} />
-                  </button>
-                </div>
               </div>
+              
+              {/* Expanded Preview */}
+              {previewMovie === movie.id && (
+                <MoviePreview movie={movie} />
+              )}
             </div>
           ))}
         </div>
@@ -380,73 +450,34 @@ const WatchlistPanel: React.FC = () => {
     );
   };
 
-  // Movie Preview Component
+  // Movie Preview Component (inline expanded details)
   const MoviePreview: React.FC<{ movie: typeof watchlist[0] }> = ({ movie }) => {
     const formatDate = (dateString: string) => {
-      if (!dateString) return 'Unknown';
-      const date = new Date(dateString);
-      return date.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+      return new Date(dateString).toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+      });
     };
 
     const getYear = (dateString: string): string => {
-      if (!dateString) return '';
       return new Date(dateString).getFullYear().toString();
     };
 
     return (
-      <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[70] flex items-center justify-center p-4">
-        <div className="w-full max-w-md bg-gradient-to-br from-slate-900/95 via-gray-900/95 to-slate-800/95 
-                       backdrop-blur-xl border border-white/20 rounded-3xl shadow-2xl
-                       ring-1 ring-white/10 overflow-hidden
-                       animate-[slideIn_0.3s_ease-out] max-h-[90vh] overflow-y-auto">
-          
-          {/* Close Button */}
-          <div className="absolute top-4 right-4 z-10">
-            <button
-              onClick={() => setPreviewMovie(null)}
-              className="p-2 bg-black/80 hover:bg-black text-white rounded-full 
-                       transition-all duration-200 hover:scale-110"
-            >
-              <X size={20} />
-            </button>
-          </div>
-
-          {/* Movie Poster */}
-          <div className="relative h-48 overflow-hidden">
+      <div className="mt-4 pt-4 border-t border-white/10 space-y-4 animate-slideInUp">
+        <div className="flex gap-4">
+          {/* Larger Poster */}
+          <div className="flex-shrink-0">
             <img
-              src={getImageUrl(movie.poster_path, 'w500')}
+              src={getImageUrl(movie.poster_path, 'w300')}
               alt={movie.title}
-              className="w-full h-full object-cover"
-              style={{ objectPosition: 'center 20%' }}
+              className="w-32 h-48 object-cover rounded-2xl shadow-2xl"
             />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
-            
-            {/* Content Type Badge */}
-            <div className="absolute top-4 left-4">
-              <div className={`px-3 py-1 rounded-full text-xs font-semibold backdrop-blur-sm ${
-                movie.contentType === 'tv' 
-                  ? 'bg-purple-500/80 text-white' 
-                  : 'bg-blue-500/80 text-white'
-              }`}>
-                {movie.contentType === 'tv' ? '📺 TV Show' : '🎬 Movie'}
-              </div>
-            </div>
-
-            {/* Rating */}
-            <div className="absolute bottom-4 left-4 bg-black/80 backdrop-blur-sm p-2 rounded-xl">
-              <div className="flex items-center gap-2">
-                <Star size={14} className="text-yellow-400 fill-current" />
-                <span className="text-yellow-400 font-bold text-sm">
-                  {(updatedMovies[movie.id]?.vote_average ?? movie.vote_average) > 0 
-                    ? (updatedMovies[movie.id]?.vote_average ?? movie.vote_average).toFixed(1)
-                    : 'N/A'}
-                </span>
-              </div>
-            </div>
           </div>
-
-          {/* Movie Details */}
-          <div className="p-6 space-y-4">
+          
+          {/* Details */}
+          <div className="flex-1 space-y-4">
             <div>
               <h3 className="text-xl font-bold text-white mb-2 leading-tight">
                 {movie.title}
@@ -477,8 +508,7 @@ const WatchlistPanel: React.FC = () => {
                            hover:from-yellow-400 hover:to-orange-400
                            text-black font-semibold py-2 px-3 rounded-xl
                            shadow-lg hover:shadow-xl hover:shadow-yellow-500/25
-                           transform hover:scale-[1.02] active:scale-[0.98]
-                           transition-all duration-200 ease-out
+                           transition-all duration-150 ease-out hover:scale-[1.01]
                            flex items-center justify-center gap-2 text-sm"
                 >
                   IMDb
@@ -496,8 +526,7 @@ const WatchlistPanel: React.FC = () => {
                          hover:from-red-400 hover:to-rose-400
                          text-white font-semibold py-2 px-3 rounded-xl
                          shadow-lg hover:shadow-xl hover:shadow-red-500/25
-                         transform hover:scale-[1.02] active:scale-[0.98]
-                         transition-all duration-200 ease-out
+                         transition-all duration-150 ease-out hover:scale-[1.01]
                          flex items-center justify-center gap-2 text-sm"
               >
                 Remove
@@ -513,50 +542,53 @@ const WatchlistPanel: React.FC = () => {
   return (
     <div className="relative">
       {/* Modern Watchlist Button */}
-             <button
+      <button
         onClick={togglePanel}
-         className="group fixed z-10 bottom-[calc(env(safe-area-inset-bottom)+2rem)] left-4 md:static
-                    bg-transparent border-2 border-white/30 hover:border-white/50
-                    text-white font-semibold px-6 py-3 rounded-2xl
-                    hover:bg-white/10 backdrop-blur-sm
-                    transform hover:scale-[1.02] active:scale-[0.98]
-                    transition-all duration-200 ease-out
-                    flex items-center gap-3 select-none"
-       >
-                 <div className="relative">
-           <BookMarked size={20} className="group-hover:rotate-6 transition-transform duration-200 ease-out" />
-           {watchlist.length > 0 && (
-             <div className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold shadow-lg">
-               {watchlist.length}
-             </div>
-           )}
-         </div>
+        className="group fixed z-10 bottom-4 left-4 md:static
+                   bg-transparent border-2 border-white/30 hover:border-white/50
+                   text-white font-semibold px-6 py-3 rounded-2xl
+                   hover:bg-white/10 backdrop-blur-sm
+                   transition-all duration-150 ease-out hover:scale-[1.01]
+                   flex items-center gap-3 select-none"
+      >
+        <div className="relative">
+          <BookMarked size={20} className="group-hover:rotate-3 transition-transform duration-150 ease-out" />
+          {watchlist.length > 0 && (
+            <div className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold shadow-lg">
+              {watchlist.length}
+            </div>
+          )}
+        </div>
         <span className="hidden md:block">Watchlist</span>
       </button>
 
-             {/* Modern Dropdown Panel */}
+      {/* Modern Dropdown Panel */}
       {isOpen && (
-         <>
-           {/* Overlay for all devices */}
-        <div 
-             className={`fixed inset-0 bg-black/40 z-40 transition-opacity duration-300 ease-out ${
-               isOpen ? 'opacity-100' : 'opacity-0'
-             }`}
-          onClick={closePanel}
-           />
+        <>
+          {/* Overlay for all devices */}
+          <div 
+            className={`fixed inset-0 bg-black/40 z-40 transition-opacity duration-200 ease-out ${
+              isOpen ? 'opacity-100' : 'opacity-0'
+            }`}
+            onClick={closePanel}
+          />
           
           {/* Panel */}
           <div className={`fixed bottom-0 left-0 right-0 md:absolute md:top-full md:right-0 md:left-auto md:w-96 z-50 md:mt-3 
-                          transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] ${
-            isOpen ? 'translate-y-0 opacity-100' : 'translate-y-full md:translate-y-2 opacity-0'
+                          transition-all duration-200 ease-out ${
+            isOpen 
+              ? 'translate-y-0 opacity-100 scale-100' 
+              : 'translate-y-full md:translate-y-4 opacity-0 scale-95'
           }`}>
             <div className="bg-gradient-to-br from-slate-900/95 via-gray-900/95 to-slate-800/95 
                            backdrop-blur-xl border border-white/10 
                            rounded-t-3xl md:rounded-3xl shadow-2xl
-                           ring-1 ring-white/5">
+                           ring-1 ring-white/5
+                           max-h-[calc(100vh-6rem)] md:max-h-[calc(80vh)]
+                           flex flex-col">
               
               {/* Header with gradient */}
-              <div className="relative p-6 border-b border-white/10">
+              <div className="relative p-6 border-b border-white/10 flex-shrink-0">
                 <div className="absolute inset-0 bg-gradient-to-r from-indigo-600/10 via-purple-600/10 to-pink-600/10 rounded-t-3xl md:rounded-t-3xl" />
                 <div className="relative flex justify-between items-center">
                   <div className="flex items-center gap-3">
@@ -585,39 +617,40 @@ const WatchlistPanel: React.FC = () => {
                         {/* Share Menu */}
                         {showShareMenu && (
                           <div 
-                            className="absolute top-full right-0 mt-2 bg-slate-800/95 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl p-3 min-w-[220px] z-10"
+                            className="absolute top-full right-0 mt-2 bg-slate-800/95 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl p-3 min-w-[200px] z-10"
                             onClick={(e) => e.stopPropagation()}
                           >
                             <div className="space-y-2">
-                              {/* Smart Share Button */}
+                              {/* Share Button */}
                               <button
                                 onClick={() => handleShare('smart')}
                                 disabled={isGeneratingImage}
-                                className="w-full flex items-center gap-3 p-3 text-left text-white hover:bg-white/10 rounded-xl transition-all duration-200 disabled:opacity-50"
+                                className="w-full flex items-center gap-3 p-3 text-left text-white hover:bg-white/10 hover:scale-[1.02] rounded-xl transition-all duration-200 disabled:opacity-50"
                               >
-                                <Smartphone size={18} className="text-blue-400" />
-                                <span className="font-medium">Smart Share</span>
+                                <div className="w-5 h-5 flex items-center justify-center">
+                                  📋
+                                </div>
+                                <div className="flex-1">
+                                  <span className="font-medium">Share</span>
+                                  <p className="text-xs text-gray-400 mt-0.5">Copy & share</p>
+                                </div>
                               </button>
                               
                               {/* Download Button */}
                               <button
                                 onClick={() => handleShare('download')}
                                 disabled={isGeneratingImage}
-                                className="w-full flex items-center gap-3 p-3 text-left text-white hover:bg-white/10 rounded-xl transition-all duration-200 disabled:opacity-50"
+                                className="w-full flex items-center gap-3 p-3 text-left text-white hover:bg-white/10 hover:scale-[1.02] rounded-xl transition-all duration-200 disabled:opacity-50"
                               >
-                                <Download size={18} className="text-green-400" />
-                                <span className="font-medium">
-                                  {isGeneratingImage ? 'Generating...' : 'Download Image'}
-                                </span>
-                              </button>
-                              
-                              {/* Copy Link Button */}
-                              <button
-                                onClick={() => handleShare('copy')}
-                                className="w-full flex items-center gap-3 p-3 text-left text-white hover:bg-white/10 rounded-xl transition-all duration-200"
-                              >
-                                <Link size={18} className="text-purple-400" />
-                                <span className="font-medium">Copy Link</span>
+                                <div className="w-5 h-5 flex items-center justify-center">
+                                  {isGeneratingImage ? '⏳' : '💾'}
+                                </div>
+                                <div className="flex-1">
+                                  <span className="font-medium">
+                                    {isGeneratingImage ? 'Creating...' : 'Download'}
+                                  </span>
+                                  <p className="text-xs text-gray-400 mt-0.5">Save image</p>
+                                </div>
                               </button>
                             </div>
                           </div>
@@ -625,90 +658,62 @@ const WatchlistPanel: React.FC = () => {
                       </div>
                     )}
                     
-                    {/* Debug Buttons - Only in development */}
-                    {/* Temporarily hidden debug buttons
-                    {isDebugMode && (
-                      <>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            debugLocalStorage();
-                          }}
-                          className="p-2 text-yellow-400 hover:text-yellow-300 hover:bg-yellow-500/10 rounded-xl transition-all duration-200"
-                          title="Debug localStorage"
-                        >
-                          🐛
-                        </button>
-                        {watchlist.length > 0 && (
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              if (confirm('Clear all watchlist items?')) {
-                                clearWatchlist();
-                              }
-                            }}
-                            className="p-2 text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-xl transition-all duration-200"
-                            title="Clear watchlist"
-                          >
-                            🗑️
-                          </button>
-                        )}
-                      </>
-                    )}
-                    */}
-                    
                     <button
-            onClick={closePanel}
+                      onClick={closePanel}
                       className="p-2 text-gray-400 hover:text-white hover:bg-white/10 rounded-xl transition-all duration-200"
                     >
                       <X size={20} />
                     </button>
                   </div>
                 </div>
-        </div>
+              </div>
 
-              {/* Content */}
-              <div className="p-6">
-          {watchlist.length === 0 ? (
-                  <div className="text-center py-12">
-                    <div className="relative mb-6">
-                      <div className="w-20 h-20 mx-auto bg-gradient-to-r from-indigo-500/20 to-purple-500/20 rounded-2xl flex items-center justify-center">
-                        <BookMarked size={32} className="text-gray-500" />
-            </div>
-                      <div className="absolute inset-0 bg-gradient-to-r from-indigo-500/10 to-purple-500/10 rounded-2xl blur-xl" />
+              {/* Content - Scrollable Area */}
+              <div className="flex-1 overflow-hidden">
+                {watchlist.length === 0 ? (
+                  <div className="p-6">
+                    <div className="text-center py-12">
+                      <div className="relative mb-6">
+                        <div className="w-20 h-20 mx-auto bg-gradient-to-r from-indigo-500/20 to-purple-500/20 rounded-2xl flex items-center justify-center">
+                          <BookMarked size={32} className="text-gray-500" />
+                        </div>
+                        <div className="absolute inset-0 bg-gradient-to-r from-indigo-500/10 to-purple-500/10 rounded-2xl blur-xl" />
+                      </div>
+                      <h4 className="text-lg font-semibold text-white mb-2">No items yet</h4>
+                      <p className="text-gray-400 text-sm">
+                        Start building your perfect watchlist
+                      </p>
                     </div>
-                    <h4 className="text-lg font-semibold text-white mb-2">No items yet</h4>
-                    <p className="text-gray-400 text-sm">
-                      Start building your perfect watchlist
-                    </p>
-                    </div>
-                ) : (
-                  <div className="space-y-4 max-h-[calc(100vh-20rem)] md:max-h-96 overflow-y-auto custom-scrollbar">
-                    {allMovies.length > 0 && (
-                      <WatchlistSection
-                        title="Movies"
-                        icon={<Film size={16} className="text-blue-400" />}
-                        items={allMovies}
-                        emptyMessage="No movies in your watchlist"
-                      />
-                    )}
-                    
-                    {allMovies.length > 0 && tvShows.length > 0 && (
-                      <div className="border-t border-white/10 my-4"></div>
-                    )}
-                    
-                    {tvShows.length > 0 && (
-                      <WatchlistSection
-                        title="TV Shows"
-                        icon={<Tv size={16} className="text-purple-400" />}
-                        items={tvShows}
-                        emptyMessage="No TV shows in your watchlist"
-                      />
-                    )}
                   </div>
-          )}
-        </div>
-      </div>
+                ) : (
+                  <div className="h-full overflow-y-auto scrollbar-hide p-6">
+                    <div className="space-y-4">
+                      {allMovies.length > 0 && (
+                        <WatchlistSection
+                          title="Movies"
+                          icon={<Film size={16} className="text-blue-400" />}
+                          items={allMovies}
+                          emptyMessage="No movies in your watchlist"
+                        />
+                      )}
+                      
+                      {allMovies.length > 0 && tvShows.length > 0 && (
+                        <div className="border-t border-white/10 my-4"></div>
+                      )}
+                      
+                      {tvShows.length > 0 && (
+                        <WatchlistSection
+                          title="TV Shows"
+                          icon={<Tv size={16} className="text-purple-400" />}
+                          items={tvShows}
+                          emptyMessage="No TV shows in your watchlist"
+                        />
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
         </>
       )}
@@ -721,19 +726,11 @@ const WatchlistPanel: React.FC = () => {
               <div className="w-6 h-6 bg-white/20 rounded-full flex items-center justify-center">
                 ✓
               </div>
-              <span className="font-medium">Image and text copied to clipboard!</span>
+              <span className="font-medium">Copied to clipboard!</span>
             </div>
           </div>
         </div>
       )}
-
-      {/* Movie Preview Overlay */}
-      {previewMovie && (
-        <MoviePreview 
-          movie={watchlist.find(m => m.id === previewMovie)!} 
-        />
-      )}
-
     </div>
   );
 };

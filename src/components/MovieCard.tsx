@@ -179,8 +179,11 @@ const MovieCard: React.FC<MovieCardProps> = ({ movie, isInWatchlist = false }) =
                                text-xs md:text-sm text-gray-300 rounded-lg md:rounded-xl border border-white/10
                                hover:from-indigo-500/30 hover:to-purple-500/30 transition-all duration-200"
                       style={{
-                        animationDelay: `${index * 100}ms`,
-                        animation: 'slideInUp 0.5s ease-out forwards'
+                        animationName: 'slideInUp',
+                        animationDuration: '0.5s',
+                        animationTimingFunction: 'ease-out',
+                        animationFillMode: 'forwards',
+                        animationDelay: `${index * 100}ms`
                       }}
                     >
                       {genre.name}

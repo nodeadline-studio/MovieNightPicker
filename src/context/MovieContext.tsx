@@ -33,6 +33,7 @@ const DEFAULT_FILTER_OPTIONS: FilterOptions = {
   inTheatersOnly: false,
   includeAdult: true,
   tvShowsOnly: false,
+  maxRuntime: 180,
 };
 
 const MovieContext = createContext<MovieContextType | undefined>(undefined);
@@ -140,28 +141,28 @@ export const MovieProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const applyRandomFilters = useCallback(() => {
     if (genres.length === 0) return; // Wait for genres to load
     
-    // Более разнообразный выбор жанров - избегаем популярных комбинаций
-    const numGenres = Math.floor(Math.random() * 2) + 2; // 2-3 genres (уменьшил для большего разнообразия)
+    // More diverse genre selection - avoid popular combinations
+    const numGenres = Math.floor(Math.random() * 2) + 2; // 2-3 genres for better diversity
     const shuffledGenres = [...genres].sort(() => Math.random() - 0.5);
     const randomGenres = shuffledGenres.slice(0, numGenres).map(g => g.id);
     
     const currentYear = new Date().getFullYear();
-    const minYear = 1960; // Начинаем с 1960 для большего разнообразия
+    const minYear = 1960; // Start from 1960 for greater diversity
     
-    // Более разнообразные периоды времени
+    // More diverse time periods
     const periods = [
-      { from: 1960, to: 1980 }, // Классика
-      { from: 1980, to: 2000 }, // 80-90е
-      { from: 2000, to: 2010 }, // 2000е
-      { from: 2010, to: currentYear }, // Современные
-      { from: 1960, to: currentYear }, // Весь период
+      { from: 1960, to: 1980 }, // Classic era
+      { from: 1980, to: 2000 }, // 80s-90s
+      { from: 2000, to: 2010 }, // 2000s
+      { from: 2010, to: currentYear }, // Modern
+      { from: 1960, to: currentYear }, // All time
     ];
     
     const selectedPeriod = periods[Math.floor(Math.random() * periods.length)];
-    const yearFrom = selectedPeriod.from + Math.floor(Math.random() * 5); // Небольшая вариация
+    const yearFrom = selectedPeriod.from + Math.floor(Math.random() * 5); // Small variation
     const yearTo = Math.min(selectedPeriod.to, currentYear);
     
-    const rating = Math.floor(Math.random() * 2.5) + 5.5; // 5.5-8.0 для большего разнообразия
+    const rating = Math.floor(Math.random() * 2.5) + 5.5; // 5.5-8.0 for better diversity
     
     const newFilters = {
       genres: randomGenres,
@@ -170,12 +171,13 @@ export const MovieProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       ratingFrom: rating,
       inTheatersOnly: false,
       includeAdult: true,
-      tvShowsOnly: false
+      tvShowsOnly: false,
+      maxRuntime: 180
     };
     
     console.log('🎲 Applied random filters:', newFilters);
     updateFilterOptions(newFilters);
-    // Убрал автоматический поиск фильма - теперь только меняем фильтры
+    // Removed automatic movie search - now only updates filters
   }, [genres, updateFilterOptions]);
 
   const getRandomMovie = useCallback(async () => {
@@ -186,8 +188,8 @@ export const MovieProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     
     // Apply random filters if randomizer is enabled BEFORE making the API call
     // if (isRandomizerEnabled) {
-    //   applyRandomFilters(); // Теперь просто вызываем функцию, она сама обновит фильтры
-    //   // Используем текущие фильтры после обновления
+    //   applyRandomFilters(); // Now just call the function, it will update filters itself
+    //   // Use current filters after update
     // }
     
     try {
@@ -210,8 +212,8 @@ export const MovieProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     
     // Apply random filters if randomizer is enabled BEFORE making the API call
     // if (isRandomizerEnabled) {
-    //   applyRandomFilters(); // Теперь просто вызываем функцию, она сама обновит фильтры
-    //   // Используем текущие фильтры после обновления
+    //   applyRandomFilters(); // Now just call the function, it will update filters itself
+    //   // Use current filters after update
     // }
     
     try {
