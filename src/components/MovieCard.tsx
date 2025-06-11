@@ -253,15 +253,14 @@ const MovieCard: React.FC<MovieCardProps> = ({ movie, isInWatchlist = false }) =
       <div className="flex justify-center">
         <button
           onClick={handleGetRandomMovie}
-          className="group bg-gradient-to-r from-violet-600 via-purple-600 to-fuchsia-600 
-                   hover:from-violet-500 hover:via-purple-500 hover:to-fuchsia-500
-                   text-white font-semibold py-3 md:py-4 px-6 md:px-8 rounded-2xl
+          className="group relative text-white font-semibold py-3 md:py-4 px-6 md:px-8 rounded-2xl
                    shadow-lg hover:shadow-xl hover:shadow-purple-500/25
                    transform hover:scale-[1.02] active:scale-[0.98]
                    transition-all duration-200 ease-out
                    flex items-center justify-center gap-3 text-sm md:text-base
-                   border border-white/10 hover:border-white/20
-                   relative overflow-hidden"
+                   overflow-hidden
+                   bg-gradient-to-r from-violet-600 via-purple-600 to-fuchsia-600 
+                   hover:from-violet-500 hover:via-purple-500 hover:to-fuchsia-500"
         >
           <div className="absolute inset-0 bg-gradient-to-r from-white/10 to-transparent rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
           <div className="relative flex items-center gap-3">
