@@ -1,4 +1,5 @@
 import { WatchlistMovie } from '../types';
+import { logger } from './logger';
 
 export function getWatchlist(): WatchlistMovie[] {
   try {
@@ -19,45 +20,36 @@ export function saveWatchlist(watchlist: WatchlistMovie[]): void {
 }
 
 // Clear watchlist
-export function clearWatchlist(): void {
-  try {
-    localStorage.removeItem('nmp-watchlist');
-    console.log('Watchlist cleared from localStorage');
-  } catch (e) {
-    console.error('Error clearing watchlist from localStorage', e);
-  }
-}
+export const clearWatchlist = (): void => {
+  localStorage.removeItem('nmp-watchlist');
+  logger.debug('Watchlist cleared from localStorage', undefined, { prefix: 'Storage' });
+};
 
 // Clear all app data
-export function clearAllAppData(): void {
-  try {
-    const keysToRemove = [
-      'nmp-watchlist',
-      'nmp-filters', 
-      'nmp-metrics',
-      'moviePickCount',
-      'cookie-consent',
-      'password-verified'
-    ];
-    
-    keysToRemove.forEach(key => {
-      localStorage.removeItem(key);
-    });
-    
-    console.log('All app data cleared from localStorage');
-  } catch (e) {
-    console.error('Error clearing app data from localStorage', e);
+export const clearAllData = (): void => {
+  // Get all keys that start with our prefix
+  const keysToRemove = [];
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    if (key && (key.startsWith('nmp-') || key.startsWith('movie') || key === 'watchlist' || key === 'cookie-consent' || key === 'password-verified')) {
+      keysToRemove.push(key);
+    }
   }
-}
+  
+  // Remove all our keys
+  keysToRemove.forEach(key => localStorage.removeItem(key));
+  
+  logger.debug('All app data cleared from localStorage', undefined, { prefix: 'Storage' });
+};
 
-// Debug function to check what's in localStorage
-export function debugLocalStorage(): void {
-  console.log('=== localStorage Debug ===');
-  console.log('Watchlist:', localStorage.getItem('nmp-watchlist'));
-  console.log('Filters:', localStorage.getItem('nmp-filters'));
-  console.log('Metrics:', localStorage.getItem('nmp-metrics'));
-  console.log('Pick Count:', localStorage.getItem('moviePickCount'));
-  console.log('Cookie Consent:', localStorage.getItem('cookie-consent'));
-  console.log('Password Verified:', localStorage.getItem('password-verified'));
-  console.log('========================');
-}
+// Debug function to log current state
+export const debugLocalStorage = (): void => {
+  logger.debug('=== localStorage Debug ===', {
+    'Watchlist': localStorage.getItem('nmp-watchlist'),
+    'Filters': localStorage.getItem('nmp-filters'),
+    'Metrics': localStorage.getItem('nmp-metrics'),
+    'Pick Count': localStorage.getItem('moviePickCount'),
+    'Cookie Consent': localStorage.getItem('cookie-consent'),
+    'Password Verified': localStorage.getItem('password-verified')
+  }, { prefix: 'Storage' });
+};

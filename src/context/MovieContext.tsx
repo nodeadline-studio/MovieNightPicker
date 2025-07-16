@@ -4,6 +4,7 @@ import { Movie, Genre, FilterOptions, LoadingState, WatchlistMovie } from '../ty
 import { fetchRandomMovie, fetchGenres } from '../config/api';
 import { movieCache, CacheResult } from '../utils/cache';
 import { getWatchlist, saveWatchlist, clearWatchlist, debugLocalStorage } from '../utils/storage';
+import { logger } from '../utils/logger';
 
 interface MovieContextType {
   currentMovie: Movie | null;
@@ -77,7 +78,7 @@ export const MovieProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   // Clear suspicious movies from cache on initialization
   useEffect(() => {
-    movieCache.clearSuspiciousMovies();
+    movieCache.removeSuspiciousMovies();
     
     // Also check and clean watchlist from suspicious movies
     const currentWatchlist = getWatchlist();
@@ -113,7 +114,9 @@ export const MovieProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       
       // Update watchlist if we made any changes
       if (hasChanges) {
-        console.log(`Updated watchlist: migrated legacy items and removed ${currentWatchlist.length - cleanedWatchlist.length} suspicious movies`);
+        if (currentWatchlist.length !== cleanedWatchlist.length) {
+          logger.debug(`Updated watchlist: migrated legacy items and removed ${currentWatchlist.length - cleanedWatchlist.length} suspicious movies`, undefined, { prefix: 'Context' });
+        }
         setWatchlist(cleanedWatchlist);
         saveWatchlist(cleanedWatchlist);
       }
@@ -175,7 +178,7 @@ export const MovieProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       maxRuntime: 180
     };
     
-    console.log('🎲 Applied random filters:', newFilters);
+    logger.debug('🎲 Applied random filters:', newFilters, { prefix: 'Context' });
     updateFilterOptions(newFilters);
     // Removed automatic movie search - now only updates filters
   }, [genres, updateFilterOptions]);
@@ -184,7 +187,7 @@ export const MovieProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setLoadingState(LoadingState.LOADING);
     setError(null);
     movieCache.clear();
-    movieCache.clearSuspiciousMovies(); // Clear any cached movies with suspicious ratings
+    movieCache.removeSuspiciousMovies(); // Clear any cached movies with suspicious ratings
     
     // Apply random filters if randomizer is enabled BEFORE making the API call
     // if (isRandomizerEnabled) {

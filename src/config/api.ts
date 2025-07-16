@@ -1,6 +1,7 @@
 import { Movie, FilterOptions, Genre, WatchlistMovie } from '../types';
 import { movieCache } from '../utils/cache';
 import { getWatchlist } from '../utils/storage';
+import { logger } from '../utils/logger';
 
 // Movie API configuration
 // We'll use TMDB API for this project
@@ -42,7 +43,7 @@ const headers = {
 };
 
 export async function fetchRandomMovie(options: FilterOptions): Promise<Movie | null> {
-  console.log('Fetching random movie with options:', options);
+  logger.debug('Fetching random movie with options:', options, { prefix: 'API' });
 
   const watchlist = getWatchlist();
   let retryCount = 0;
@@ -94,25 +95,25 @@ export async function fetchRandomMovie(options: FilterOptions): Promise<Movie | 
   // Пробуем каждый вариант фильтров
   for (let i = 0; i < filterVariations.length; i++) {
     const currentFilters = filterVariations[i];
-    console.log(`Trying filter variation ${i + 1}:`, currentFilters);
+    logger.debug(`Trying filter variation ${i + 1}:`, currentFilters, { prefix: 'API' });
     
     try {
       const movie = await attemptFetch(currentFilters, watchlist);
       if (movie) {
         if (i > 0) {
-          console.log(`Found movie with relaxed filters (variation ${i + 1})`);
+          logger.debug(`Found movie with relaxed filters (variation ${i + 1})`, undefined, { prefix: 'API' });
         }
         return movie;
       }
     } catch (error) {
-      console.warn(`Filter variation ${i + 1} failed:`, error);
+      logger.warn(`Filter variation ${i + 1} failed:`, error, { prefix: 'API' });
       // Продолжаем со следующим вариантом
     }
   }
 
   // Если даже минимальные фильтры не сработали, делаем последнюю попытку без ограничений
   try {
-    console.log('Making final attempt with minimal restrictions...');
+    logger.debug('Making final attempt with minimal restrictions...', undefined, { prefix: 'API' });
     return await attemptFetch({
       genres: [],
       yearFrom: 1950,
@@ -139,7 +140,7 @@ async function attemptFetch(options: FilterOptions, watchlist: WatchlistMovie[] 
   };
 
   const randomPage = Math.floor(Math.random() * 20) + 1;
-  console.log('Fetching new batch from API, page:', randomPage);
+  logger.debug('Fetching new batch from API, page:', randomPage, { prefix: 'API' });
   
   const startTime = performance.now();
   
@@ -187,7 +188,7 @@ async function attemptFetch(options: FilterOptions, watchlist: WatchlistMovie[] 
     url = `${ENDPOINTS.DISCOVER}?${queryParams.toString()}`;
   }
 
-  console.log('Fetching movies:', { url });
+  logger.debug('Fetching movies:', { url }, { prefix: 'API' });
   
   const response = await fetch(url, { headers });
   const data = await response.json();
@@ -252,7 +253,7 @@ async function attemptFetch(options: FilterOptions, watchlist: WatchlistMovie[] 
       const itemResponse = await fetch(endpoint, { headers });
       
       if (!itemResponse.ok) {
-        console.warn(`Failed to fetch ${isTV ? 'TV show' : 'movie'} details for ID ${item.id}:`, itemResponse.status);
+        logger.warn(`Failed to fetch ${isTV ? 'TV show' : 'movie'} details for ID ${item.id}:`, itemResponse.status, { prefix: 'API' });
         return null;
       }
       
@@ -279,13 +280,13 @@ async function attemptFetch(options: FilterOptions, watchlist: WatchlistMovie[] 
       
       // Additional validation for full data
       if (!itemData.poster_path || !itemData.title || !itemData.id) {
-        console.warn(`${isTV ? 'TV show' : 'Movie'} data missing required fields for ID ${item.id}`);
+        logger.warn(`${isTV ? 'TV show' : 'Movie'} data missing required fields for ID ${item.id}`, { prefix: 'API' });
         return null;
       }
 
       // Exclude items with suspicious ratings (perfect 10.0 or very low vote count)
       if (itemData.vote_average >= 10.0 || itemData.vote_count < (isTV ? 25 : 50)) {
-        console.warn(`${isTV ? 'TV show' : 'Movie'} ${item.id} has suspicious rating: ${itemData.vote_average} with ${itemData.vote_count} votes`);
+        logger.warn(`${isTV ? 'TV show' : 'Movie'} ${item.id} has suspicious rating: ${itemData.vote_average} with ${itemData.vote_count} votes`, { prefix: 'API' });
         return null;
       }
 
@@ -299,7 +300,7 @@ async function attemptFetch(options: FilterOptions, watchlist: WatchlistMovie[] 
         const externalIdsResponse = await fetch(externalIdsEndpoint, { headers });
         
         if (!externalIdsResponse.ok) {
-          console.warn(`Failed to fetch external IDs for ${isTV ? 'TV show' : 'movie'} ${item.id}:`, externalIdsResponse.status);
+          logger.warn(`Failed to fetch external IDs for ${isTV ? 'TV show' : 'movie'} ${item.id}:`, externalIdsResponse.status, { prefix: 'API' });
           return itemData; // Continue without external IDs rather than rejecting the item
         }
         
@@ -309,11 +310,11 @@ async function attemptFetch(options: FilterOptions, watchlist: WatchlistMovie[] 
           imdb_id: externalIds.imdb_id || null,
         };
       } catch (error) {
-        console.warn(`Error fetching external IDs for ${isTV ? 'TV show' : 'movie'} ${item.id}:`, error);
+        logger.warn(`Error fetching external IDs for ${isTV ? 'TV show' : 'movie'} ${item.id}:`, error, { prefix: 'API' });
         return itemData; // Continue without external IDs
       }
     } catch (error) {
-      console.warn(`Error processing ${options.tvShowsOnly ? 'TV show' : 'movie'} ${item.id}:`, error);
+      logger.warn(`Error processing ${options.tvShowsOnly ? 'TV show' : 'movie'} ${item.id}:`, error, { prefix: 'API' });
       return null;
     }
   });
@@ -332,10 +333,10 @@ async function attemptFetch(options: FilterOptions, watchlist: WatchlistMovie[] 
     throw new Error(`No ${contentType} found with these filters`);
   }
 
-  console.log('Fetched valid movies:', {
+  logger.debug('Fetched valid movies:', {
     count: movies.length,
     titles: movies.map(m => ({ id: m.id, title: m.title }))
-  });
+  }, { prefix: 'API' });
 
   // Record the total loading time
   const endTime = performance.now();
@@ -373,7 +374,7 @@ export async function fetchGenres(): Promise<Genre[]> {
     
     return uniqueGenres;
   } catch (error) {
-    console.error('Error fetching genres:', error);
+    logger.error('Error fetching genres:', error, { prefix: 'API' });
     // Fallback to just movie genres if TV genres fail
   const response = await fetch(ENDPOINTS.GENRES, { headers });
   const data = await response.json();
@@ -395,7 +396,7 @@ export async function fetchMovieDetails(movieId: number): Promise<Movie | null> 
     const movieData = await response.json();
     return movieData;
   } catch (error) {
-    console.error('Error fetching movie details:', error);
+    logger.error('Error fetching movie details:', error, { prefix: 'API' });
     return null;
   }
 }

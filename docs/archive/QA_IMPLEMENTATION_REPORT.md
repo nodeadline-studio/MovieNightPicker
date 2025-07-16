@@ -70,10 +70,10 @@ const handleVideoClick = () => {
 };
 
 // Updated content and messaging
-<h2>SaaSBackground</h2>                    // Was: GenStockVideo
+<h2>SaaSBackgrounds</h2>                    // Was: GenStockVideo
 <span>Premium SaaS Solutions</span>        // Was: Professional 4K Videos
 <span>Enterprise Grade</span>              // Was: 4K Quality
-<span>Visit SaaSBackground.com</span>      // Was: Visit GenStockVideo.com
+<span>Visit SaaSBackgrounds.com</span>      // Was: Visit GenStockVideo.com
 ```
 
 #### Functionality Preserved

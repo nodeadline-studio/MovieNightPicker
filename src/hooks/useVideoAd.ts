@@ -1,5 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { usePickCounter } from './usePickCounter';
+import { AD_CONFIG, AdFrequencyManager } from '../config/adConfig';
+import { logger } from '../utils/logger';
 
 interface UseVideoAdOptions {
   onClose?: () => void;
@@ -20,9 +22,7 @@ export function useVideoAd({ onClose, onError, pickCounter, enableTestAds = true
   const timersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
   const hasUserInteracted = useRef<boolean>(false);
   const videoPreloadRef = useRef<HTMLVideoElement | null>(null);
-
-  // Ad frequency: show every 7 picks instead of 5
-  const AD_FREQUENCY = 7;
+  const frequencyManager = useRef<AdFrequencyManager>(new AdFrequencyManager());
 
   // Preload video in background
   useEffect(() => {
@@ -47,9 +47,9 @@ export function useVideoAd({ onClose, onError, pickCounter, enableTestAds = true
           video.load();
         });
         
-        console.log('Video preloaded successfully');
+        logger.debug('Video preloaded successfully', undefined, { prefix: 'VideoAd' });
       } catch (error) {
-        console.error('Video preload failed:', error);
+        logger.warn('Video preload failed', error, { prefix: 'VideoAd' });
       }
     };
 
@@ -101,47 +101,63 @@ export function useVideoAd({ onClose, onError, pickCounter, enableTestAds = true
   }, [close]);
 
   const maybeShow = useCallback((count: number) => {
-    // Prevent double showing - check if already shown recently
-    if (count === lastShownAt) {
-      console.log('Ad already shown for this count:', count);
+    // Check for forced ads (testing)
+    const forceVideo = localStorage.getItem('force_video_ad') === 'true';
+    const forceGoogle = localStorage.getItem('force_google_ad') === 'true';
+    
+    if (forceVideo) {
+      localStorage.removeItem('force_video_ad');
+      setAdType('video');
+      setVisible(true);
+      setLastShownAt(count);
+      logger.debug('🎬 Forced video ad shown', undefined, { prefix: 'VideoAd' });
+      return;
+    }
+    
+    if (forceGoogle) {
+      localStorage.removeItem('force_google_ad');
+      setAdType('google');
+      setVisible(true);
+      setLastShownAt(count);
+      logger.debug('📺 Forced Google ad shown', undefined, { prefix: 'VideoAd' });
       return;
     }
 
-    // Only show ad every AD_FREQUENCY picks and ensure user has interacted
-    if (!hasUserInteracted.current || count === 0 || count % AD_FREQUENCY !== 0) {
-      console.log('Ad not shown:', { 
-        hasInteracted: hasUserInteracted.current, 
-        count, 
-        mod: count % AD_FREQUENCY,
-        frequency: AD_FREQUENCY 
-      });
+    // Prevent double showing
+    if (count === lastShownAt) {
+      logger.debug('Ad already shown for this count:', count, { prefix: 'VideoAd' });
+      return;
+    }
+
+    // Use the frequency manager to determine ad type
+    const adTypeToShow = frequencyManager.current.shouldShowAd(count);
+    
+    if (!adTypeToShow) {
+      const debugInfo = frequencyManager.current.getDebugInfo();
+      logger.debug('No ad to show:', debugInfo, { prefix: 'VideoAd' });
       return;
     }
     
-    console.log('Showing ad for pick count:', count);
+    logger.debug(`🎯 Showing ${adTypeToShow} ad for pick count:`, count, { prefix: 'VideoAd' });
+    logger.debug('Debug info:', frequencyManager.current.getDebugInfo(), { prefix: 'VideoAd' });
+    
     setLastShownAt(count);
-    
-    // Alternate between video ads and Google Ads (future)
-    // For now, always show video ads
-    const shouldShowGoogle = false; // count % (AD_FREQUENCY * 2) === 0;
-    setAdType(shouldShowGoogle ? 'google' : 'video');
-    
+    setAdType(adTypeToShow);
     setVisible(true);
     
-    // If user is offline, allow instant skip
-    if (!navigator.onLine) {
+    // If user is offline and setting allows, enable instant skip
+    if (!navigator.onLine && AD_CONFIG.general.offlineSkipEnabled) {
       setSkipIn(0);
       return;
     }
 
-    // Don't auto-close the ad - let user control when to skip
-    // Video will handle its own timing logic
+    // Video/Google ad will handle its own timing logic based on config
   }, [lastShownAt]);
 
   const loadGoogleAds = useCallback(() => {
     // Future Google Ads implementation
     // This will be implemented when we activate Google Ads
-    console.log('Google Ads would load here');
+    logger.debug('Google Ads would load here', undefined, { prefix: 'VideoAd' });
     
     // Placeholder for Google Ads script loading
     /*
@@ -179,7 +195,7 @@ export function useVideoAd({ onClose, onError, pickCounter, enableTestAds = true
     // Set user interaction flag after a slight delay to prevent immediate ad show
     const timer = setTimeout(() => {
       hasUserInteracted.current = true;
-      console.log('User interaction flag set');
+      logger.debug('User interaction flag set', undefined, { prefix: 'VideoAd' });
     }, 1000);
     
     return () => clearTimeout(timer);

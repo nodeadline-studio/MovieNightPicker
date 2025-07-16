@@ -18,6 +18,7 @@ import PrivacyPolicy from '../components/PrivacyPolicy';
 import TermsOfService from '../components/TermsOfService';
 import PlaceholderMovieCard from '../components/PlaceholderMovieCard';
 import VideoAd from '../components/VideoAd';
+import GoogleVideoAd from '../components/GoogleVideoAd';
 import Button from '../components/ui/Button';
 import Spinner from '../components/ui/Spinner';
 import LoadingOverlay from '../components/LoadingOverlay';
@@ -67,6 +68,7 @@ const Home: React.FC = () => {
   const [hasInitiallyLoaded, setHasInitiallyLoaded] = useState(false);
   const [hasUserInteracted, setHasUserInteracted] = useState(false);
   const [isManuallyOpened, setIsManuallyOpened] = useState(false);
+  const [isFirstPickAfterLoad, setIsFirstPickAfterLoad] = useState(true); // Track first pick after page load
   const bottomRef = useRef<HTMLDivElement>(null);
   const pickCounter = usePickCounter();
   const isMobile = useMediaQuery({ maxWidth: 767 });
@@ -138,9 +140,14 @@ const Home: React.FC = () => {
 
   useEffect(() => {
     if (hasUserInteracted && pickCount > 0 && !isInitialLoading) {
+      // Don't show ad on the very first pick after page load
+      if (isFirstPickAfterLoad && pickCount === 1) {
+        setIsFirstPickAfterLoad(false);
+        return;
+      }
       videoAd.maybeShow(pickCount);
     }
-  }, [pickCount, hasUserInteracted, isInitialLoading, videoAd]);
+  }, [pickCount, hasUserInteracted, isInitialLoading, videoAd, isFirstPickAfterLoad]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -387,13 +394,23 @@ const Home: React.FC = () => {
       </div>
 
       {/* Video Ad */}
-        {videoAd.visible && (
-          <VideoAd
-            onClose={videoAd.close}
-            onError={videoAd.close}
-          enableTestAds={false}
-          />
-        )}
+      {videoAd.visible && (
+        <>
+          {videoAd.adType === 'video' && (
+            <VideoAd
+              onClose={videoAd.close}
+              onError={videoAd.close}
+              enableTestAds={false}
+            />
+          )}
+          {videoAd.adType === 'google' && (
+            <GoogleVideoAd
+              onClose={videoAd.close}
+              onError={videoAd.close}
+            />
+          )}
+        </>
+      )}
 
       {/* Modals */}
       <CookieConsent />

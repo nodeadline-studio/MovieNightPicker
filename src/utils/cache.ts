@@ -1,8 +1,10 @@
 import { Movie } from '../types';
+import { logger } from './logger';
 
-interface CachedMovie {
-  movie: Movie;
-  expiresAt: number;
+interface CachedMovieSet {
+  movies: Movie[];
+  timestamp: number;
+  count: number;
 }
 
 export interface CacheResult {
@@ -11,19 +13,23 @@ export interface CacheResult {
 }
 
 class MovieCache {
-  private movies: CachedMovie[] = [];
-  private maxSize: number = 50;
-  private cacheLifetime: number = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
+  private cache = new Map<string, CachedMovieSet>();
+  private readonly MAX_CACHE_AGE = 10 * 60 * 1000; // 10 minutes
+  private readonly MAX_CACHE_SIZE = 50; // Maximum number of cached sets
+  private debugId: string;
+  private usedMovies = new Map<number, number>(); // movieId -> timestamp
   private loadingTimes: number[] = [];
-  private maxLoadingTimes: number = 50; // Keep track of last 50 loading times
+  private readonly maxLoadingTimes = 50;
+  private readonly cacheLifetime = 24 * 60 * 60 * 1000; // 24 hours
 
-  private usedMovies: Map<number, number> = new Map(); // movieId -> timestamp
-  private debugId = Math.random().toString(36).slice(2, 7); 
+  constructor() {
+    this.debugId = Math.random().toString(36).substr(2, 5);
+  }
 
   private async simulateLoadTime(): Promise<void> {
     // Calculate average loading time
     const avgTime = this.loadingTimes.length > 0
-      ? this.loadingTimes.reduce((a, b) => a + b, 0) / this.loadingTimes.length
+      ? this.loadingTimes.reduce((a: number, b: number) => a + b, 0) / this.loadingTimes.length
       : 1500; // Default to 1.5s if no data
     
     // Add some randomness (±20% of average)
@@ -42,57 +48,95 @@ class MovieCache {
     }
   }
 
-  addMovies(movies: Movie[]): void {
-    // Validate movies before adding to cache - exclude suspicious ratings
+  addMovies(key: string, movies: Movie[]): void {
+    // Validate movies before adding to cache
     const validMovies = movies.filter(movie => 
       movie && 
-      movie.poster_path && 
-      movie.title && 
-      movie.vote_average < 10.0 && // Exclude perfect 10.0 ratings (usually fake/removed movies)
-      movie.vote_count >= 50 && // Ensure enough votes for reliable rating
-      (!this.usedMovies.has(movie.id) || 
-        Date.now() - (this.usedMovies.get(movie.id) || 0) > this.cacheLifetime)
+      typeof movie.id === 'number' && 
+      typeof movie.title === 'string' && 
+      movie.title.length > 0 &&
+      typeof movie.vote_average === 'number' &&
+      movie.vote_average >= 0 &&
+      movie.vote_count >= 0
     );
 
-    console.log(`[Cache ${this.debugId}] Adding movies:`, {
-      incoming: validMovies.map(m => ({ id: m.id, title: m.title, expiresAt: Date.now() + this.cacheLifetime })),
-      alreadyUsed: Array.from(this.usedMovies.entries()),
-      currentCache: this.movies.map(m => ({ id: m.movie.id, title: m.movie.title }))
+    if (validMovies.length !== movies.length) {
+      logger.debug(`Adding movies:`, {
+        original: movies.length,
+        valid: validMovies.length,
+        key: key.substring(0, 50) + '...'
+      }, { prefix: `Cache ${this.debugId}` });
+    }
+
+    // Filter out suspicious movies (perfect ratings, low vote counts)
+    const filteredMovies = validMovies.filter(movie => 
+      movie.vote_average < 10.0 && movie.vote_count >= 10
+    );
+
+    if (filteredMovies.length !== validMovies.length) {
+      logger.debug(`After filtering:`, {
+        valid: validMovies.length,
+        afterFilter: filteredMovies.length,
+        removedSuspicious: validMovies.length - filteredMovies.length
+      }, { prefix: `Cache ${this.debugId}` });
+    }
+
+    // Shuffle movies before adding to cache
+    const shuffledMovies = [...filteredMovies].sort(() => Math.random() - 0.5);
+    
+    // Remove expired entries before adding new ones
+    this.cleanExpiredEntries();
+    
+    // Add to cache
+    this.cache.set(key, { 
+      movies: shuffledMovies, 
+      timestamp: Date.now(), 
+      count: shuffledMovies.length 
     });
 
-    const newMovies = validMovies.map(movie => ({
-      movie,
-      expiresAt: Date.now() + this.cacheLifetime
-    }));
-    
-    // Shuffle new movies before adding to cache
-    const shuffledNewMovies = [...newMovies].sort(() => Math.random() - 0.5);
-    
-    console.log(`[Cache ${this.debugId}] After filtering:`, {
-      newMovies: shuffledNewMovies.map(m => ({ id: m.movie.id, title: m.movie.title }))
-    });
-    
-    // Remove expired movies before adding new ones
-    this.removeExpiredMovies();
-    
-    this.movies = [...this.movies, ...shuffledNewMovies].slice(0, this.maxSize);
-  }
-
-  private removeExpiredMovies(): void {
-    const now = Date.now();
-    const initialCount = this.movies.length;
-    this.movies = this.movies.filter(m => m.expiresAt > now);
-    
-    const removedCount = initialCount - this.movies.length;
-    if (removedCount > 0) {
-      console.log(`[Cache ${this.debugId}] Removed ${removedCount} expired movies`);
+    // Limit cache size
+    if (this.cache.size > this.MAX_CACHE_SIZE) {
+      const firstKey = this.cache.keys().next().value;
+      if (firstKey) {
+        this.cache.delete(firstKey);
+      }
     }
   }
 
-  async getMovie(): Promise<Movie | null> {
-    // Remove expired movies first
-    this.removeExpiredMovies();
+  private cleanExpiredEntries(): void {
+    const now = Date.now();
+    let removedCount = 0;
     
+    for (const [key, value] of this.cache.entries()) {
+      if (now - value.timestamp > this.MAX_CACHE_AGE) {
+        this.cache.delete(key);
+        removedCount++;
+      }
+    }
+    
+    if (removedCount > 0) {
+      logger.debug(`Removed ${removedCount} expired movies`, undefined, { prefix: `Cache ${this.debugId}` });
+    }
+  }
+
+  getMovies(key: string): Movie[] {
+    this.cleanExpiredEntries();
+    
+    const cachedSet = this.cache.get(key);
+    if (cachedSet) {
+      logger.debug(`Getting movie:`, {
+        available: cachedSet.movies.length,
+        age: `${Math.round((Date.now() - cachedSet.timestamp) / 1000)}s`,
+        key: key.substring(0, 50) + '...'
+      }, { prefix: `Cache ${this.debugId}` });
+
+      return cachedSet.movies;
+    }
+
+    return [];
+  }
+
+  async getMovie(): Promise<Movie | null> {
     // Clean up old used movies
     const now = Date.now();
     for (const [id, timestamp] of this.usedMovies.entries()) {
@@ -100,55 +144,69 @@ class MovieCache {
         this.usedMovies.delete(id);
       }
     }
+
+    // Get all available movies from all cache sets
+    const allMovies: Movie[] = [];
+    for (const cachedSet of this.cache.values()) {
+      allMovies.push(...cachedSet.movies);
+    }
+
+    // Filter out recently used movies
+    const availableMovies = allMovies.filter(movie => 
+      !this.usedMovies.has(movie.id)
+    );
     
-    if (this.movies.length === 0) return null;
+    if (availableMovies.length === 0) return null;
     
     // Simulate loading time
     await this.simulateLoadTime();
     
-    // Get a truly random movie from the cache
-    const randomIndex = Math.floor(Math.random() * this.movies.length);
-    const { movie } = this.movies[randomIndex];
+    // Get a random movie
+    const randomIndex = Math.floor(Math.random() * availableMovies.length);
+    const movie = availableMovies[randomIndex];
     
-    console.log(`[Cache ${this.debugId}] Getting movie:`, {
-      selected: { id: movie.id, title: movie.title },
-      remainingCount: this.movies.length - 1
-    });
-
-    // Add to used movies set
+    // Mark as used
     this.usedMovies.set(movie.id, Date.now());
     
-    // Remove from cache
-    this.movies = this.movies.filter((_, index) => index !== randomIndex);
     return movie;
   }
 
   clear(): void {
-    this.movies = [];
+    const size = this.cache.size;
+    this.cache.clear();
     this.usedMovies.clear();
-    console.log(`[Cache ${this.debugId}] Cache cleared`);
+    if (size > 0) {
+      logger.debug(`Cache cleared`, undefined, { prefix: `Cache ${this.debugId}` });
+    }
   }
 
-  // Clear cache from movies with suspicious ratings
-  clearSuspiciousMovies(): void {
-    const initialCount = this.movies.length;
-    this.movies = this.movies.filter(cached => 
-      cached.movie.vote_average < 10.0 && 
-      cached.movie.vote_count >= 50
-    );
-    const removedCount = initialCount - this.movies.length;
+  removeSuspiciousMovies(): void {
+    let removedCount = 0;
+    
+    for (const [key, value] of this.cache.entries()) {
+      const originalLength = value.movies.length;
+      value.movies = value.movies.filter(movie => 
+        movie.vote_average < 10.0 && movie.vote_count >= 10
+      );
+      removedCount += originalLength - value.movies.length;
+    }
+    
     if (removedCount > 0) {
-      console.log(`[Cache ${this.debugId}] Removed ${removedCount} suspicious movies from cache`);
+      logger.debug(`Removed ${removedCount} suspicious movies from cache`, undefined, { prefix: `Cache ${this.debugId}` });
     }
   }
 
   get size(): number {
-    return this.movies.length;
+    let totalMovies = 0;
+    for (const cachedSet of this.cache.values()) {
+      totalMovies += cachedSet.movies.length;
+    }
+    return totalMovies;
   }
 
   hasMovies(): boolean {
-    this.removeExpiredMovies();
-    return this.movies.length > 0;
+    this.cleanExpiredEntries();
+    return this.size > 0;
   }
 }
 
