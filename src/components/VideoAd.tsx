@@ -1,251 +1,258 @@
-import React, { useEffect, useRef, useState, useCallback } from 'react';
-import { X, Play, Pause, Volume2, VolumeX, ArrowRight, CheckCircle } from 'lucide-react';
-import * as gtag from '../utils/gtag';
+import React, { useState, useRef, useEffect } from 'react';
+import { X, Play, Pause, Volume2, VolumeX, ExternalLink } from 'lucide-react';
 
 interface VideoAdProps {
   onClose: () => void;
-  onError: () => void;
-  enableTestAds?: boolean;
 }
 
-const VideoAd: React.FC<VideoAdProps> = ({ onClose, onError, enableTestAds = false }) => {
-  const [canSkip, setCanSkip] = useState(false);
-  const [remainingTime, setRemainingTime] = useState(8);
-  const [isPlaying, setIsPlaying] = useState(false);
+const VideoAd: React.FC<VideoAdProps> = ({ onClose }) => {
+  const [isPlaying, setIsPlaying] = useState(true);
   const [isMuted, setIsMuted] = useState(true);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
-  const [isLoaded, setIsLoaded] = useState(false);
   const [showCTA, setShowCTA] = useState(false);
-  
   const videoRef = useRef<HTMLVideoElement>(null);
-  const intervalRef = useRef<number>();
-  const hasUserInteracted = useRef(false);
 
-  // Auto-play and skip timer
   useEffect(() => {
-    const timer = setTimeout(() => {
-      if (videoRef.current && !hasUserInteracted.current) {
-        videoRef.current.play().catch(() => {
-          setIsPlaying(false);
-        });
-      }
-    }, 500);
+    const video = videoRef.current;
+    if (!video) return;
 
-    // Skip timer - reduced to 8 seconds for better UX
-    intervalRef.current = window.setInterval(() => {
-      setRemainingTime((prev) => {
-        const newTime = prev - 1;
-        if (newTime <= 0) {
-          setCanSkip(true);
-          return 0;
-        }
-        return newTime;
-      });
-    }, 1000);
-
-    return () => {
-      clearTimeout(timer);
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
+    const handleTimeUpdate = () => {
+      setCurrentTime(video.currentTime);
+      // Show CTA after 3 seconds for better engagement
+      if (video.currentTime >= 3 && !showCTA) {
+        setShowCTA(true);
       }
     };
-  }, []);
 
-  // Show CTA after 4 seconds for faster engagement
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setShowCTA(true);
-    }, 4000);
+    const handleLoadedMetadata = () => {
+      setDuration(video.duration);
+    };
 
-    return () => clearTimeout(timer);
-  }, []);
+    const handlePlay = () => setIsPlaying(true);
+    const handlePause = () => setIsPlaying(false);
 
-  const handleVideoLoad = useCallback(() => {
-    if (videoRef.current) {
-      setDuration(videoRef.current.duration);
-      setIsLoaded(true);
-      setIsPlaying(true);
+    video.addEventListener('timeupdate', handleTimeUpdate);
+    video.addEventListener('loadedmetadata', handleLoadedMetadata);
+    video.addEventListener('play', handlePlay);
+    video.addEventListener('pause', handlePause);
+
+    // Auto-play muted
+    video.play().catch(() => {
+      // Auto-play failed, that's okay
+    });
+
+    return () => {
+      video.removeEventListener('timeupdate', handleTimeUpdate);
+      video.removeEventListener('loadedmetadata', handleLoadedMetadata);
+      video.removeEventListener('play', handlePlay);
+      video.removeEventListener('pause', handlePause);
+    };
+  }, [showCTA]);
+
+  const togglePlayPause = () => {
+    const video = videoRef.current;
+    if (!video) return;
+
+    if (isPlaying) {
+      video.pause();
+    } else {
+      video.play();
     }
-  }, []);
+  };
 
-  const handleTimeUpdate = useCallback(() => {
-    if (videoRef.current) {
-      setCurrentTime(videoRef.current.currentTime);
-    }
-  }, []);
+  const toggleMute = () => {
+    const video = videoRef.current;
+    if (!video) return;
 
-  const handlePlay = useCallback(() => {
-    hasUserInteracted.current = true;
-    if (videoRef.current) {
-      videoRef.current.play().catch(() => {
-        setIsPlaying(false);
-      });
-      setIsPlaying(true);
-    }
-  }, []);
+    video.muted = !video.muted;
+    setIsMuted(video.muted);
+  };
 
-  const handlePause = useCallback(() => {
-    hasUserInteracted.current = true;
-    if (videoRef.current) {
-      videoRef.current.pause();
-      setIsPlaying(false);
-    }
-  }, []);
+  const handleSeek = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const video = videoRef.current;
+    if (!video) return;
 
-  const toggleMute = useCallback(() => {
-    hasUserInteracted.current = true;
-    if (videoRef.current) {
-      videoRef.current.muted = !videoRef.current.muted;
-      setIsMuted(videoRef.current.muted);
-    }
-  }, []);
+    const newTime = (parseFloat(e.target.value) / 100) * duration;
+    video.currentTime = newTime;
+    setCurrentTime(newTime);
+  };
 
-  const handleSkip = useCallback(() => {
-    gtag.trackVideoAdSkip(Math.floor(currentTime));
-    onClose();
-  }, [currentTime, onClose]);
+  const formatTime = (time: number) => {
+    const minutes = Math.floor(time / 60);
+    const seconds = Math.floor(time % 60);
+    return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+  };
 
-  const handleCTAClick = useCallback(() => {
-    hasUserInteracted.current = true;
-    gtag.trackVideoAdClick();
-    window.open('https://saasbackground.com', '_blank');
-  }, []);
+  const handleAdClick = () => {
+    window.open('https://saasbackgrounds.com', '_blank');
+  };
 
-  const progressPercent = duration > 0 ? (currentTime / duration) * 100 : 0;
+  const progress = duration > 0 ? (currentTime / duration) * 100 : 0;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-90 z-50 flex items-center justify-center p-4">
-      <div className="relative w-full max-w-6xl h-full max-h-[90vh] bg-gradient-to-br from-slate-800 via-slate-700 to-slate-900 rounded-2xl overflow-hidden shadow-2xl">
-        
-        {/* Header */}
-        <div className="absolute top-0 left-0 right-0 z-20 flex justify-between items-center p-4 bg-gradient-to-b from-black/50 to-transparent">
-          <div className="flex items-center gap-2">
-            <span className="bg-orange-600 text-white text-xs font-bold px-2 py-1 rounded">AD</span>
-            <span className="text-white text-sm font-medium">SPONSORED</span>
-          </div>
-          
-          <div className="flex items-center gap-3">
-            {canSkip ? (
-              <button
-                onClick={handleSkip}
-                className="bg-white bg-opacity-20 hover:bg-opacity-30 text-white px-4 py-2 rounded-full text-sm font-semibold transition-all hover:scale-105"
-              >
-                Skip Ad
-              </button>
-            ) : (
-              <span className="text-white text-sm bg-black bg-opacity-40 px-3 py-2 rounded-full">
-                Skip in {remainingTime}s
-              </span>
-            )}
-            
-            <button
-              onClick={handleSkip}
-              className="p-2 bg-white bg-opacity-20 hover:bg-opacity-30 rounded-full text-white transition-all hover:scale-110"
-            >
-              <X size={20} />
-            </button>
-          </div>
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-xl max-w-5xl w-full max-h-[90vh] overflow-hidden shadow-2xl">
+        {/* Close button */}
+        <div className="absolute top-4 right-4 z-10">
+          <button
+            onClick={onClose}
+            className="bg-black bg-opacity-50 hover:bg-opacity-70 text-white rounded-full p-2 transition-all duration-200"
+          >
+            <X size={20} />
+          </button>
         </div>
 
-        {/* Main Content - Video takes more space */}
-        <div className="grid grid-cols-1 lg:grid-cols-5 h-full">
-          
-          {/* Video Section - 60% on desktop (3/5), 70% on mobile */}
-          <div className="lg:col-span-3 relative bg-black h-[70vh] lg:h-full">
+        {/* Main container - responsive layout */}
+        <div className="grid grid-cols-1 lg:grid-cols-5 min-h-[400px] lg:min-h-[500px]">
+          {/* Video section - larger on both mobile and desktop */}
+          <div className="lg:col-span-3 relative bg-gray-900 flex items-center justify-center h-[60vh] lg:h-auto">
             <video
               ref={videoRef}
-              src="/ad_preview_optimized.mp4"
-              poster="/ad_preview_poster.jpg"
-              autoPlay
+              className="w-full h-full object-cover cursor-pointer"
               muted
               loop
               playsInline
-              preload="auto"
-              onLoadedData={handleVideoLoad}
-              onTimeUpdate={handleTimeUpdate}
-              className="w-full h-full object-cover"
-              onError={() => onError()}
-            />
-            
-            {/* Video Controls Overlay */}
-            {isLoaded && (
-              <div className="absolute bottom-4 left-4 right-4 space-y-3">
-                {/* Progress Bar */}
-                <div className="w-full bg-black bg-opacity-40 rounded-full h-2">
-                  <div 
-                    className="bg-orange-500 h-2 rounded-full transition-all duration-300"
-                    style={{ width: `${progressPercent}%` }}
+              onClick={handleAdClick}
+              poster="/ad_preview_poster.jpg"
+            >
+              <source src="/ad_preview_mobile.mp4" type="video/mp4" media="(max-width: 768px)" />
+              <source src="/ad_preview_optimized.mp4" type="video/mp4" />
+              Your browser does not support the video tag.
+            </video>
+
+            {/* Video controls overlay */}
+            <div className="absolute bottom-4 left-4 right-4 bg-black bg-opacity-50 rounded-lg p-3">
+              <div className="flex items-center space-x-3">
+                <button
+                  onClick={togglePlayPause}
+                  className="text-white hover:text-blue-400 transition-colors"
+                >
+                  {isPlaying ? <Pause size={20} /> : <Play size={20} />}
+                </button>
+
+                <div className="flex-1">
+                  <input
+                    type="range"
+                    min="0"
+                    max="100"
+                    value={progress}
+                    onChange={handleSeek}
+                    className="w-full h-1 bg-gray-600 rounded-lg appearance-none cursor-pointer slider"
                   />
                 </div>
-                
-                {/* Control Buttons */}
-                <div className="flex justify-between items-center">
-                  <div className="flex items-center gap-3">
-                    <button
-                      onClick={isPlaying ? handlePause : handlePlay}
-                      className="p-2 bg-white bg-opacity-20 hover:bg-opacity-30 rounded-full text-white transition-all"
-                    >
-                      {isPlaying ? <Pause size={16} /> : <Play size={16} />}
-                    </button>
-                    
-                    <button
-                      onClick={toggleMute}
-                      className="p-2 bg-white bg-opacity-20 hover:bg-opacity-30 rounded-full text-white transition-all"
-                    >
-                      {isMuted ? <VolumeX size={16} /> : <Volume2 size={16} />}
-                    </button>
-                  </div>
-                  
-                  <div className="text-white text-sm bg-black bg-opacity-40 px-2 py-1 rounded">
-                    {Math.floor(currentTime)}s / {Math.floor(duration)}s
-                  </div>
-                </div>
+
+                <span className="text-white text-xs">
+                  {formatTime(currentTime)} / {formatTime(duration)}
+                </span>
+
+                <button
+                  onClick={toggleMute}
+                  className="text-white hover:text-blue-400 transition-colors"
+                >
+                  {isMuted ? <VolumeX size={20} /> : <Volume2 size={20} />}
+                </button>
               </div>
-            )}
+            </div>
+
+            {/* Click hint overlay */}
+            <div className="absolute top-4 left-4 bg-black bg-opacity-70 text-white px-3 py-1 rounded-lg text-sm">
+              Click video to visit site
+            </div>
           </div>
 
-          {/* Content Section - 40% on desktop (2/5), 30% on mobile */}
-          <div className="lg:col-span-2 p-6 lg:p-8 flex flex-col justify-center text-white space-y-6">
-            
-            {/* Minimal Header */}
+          {/* Content section - authentic messaging for cinema-loving SaaS creators */}
+          <div className="lg:col-span-2 p-6 lg:p-8 flex flex-col justify-center space-y-4">
             <div className="space-y-3">
-              <h1 className="text-xl lg:text-2xl font-bold leading-tight">
-                Professional Video Backgrounds
-              </h1>
+              <h3 className="text-2xl lg:text-3xl font-bold text-gray-900 leading-tight">
+                For SaaS Creators Who Love Great Cinematography
+              </h3>
               
-              <p className="text-gray-300 text-sm">
-                High-quality SaaS video backgrounds. Ready to use.
+              <p className="text-gray-600 leading-relaxed">
+                Finally, video backgrounds that don't look like stock footage. 
+                Shot with the same attention to detail you put into your product.
               </p>
+
+              <div className="space-y-2">
+                <div className="flex items-center space-x-2">
+                  <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                  <span className="text-gray-700">HD & 4K quality</span>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                  <span className="text-gray-700">Download immediately after purchase</span>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                  <span className="text-gray-700">Created by someone who gets it</span>
+                </div>
+              </div>
             </div>
 
-            {/* Minimal Benefits */}
-            <div className="space-y-2">
-              <div className="flex items-center gap-2">
-                <CheckCircle className="w-4 h-4 text-green-400 flex-shrink-0" />
-                <span className="text-sm">4K Quality</span>
-              </div>
-              
-              <div className="flex items-center gap-2">
-                <CheckCircle className="w-4 h-4 text-green-400 flex-shrink-0" />
-                <span className="text-sm">Instant Download</span>
-              </div>
-            </div>
-
-            {/* Simple CTA */}
+            {/* CTA appears after 3 seconds */}
             {showCTA && (
-              <button
-                onClick={handleCTAClick}
-                className="w-full bg-orange-600 hover:bg-orange-700 text-white font-bold py-3 px-4 rounded-lg 
-                         transition-all duration-200 hover:scale-[1.02] flex items-center justify-center gap-2"
-              >
-                <span>Browse Backgrounds</span>
-                <ArrowRight size={16} />
-              </button>
+              <div className="space-y-3 animate-fade-in">
+                <button
+                  onClick={handleAdClick}
+                  className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-lg transition-all duration-200 flex items-center justify-center space-x-2 shadow-lg hover:shadow-xl"
+                >
+                  <span>Browse Collection</span>
+                  <ExternalLink size={18} />
+                </button>
+                
+                {/* Mobile-specific CTA */}
+                <div className="lg:hidden">
+                  <button
+                    onClick={handleAdClick}
+                    className="w-full bg-gray-100 hover:bg-gray-200 text-gray-800 font-medium py-3 px-6 rounded-lg transition-all duration-200"
+                  >
+                    View on Mobile
+                  </button>
+                </div>
+
+                <p className="text-xs text-gray-500 text-center">
+                  No subscription. Just great backgrounds.
+                </p>
+              </div>
+            )}
+
+            {/* Social proof - appears only after CTA */}
+            {showCTA && (
+              <div className="border-t pt-4 mt-4">
+                <p className="text-sm text-gray-500 text-center">
+                  "These actually look professional" - Recent customer
+                </p>
+              </div>
             )}
           </div>
         </div>
       </div>
+
+      <style jsx>{`
+        @keyframes fade-in {
+          from { opacity: 0; transform: translateY(10px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade-in {
+          animation: fade-in 0.5s ease-out;
+        }
+        .slider::-webkit-slider-thumb {
+          appearance: none;
+          height: 16px;
+          width: 16px;
+          background: #3b82f6;
+          border-radius: 50%;
+          cursor: pointer;
+        }
+        .slider::-moz-range-thumb {
+          height: 16px;
+          width: 16px;
+          background: #3b82f6;
+          border-radius: 50%;
+          cursor: pointer;
+          border: none;
+        }
+      `}</style>
     </div>
   );
 };
