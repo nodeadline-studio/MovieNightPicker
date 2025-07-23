@@ -12,6 +12,7 @@ const VideoAd: React.FC<VideoAdProps> = ({ onClose }) => {
   const [duration, setDuration] = useState(0);
   const [showCTA, setShowCTA] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
+  const autoSkipTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     const video = videoRef.current;
@@ -27,6 +28,19 @@ const VideoAd: React.FC<VideoAdProps> = ({ onClose }) => {
 
     const handleLoadedMetadata = () => {
       setDuration(video.duration);
+      // Set auto-skip after video duration + 2 seconds buffer
+      if (video.duration > 0) {
+        autoSkipTimeoutRef.current = setTimeout(() => {
+          onClose();
+        }, (video.duration + 2) * 1000);
+      }
+    };
+
+    const handleEnded = () => {
+      // Auto-close when video ends
+      setTimeout(() => {
+        onClose();
+      }, 1000); // 1 second delay after video ends
     };
 
     const handlePlay = () => setIsPlaying(true);
@@ -34,6 +48,7 @@ const VideoAd: React.FC<VideoAdProps> = ({ onClose }) => {
 
     video.addEventListener('timeupdate', handleTimeUpdate);
     video.addEventListener('loadedmetadata', handleLoadedMetadata);
+    video.addEventListener('ended', handleEnded);
     video.addEventListener('play', handlePlay);
     video.addEventListener('pause', handlePause);
 
@@ -45,8 +60,14 @@ const VideoAd: React.FC<VideoAdProps> = ({ onClose }) => {
     return () => {
       video.removeEventListener('timeupdate', handleTimeUpdate);
       video.removeEventListener('loadedmetadata', handleLoadedMetadata);
+      video.removeEventListener('ended', handleEnded);
       video.removeEventListener('play', handlePlay);
       video.removeEventListener('pause', handlePause);
+      
+      // Clear auto-skip timeout
+      if (autoSkipTimeoutRef.current) {
+        clearTimeout(autoSkipTimeoutRef.current);
+      }
     };
   }, [showCTA]);
 
@@ -91,13 +112,14 @@ const VideoAd: React.FC<VideoAdProps> = ({ onClose }) => {
   const progress = duration > 0 ? (currentTime / duration) * 100 : 0;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-xl max-w-5xl w-full max-h-[90vh] overflow-hidden shadow-2xl">
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" data-testid="video-ad">
+      <div className="bg-gradient-to-br from-white to-gray-50 rounded-xl max-w-5xl w-full max-h-[90vh] overflow-hidden shadow-2xl" data-testid="video-ad-container">
         {/* Close button */}
         <div className="absolute top-4 right-4 z-10">
           <button
             onClick={onClose}
             className="bg-black bg-opacity-50 hover:bg-opacity-70 text-white rounded-full p-2 transition-all duration-200"
+            data-testid="close-button"
           >
             <X size={20} />
           </button>
@@ -106,15 +128,19 @@ const VideoAd: React.FC<VideoAdProps> = ({ onClose }) => {
         {/* Main container - responsive layout */}
         <div className="grid grid-cols-1 lg:grid-cols-5 min-h-[400px] lg:min-h-[500px]">
           {/* Video section - larger on both mobile and desktop */}
-          <div className="lg:col-span-3 relative bg-gray-900 flex items-center justify-center h-[60vh] lg:h-auto">
+          <div className="lg:col-span-3 relative bg-gray-900 flex items-center justify-center h-[60vh] lg:h-auto" data-testid="video-section">
             <video
               ref={videoRef}
               className="w-full h-full object-cover cursor-pointer"
               muted
               loop
               playsInline
+              controls={false}
               onClick={handleAdClick}
               poster="/ad_preview_poster.jpg"
+              style={{
+                outline: 'none',
+              }}
             >
               <source src="/ad_preview_mobile.mp4" type="video/mp4" media="(max-width: 768px)" />
               <source src="/ad_preview_optimized.mp4" type="video/mp4" />
@@ -127,6 +153,7 @@ const VideoAd: React.FC<VideoAdProps> = ({ onClose }) => {
                 <button
                   onClick={togglePlayPause}
                   className="text-white hover:text-blue-400 transition-colors"
+                  data-testid="play-pause-button"
                 >
                   {isPlaying ? <Pause size={20} /> : <Play size={20} />}
                 </button>
@@ -138,7 +165,8 @@ const VideoAd: React.FC<VideoAdProps> = ({ onClose }) => {
                     max="100"
                     value={progress}
                     onChange={handleSeek}
-                    className="w-full h-1 bg-gray-600 rounded-lg appearance-none cursor-pointer slider"
+                    className="w-full h-1 bg-gray-600 rounded-lg appearance-none cursor-pointer video-slider"
+                    data-testid="progress-bar"
                   />
                 </div>
 
@@ -149,6 +177,7 @@ const VideoAd: React.FC<VideoAdProps> = ({ onClose }) => {
                 <button
                   onClick={toggleMute}
                   className="text-white hover:text-blue-400 transition-colors"
+                  data-testid="mute-button"
                 >
                   {isMuted ? <VolumeX size={20} /> : <Volume2 size={20} />}
                 </button>
@@ -162,7 +191,7 @@ const VideoAd: React.FC<VideoAdProps> = ({ onClose }) => {
           </div>
 
           {/* Content section - authentic messaging for cinema-loving SaaS creators */}
-          <div className="lg:col-span-2 p-6 lg:p-8 flex flex-col justify-center space-y-4">
+          <div className="lg:col-span-2 p-6 lg:p-8 flex flex-col justify-center space-y-4" data-testid="content-section">
             <div className="space-y-3">
               <h3 className="text-2xl lg:text-3xl font-bold text-gray-900 leading-tight">
                 For SaaS Creators Who Love Great Cinematography
@@ -176,7 +205,11 @@ const VideoAd: React.FC<VideoAdProps> = ({ onClose }) => {
               <div className="space-y-2">
                 <div className="flex items-center space-x-2">
                   <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                  <span className="text-gray-700">HD & 4K quality</span>
+                  <span className="text-gray-700">HD & 4K quality available</span>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                  <span className="text-gray-700">Landscape & portrait formats</span>
                 </div>
                 <div className="flex items-center space-x-2">
                   <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
@@ -195,6 +228,7 @@ const VideoAd: React.FC<VideoAdProps> = ({ onClose }) => {
                 <button
                   onClick={handleAdClick}
                   className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-lg transition-all duration-200 flex items-center justify-center space-x-2 shadow-lg hover:shadow-xl"
+                  data-testid="cta-button"
                 >
                   <span>Browse Collection</span>
                   <ExternalLink size={18} />
@@ -228,7 +262,7 @@ const VideoAd: React.FC<VideoAdProps> = ({ onClose }) => {
         </div>
       </div>
 
-      <style jsx>{`
+      <style>{`
         @keyframes fade-in {
           from { opacity: 0; transform: translateY(10px); }
           to { opacity: 1; transform: translateY(0); }
@@ -236,7 +270,7 @@ const VideoAd: React.FC<VideoAdProps> = ({ onClose }) => {
         .animate-fade-in {
           animation: fade-in 0.5s ease-out;
         }
-        .slider::-webkit-slider-thumb {
+        .video-slider::-webkit-slider-thumb {
           appearance: none;
           height: 16px;
           width: 16px;
@@ -244,13 +278,25 @@ const VideoAd: React.FC<VideoAdProps> = ({ onClose }) => {
           border-radius: 50%;
           cursor: pointer;
         }
-        .slider::-moz-range-thumb {
+        .video-slider::-moz-range-thumb {
           height: 16px;
           width: 16px;
           background: #3b82f6;
           border-radius: 50%;
           cursor: pointer;
           border: none;
+        }
+        video::-webkit-media-controls {
+          display: none !important;
+        }
+        video::-webkit-media-controls-panel {
+          display: none !important;
+        }
+        video::-webkit-media-controls-play-button {
+          display: none !important;
+        }
+        video::-webkit-media-controls-start-playback-button {
+          display: none !important;
         }
       `}</style>
     </div>
