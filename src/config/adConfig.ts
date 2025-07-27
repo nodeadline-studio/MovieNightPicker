@@ -40,7 +40,7 @@ export const AD_CONFIG = {
   },
   
   videoAd: {
-    frequency: 5,        // Show video ad every 5 picks (restored from 999999)
+    frequency: 5,        // Show video ad every 5 picks
     skipDelay: 10,       // Allow skip after 10 seconds
   },
   
@@ -111,7 +111,14 @@ export class AdFrequencyManager {
   private shouldShowVideoAd(): boolean {
     // Video ads are always enabled, just check frequency
     const timeSinceLastVideo = this.pickCount - this.lastVideoAdAt;
-    return timeSinceLastVideo >= AD_CONFIG.videoAd.frequency;
+    const shouldShow = timeSinceLastVideo >= AD_CONFIG.videoAd.frequency;
+    
+    // Show video ad every 5th click
+    if (this.pickCount > 0 && this.pickCount % 5 === 0) {
+      return true;
+    }
+    
+    return shouldShow;
   }
   
   private shouldShowGoogleAd(): boolean {

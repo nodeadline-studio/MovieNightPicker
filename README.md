@@ -35,7 +35,6 @@ MovieNightPicker is a web application designed to help users quickly discover mo
 ## Known Issues
 
 - **Filter Selection on Desktop**: There are currently issues with clicking filter elements on desktop devices. This affects the user experience when trying to select genres, adjust ratings, or modify other filter settings.
-- **Advertisements**: The advertisement functionality is currently not working and requires fixing. This includes both display ads and video ads that are integrated into the application.
 
 ## Roadmap
 
@@ -72,7 +71,22 @@ npm run build
 
 ## Contributing
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+Contributions are welcome! Please follow these guidelines:
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. **Clean up test files** - See [Testing Guidelines](docs/TESTING_GUIDELINES.md)
+5. Submit a Pull Request
+
+### Test Cleanup Policy
+
+Before committing, always clean up temporary test files:
+```bash
+rm -f tests/qa/*.png && rm -rf test-results/
+```
+
+See [TESTING_GUIDELINES.md](docs/TESTING_GUIDELINES.md) for complete testing standards.
 
 ## License
 

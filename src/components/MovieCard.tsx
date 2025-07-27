@@ -3,32 +3,25 @@ import { Movie } from '../types';
 import { getImageUrl, isInTheaters } from '../config/api';
 import { Heart, Star, Calendar, Clock, Clapperboard, ExternalLink, Sparkles, Shuffle } from 'lucide-react';
 import Button from './ui/Button';
-import VideoAd from './VideoAd';
 import { useMovieContext } from '../context/MovieContext';
 import { usePickCounter } from '../hooks/usePickCounter';
-import { useVideoAd } from '../hooks/useVideoAd';
 import * as gtag from '../utils/gtag';
+
+interface VideoAdHook {
+  visible: boolean;
+  maybeShow: (count: number) => void;
+  close: () => void;
+}
 
 interface MovieCardProps {
   movie: Movie;
   isInWatchlist?: boolean;
+  videoAd: VideoAdHook;
 }
 
-const MovieCard: React.FC<MovieCardProps> = ({ movie, isInWatchlist = false }) => {
+const MovieCard: React.FC<MovieCardProps> = ({ movie, isInWatchlist = false, videoAd }) => {
   const { addToWatchlist, removeFromWatchlist, getRandomMovie, getRandomMovieSafe, filterOptions } = useMovieContext();
   const pickCounter = usePickCounter();
-  
-  const videoAd = useVideoAd({
-    onClose: () => {
-      getRandomMovieSafe()
-        .catch(console.error);
-    },
-    onError: () => {
-      getRandomMovieSafe()
-        .catch(console.error);
-    },
-    enableTestAds: false
-  });
   
   const handleWatchlistToggle = () => {
     if (isInWatchlist) {
@@ -46,8 +39,20 @@ const MovieCard: React.FC<MovieCardProps> = ({ movie, isInWatchlist = false }) =
       
       // Show video ad every 5 picks
       if (count >= 5 && count % 5 === 0) {
+        // Force show video ad
+        localStorage.setItem('force_video_ad', 'true');
         videoAd.maybeShow(count);
-      } else if (!videoAd.visible) {
+        
+        // Wait for ad to show
+        await new Promise(resolve => setTimeout(resolve, 200));
+        
+        if (videoAd.visible) {
+          return; // Don't get new movie if ad is showing
+        }
+      }
+      
+      // Get new movie if no ad is showing
+      if (!videoAd.visible) {
         await getRandomMovie();
       }
     } catch (error) {
@@ -76,7 +81,7 @@ const MovieCard: React.FC<MovieCardProps> = ({ movie, isInWatchlist = false }) =
         <div className="relative bg-gradient-to-br from-slate-900/95 via-gray-900/95 to-slate-800/95 
                        backdrop-blur-xl border border-white/10 rounded-3xl overflow-hidden 
                        shadow-2xl ring-1 ring-white/5 transform transition-transform duration-300 
-                       hover:scale-[1.01] max-h-[100dvh] md:max-h-none">
+                       hover:scale-[1.01] max-h-[100dvh] md:max-h-[calc(100vh-8rem)] lg:max-h-[calc(100vh-8rem)]">
           
           <div className="flex flex-col md:flex-row h-full md:h-auto">
             {/* Movie Poster */}
@@ -140,7 +145,7 @@ const MovieCard: React.FC<MovieCardProps> = ({ movie, isInWatchlist = false }) =
             </div>
             
             {/* Movie Details */}
-            <div className="md:w-2/3 p-3 md:p-6 lg:p-8 flex flex-col flex-1 min-h-0">
+            <div className="md:w-2/3 p-3 md:p-6 lg:p-8 flex flex-col flex-1 min-h-0 md:max-h-[calc(100vh-8rem)] lg:max-h-[calc(100vh-8rem)] md:overflow-y-auto">
               {/* Header */}
               <div className="mb-3 md:mb-6">
                 <h2 className="text-lg md:text-2xl lg:text-4xl font-bold text-white leading-tight mb-2 md:mb-3 
@@ -276,16 +281,7 @@ const MovieCard: React.FC<MovieCardProps> = ({ movie, isInWatchlist = false }) =
         </button>
       </div>
 
-      {/* Video Ad */}
-      {videoAd.visible && (
-        <div className="fixed inset-0 z-50">
-          <VideoAd 
-            onClose={videoAd.close}
-            onError={videoAd.close}
-            enableTestAds={false}
-          />
-        </div>
-      )}
+
     </div>
   );
 };

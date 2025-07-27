@@ -138,16 +138,9 @@ const Home: React.FC = () => {
     return () => clearTimeout(timer);
   }, [isLoadingGenres]);
 
-  useEffect(() => {
-    if (hasUserInteracted && pickCount > 0 && !isInitialLoading) {
-      // Don't show ad on the very first pick after page load
-      if (isFirstPickAfterLoad && pickCount === 1) {
-        setIsFirstPickAfterLoad(false);
-        return;
-      }
-      videoAd.maybeShow(pickCount);
-    }
-  }, [pickCount, hasUserInteracted, isInitialLoading, videoAd, isFirstPickAfterLoad]);
+  // REMOVED: Automatic video ad trigger on pickCount change
+  // This was causing ads to show immediately on page load
+  // Video ads are now only triggered by explicit user button clicks in MovieCard
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -333,17 +326,17 @@ const Home: React.FC = () => {
           </div>
         )}
 
-        <main className="flex-1 px-4 pb-8">
-          <div className="max-w-6xl mx-auto">
-            <div className="flex flex-col items-center">
+        <main className="flex-1 px-4 py-4 md:py-6">
+          <div className="max-w-6xl mx-auto h-full">
+            <div className="flex flex-col items-center h-full">
               {/* Movie Card Section */}
-              <div className="w-full">
+              <div className="w-full flex-1 flex items-center justify-center">
                 {loadingState === LoadingState.LOADING ? (
                   <MovieCardSkeleton />
                 ) : error ? (
                   <NoMoviesFound />
                 ) : currentMovie ? (
-                  <MovieCard movie={currentMovie} isInWatchlist={isInWatchlist} />
+                  <MovieCard movie={currentMovie} isInWatchlist={isInWatchlist} videoAd={videoAd} />
                 ) : (
                   <PlaceholderMovieCard />
                 )}
@@ -399,8 +392,6 @@ const Home: React.FC = () => {
           {videoAd.adType === 'video' && (
             <VideoAd
               onClose={videoAd.close}
-              onError={videoAd.close}
-              enableTestAds={false}
             />
           )}
           {videoAd.adType === 'google' && (
