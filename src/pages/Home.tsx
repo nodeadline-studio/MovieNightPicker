@@ -250,8 +250,8 @@ const Home: React.FC = () => {
       <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-indigo-500/5 rounded-full blur-3xl pointer-events-none" />
       
       <div className="relative z-10">
-        <header className={`pt-6 md:pt-12 px-4 transition-all duration-500 ease-in-out ${
-          isHeaderVisible ? 'pb-8 md:pb-12 opacity-100' : 'pb-4'
+        <header className={`pt-2 md:pt-8 px-4 transition-all duration-500 ease-in-out ${
+          isHeaderVisible ? 'pb-1 md:pb-8 opacity-100' : 'pb-0'
         }`}>
           <div className="max-w-6xl mx-auto relative">
             <div className="flex items-center justify-between mb-6 md:mb-8">
@@ -274,7 +274,7 @@ const Home: React.FC = () => {
           </div>
           
             {isHeaderVisible && (
-              <div className={`text-center mb-8 md:mb-12 transition-all duration-500 ease-out overflow-hidden ${
+              <div className={`text-center mb-4 md:mb-12 transition-all duration-500 ease-out overflow-hidden ${
                 isDescriptionFading ? 'animate-[fadeOut_0.5s_ease-out_forwards]' : 'animate-fadeIn'
               }`}>
                 <div className="max-w-2xl mx-auto">
@@ -295,7 +295,7 @@ const Home: React.FC = () => {
         {showDescriptionButton && !isHeaderVisible && (
           <div className="absolute top-0 left-0 right-0 z-20 pointer-events-none">
             <div className="max-w-6xl mx-auto px-4 pointer-events-none">
-              <div className={`flex justify-center pt-32 md:pt-24 transition-all duration-300 ease-out pointer-events-none ${
+              <div className={`flex justify-center pt-[98px] md:pt-[76px] transition-all duration-300 ease-out pointer-events-none ${
                 isButtonFading ? 'animate-[slideUp_0.3s_ease-out_forwards]' : 'animate-[slideDown_0.3s_ease-out_forwards]'
               }`}>
                 <div className="flex items-center gap-2 pointer-events-auto">
@@ -326,11 +326,11 @@ const Home: React.FC = () => {
           </div>
         )}
 
-        <main className="flex-1 px-4 py-4 md:py-6">
+        <main className="flex-1 px-4 py-0 md:py-2">
           <div className="max-w-6xl mx-auto h-full">
             <div className="flex flex-col items-center h-full">
-              {/* Movie Card Section */}
-              <div className="w-full flex-1 flex items-center justify-center">
+              {/* Movie Card Section - Mobile optimized for single screen */}
+              <div className="w-full flex-1 flex items-center justify-center min-h-0">
                 {loadingState === LoadingState.LOADING ? (
                   <MovieCardSkeleton />
                 ) : error ? (
@@ -347,18 +347,19 @@ const Home: React.FC = () => {
 
         <div ref={bottomRef} />
         
-        {/* Footer */}
-        <footer className="mt-auto py-3 md:py-6 px-4 border-t border-white/10 bg-gradient-to-r from-gray-900/50 to-slate-900/50 backdrop-blur-sm">
+        {/* Footer - Split into 2 horizontal lines, equal spacing */}
+        <footer className="mt-2 py-3 md:py-4 px-4 border-t border-white/10 bg-gradient-to-r from-gray-900/50 to-slate-900/50 backdrop-blur-sm">
           <div className="max-w-6xl mx-auto">
-            <div className="flex flex-col md:flex-row items-center justify-between gap-2 md:gap-4 text-xs md:text-sm text-gray-400">
-              <div className="flex flex-col md:flex-row items-center gap-1 md:gap-4 text-center md:text-left">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-1 md:gap-4 text-xs md:text-sm text-gray-400">
+              {/* First line: Copyright and Creator */}
+              <div className="flex items-center justify-center md:justify-start gap-2 md:gap-4">
                 <span>© 2025 MovieNightPicker</span>
-                <span className="hidden md:block">•</span>
+                <span>•</span>
                 <a
                   href="https://nodeadline.studio"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex items-center gap-1 hover:text-white transition-colors hover:bg-white/5 px-2 py-1 rounded-md text-xs md:text-sm"
+                  className="flex items-center gap-1 hover:text-white transition-colors hover:bg-white/5 px-2 py-1 rounded-md"
                 >
                   <span>by nodeadline.studio</span>
                   <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="md:w-3 md:h-3">
@@ -366,7 +367,8 @@ const Home: React.FC = () => {
                   </svg>
                 </a>
               </div>
-              <div className="flex items-center gap-2 md:gap-4 text-xs md:text-sm">
+              {/* Second line: Privacy and Terms */}
+              <div className="flex items-center justify-center md:justify-start gap-2 md:gap-4">
                 <button 
                   onClick={() => window.dispatchEvent(new CustomEvent('show-privacy'))}
                   className="hover:text-white transition-colors hover:bg-white/5 px-2 py-1 rounded-md"
@@ -380,8 +382,8 @@ const Home: React.FC = () => {
                 >
                   Terms
                 </button>
-          </div>
-        </div>
+              </div>
+            </div>
           </div>
         </footer>
       </div>

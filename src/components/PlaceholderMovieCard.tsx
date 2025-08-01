@@ -50,7 +50,7 @@ const PlaceholderMovieCard: React.FC = () => {
             </div>
           </div>
           
-          <div className="flex flex-col sm:flex-row gap-3 mt-4 md:mt-auto">
+          <div className="flex flex-row gap-3 mt-4 md:mt-auto">
             <Button
               variant="primary"
               disabled

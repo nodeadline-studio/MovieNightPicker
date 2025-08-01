@@ -72,7 +72,7 @@ const MovieCard: React.FC<MovieCardProps> = ({ movie, isInWatchlist = false, vid
   };
 
   return (
-    <div className="w-full max-w-[95vw] md:max-w-5xl lg:max-w-6xl mx-auto space-y-4">
+    <div className="w-full max-w-[95vw] md:max-w-5xl lg:max-w-6xl mx-auto space-y-4 md:space-y-4">
       {/* Movie Card */}
       <div className="relative group">
         {/* Background glow effect */}
@@ -81,11 +81,11 @@ const MovieCard: React.FC<MovieCardProps> = ({ movie, isInWatchlist = false, vid
         <div className="relative bg-gradient-to-br from-slate-900/95 via-gray-900/95 to-slate-800/95 
                        backdrop-blur-xl border border-white/10 rounded-3xl overflow-hidden 
                        shadow-2xl ring-1 ring-white/5 transform transition-transform duration-300 
-                       hover:scale-[1.01] max-h-[100dvh] md:max-h-[calc(100vh-8rem)] lg:max-h-[calc(100vh-8rem)]">
+                       hover:scale-[1.01] max-h-[calc(100vh-10rem)] md:max-h-[calc(100vh-16rem)] lg:max-h-[calc(100vh-16rem)]">
           
           <div className="flex flex-col md:flex-row h-full md:h-auto">
-            {/* Movie Poster */}
-            <div className="w-full md:w-1/3 relative aspect-[3/4] md:aspect-auto max-h-[40vh] md:max-h-none">
+            {/* Movie Poster - More space allocated */}
+            <div className="w-full md:w-2/5 relative aspect-[3/4] md:aspect-auto max-h-[42vh] md:max-h-none">
               {/* Now Playing Badge */}
               {isInTheaters(movie.release_date) && (
                 <div className="absolute top-2 md:top-4 left-2 md:left-4 bg-gradient-to-r from-green-500 to-emerald-500 
@@ -145,7 +145,7 @@ const MovieCard: React.FC<MovieCardProps> = ({ movie, isInWatchlist = false, vid
             </div>
             
             {/* Movie Details */}
-            <div className="md:w-2/3 p-3 md:p-6 lg:p-8 flex flex-col flex-1 min-h-0 md:max-h-[calc(100vh-8rem)] lg:max-h-[calc(100vh-8rem)] md:overflow-y-auto">
+            <div className="md:w-3/5 p-3 md:p-6 lg:p-8 flex flex-col flex-1 min-h-0 max-h-[calc(65vh-2rem)] md:max-h-[calc(100vh-16rem)] lg:max-h-[calc(100vh-16rem)] overflow-y-auto scrollbar-hide">
               {/* Header */}
               <div className="mb-3 md:mb-6">
                 <h2 className="text-lg md:text-2xl lg:text-4xl font-bold text-white leading-tight mb-2 md:mb-3 
@@ -209,8 +209,8 @@ const MovieCard: React.FC<MovieCardProps> = ({ movie, isInWatchlist = false, vid
                 </p>
               </div>
               
-              {/* Action Buttons */}
-              <div className="flex flex-col sm:flex-row gap-2 md:gap-3 mt-auto">
+              {/* Action Buttons - Horizontal Layout */}
+              <div className="flex flex-row gap-2 md:gap-3 mt-auto">
                 <button
                   onClick={() => window.open(`https://www.imdb.com/title/${movie.imdb_id}`, '_blank')}
                   className="flex-1 bg-gradient-to-r from-yellow-500 to-orange-500 
@@ -226,8 +226,8 @@ const MovieCard: React.FC<MovieCardProps> = ({ movie, isInWatchlist = false, vid
                     alt="IMDb"
                     className="h-4 md:h-5"
                   />
-                  <span className="hidden sm:inline">View on IMDb</span>
-                  <span className="sm:hidden">IMDb</span>
+                  <span className="hidden md:inline">View on IMDb</span>
+                  <span className="md:hidden">IMDb</span>
                   <ExternalLink size={16} className="md:hidden" />
                   <ExternalLink size={18} className="hidden md:block" />
                 </button>
@@ -245,8 +245,8 @@ const MovieCard: React.FC<MovieCardProps> = ({ movie, isInWatchlist = false, vid
                   }`}
                 >
                   <Heart className={`${isInWatchlist ? 'fill-current' : ''} transition-transform duration-300`} size={16} />
-                  <span className="hidden sm:inline">{isInWatchlist ? 'Remove from Watchlist' : 'Add to Watchlist'}</span>
-                  <span className="sm:hidden">{isInWatchlist ? 'Remove' : 'Add'}</span>
+                  <span className="hidden md:inline">{isInWatchlist ? 'Remove from Watchlist' : 'Add to Watchlist'}</span>
+                  <span className="md:hidden">{isInWatchlist ? 'Remove' : 'Add'}</span>
                 </button>
               </div>
             </div>
@@ -254,7 +254,7 @@ const MovieCard: React.FC<MovieCardProps> = ({ movie, isInWatchlist = false, vid
         </div>
       </div>
 
-      {/* Random Movie/Show Button */}
+      {/* Random Movie/Show Button - Full width on mobile */}
       <div className="flex justify-center">
         <button
           onClick={handleGetRandomMovie}
@@ -263,7 +263,7 @@ const MovieCard: React.FC<MovieCardProps> = ({ movie, isInWatchlist = false, vid
                    transform hover:scale-[1.02] active:scale-[0.98]
                    transition-all duration-200 ease-out
                    flex items-center justify-center gap-3 text-sm md:text-base
-                   overflow-hidden
+                   overflow-hidden w-full md:w-auto
                    bg-gradient-to-r from-violet-600 via-purple-600 to-fuchsia-600 
                    hover:from-violet-500 hover:via-purple-500 hover:to-fuchsia-500"
         >
