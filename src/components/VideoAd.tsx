@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { X } from 'lucide-react';
 import adStrings from '../locales/en.json';
+import adMonitoring from '../utils/adMonitoring';
 
 interface VideoAdProps {
   onClose: () => void;
@@ -11,6 +12,7 @@ const VideoAd: React.FC<VideoAdProps> = ({ onClose }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const { headline, paragraph, bullets, cta } = (adStrings as any).videoAd;
   const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const adId = `video-ad-${Date.now()}`;
 
   useEffect(() => {
     

@@ -40,8 +40,8 @@ export const AD_CONFIG = {
   },
   
   videoAd: {
-    frequency: 5,        // Show video ad every 5 picks
-    skipDelay: 10,       // Allow skip after 10 seconds
+    frequency: 5,        // Base frequency - will be adjusted dynamically
+    skipDelay: 8,        // Reduced from 10 to 8 seconds for better UX
   },
   
   googleAds: {
@@ -73,7 +73,7 @@ export const AD_ANALYTICS = {
   },
 };
 
-// 🔧 Ad Frequency Calculator
+// 🔧 Smart Ad Frequency Calculator with Progressive Strategy
 export class AdFrequencyManager {
   private pickCount = 0;
   private lastVideoAdAt = 0;
@@ -81,6 +81,25 @@ export class AdFrequencyManager {
   
   constructor() {
     this.loadState();
+  }
+  
+  // Smart frequency calculation based on user engagement
+  private getSmartFrequency(): number {
+    // Progressive frequency strategy:
+    // - First 5 picks: No ads (user onboarding)
+    // - Picks 6-15: Every 7 picks (gentle introduction)
+    // - Picks 16+: Every 5 picks (normal frequency)
+    // - After 30 picks: Every 3 picks (engaged users)
+    
+    if (this.pickCount <= 5) {
+      return 999; // No ads during onboarding
+    } else if (this.pickCount <= 15) {
+      return 7; // Gentle introduction
+    } else if (this.pickCount <= 30) {
+      return 5; // Normal frequency
+    } else {
+      return 3; // Engaged users - more frequent ads
+    }
   }
   
   // Determine what type of ad to show
@@ -109,13 +128,12 @@ export class AdFrequencyManager {
   }
   
   private shouldShowVideoAd(): boolean {
-    // Video ads are always enabled, just check frequency
+    const smartFrequency = this.getSmartFrequency();
     const timeSinceLastVideo = this.pickCount - this.lastVideoAdAt;
-    const shouldShow = timeSinceLastVideo >= AD_CONFIG.videoAd.frequency;
+    const shouldShow = timeSinceLastVideo >= smartFrequency;
     
-    // Show video ad every 5th click
-    if (this.pickCount > 0 && this.pickCount % 5 === 0) {
-      return true;
+    if (AD_CONFIG.general.debugMode) {
+      logger.debug(`Video ad check: pickCount=${this.pickCount}, frequency=${smartFrequency}, timeSince=${timeSinceLastVideo}, shouldShow=${shouldShow}`, undefined, { prefix: 'AdFrequency' });
     }
     
     return shouldShow;
@@ -170,13 +188,24 @@ export class AdFrequencyManager {
   
   // Get debug info
   getDebugInfo() {
+    const smartFrequency = this.getSmartFrequency();
     return {
       pickCount: this.pickCount,
       lastVideoAdAt: this.lastVideoAdAt,
       lastGoogleAdAt: this.lastGoogleAdAt,
-      nextVideoAdIn: AD_CONFIG.videoAd.frequency - (this.pickCount - this.lastVideoAdAt),
+      currentFrequency: smartFrequency,
+      nextVideoAdIn: smartFrequency - (this.pickCount - this.lastVideoAdAt),
       nextGoogleAdIn: AD_CONFIG.googleAds.frequency - (this.pickCount - this.lastGoogleAdAt),
+      userEngagementLevel: this.getUserEngagementLevel(),
     };
+  }
+  
+  // Get user engagement level for analytics
+  getUserEngagementLevel(): 'new' | 'learning' | 'active' | 'engaged' {
+    if (this.pickCount <= 5) return 'new';
+    if (this.pickCount <= 15) return 'learning';
+    if (this.pickCount <= 30) return 'active';
+    return 'engaged';
   }
 }
 
