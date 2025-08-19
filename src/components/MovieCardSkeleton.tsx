@@ -2,7 +2,7 @@ import React from 'react';
 
 const MovieCardSkeleton: React.FC = () => {
   return (
-    <div className="w-full max-w-4xl mx-auto bg-gray-900 rounded-xl overflow-hidden shadow-xl animate-pulse">
+    <div className="w-full max-w-4xl mx-auto bg-gray-900 rounded-xl overflow-hidden shadow-xl animate-pulse animate-in fade-in duration-300">
       <div className="md:flex">
         <div className="md:w-1/3 relative">
           <div className="w-full h-[450px] md:h-full bg-gray-800" />

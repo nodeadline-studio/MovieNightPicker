@@ -39,6 +39,33 @@ const headers = {
   'Content-Type': 'application/json',
 };
 
+// Popular genre IDs based on TMDB popularity (Action, Drama, Comedy, Thriller, etc.)
+const POPULAR_GENRE_IDS = [28, 18, 35, 53, 12, 16, 80, 99, 10751, 14, 36, 27, 10402, 9648, 10749, 878, 10770, 53, 37, 10752];
+
+function getMostPopularGenres(selectedGenres: number[], count: number): number[] {
+  if (selectedGenres.length <= count) return selectedGenres;
+  
+  // Sort genres by popularity (using our predefined order)
+  const sortedGenres = selectedGenres.sort((a, b) => {
+    const aIndex = POPULAR_GENRE_IDS.indexOf(a);
+    const bIndex = POPULAR_GENRE_IDS.indexOf(b);
+    
+    // If both are in popular list, sort by popularity
+    if (aIndex !== -1 && bIndex !== -1) {
+      return aIndex - bIndex;
+    }
+    
+    // If only one is popular, prioritize it
+    if (aIndex !== -1) return -1;
+    if (bIndex !== -1) return 1;
+    
+    // If neither is popular, maintain original order
+    return 0;
+  });
+  
+  return sortedGenres.slice(0, count);
+}
+
 export async function fetchRandomMovie(options: FilterOptions): Promise<Movie | null> {
   logger.debug('Fetching random movie with options:', options, { prefix: 'API' });
 
@@ -46,17 +73,24 @@ export async function fetchRandomMovie(options: FilterOptions): Promise<Movie | 
 
   // Создаем последовательность все более мягких фильтров
   const filterVariations = [
-    // 1. Оригинальные фильтры
+    // 1. Оригинальные фильтры (strict matching)
     options,
     
-    // 2. Слегка смягченные фильтры
+    // 2. Smart genre matching: if 3+ genres, require at least 2 to match
+    ...(options.genres.length >= 3 ? [{
+      ...options,
+      genres: options.genres,
+      genreMatchStrategy: 'at-least-2' // Custom strategy for better matching
+    }] : []),
+    
+    // 3. Слегка смягченные фильтры
     {
       ...options,
       ratingFrom: Math.max(0, options.ratingFrom - 0.5),
       maxRuntime: Math.min(240, options.maxRuntime + 30)
     },
     
-    // 3. Умеренно смягченные фильтры
+    // 4. Умеренно смягченные фильтры
     {
         ...options,
         ratingFrom: Math.max(0, options.ratingFrom - 1),
@@ -65,17 +99,17 @@ export async function fetchRandomMovie(options: FilterOptions): Promise<Movie | 
       maxRuntime: Math.min(240, options.maxRuntime + 60)
     },
     
-    // 4. Сильно смягченные фильтры (убираем жанры)
+    // 5. Smart genre reduction: keep most popular genres
     {
       ...options,
-      genres: options.genres.length > 3 ? options.genres.slice(0, 2) : [], // Оставляем только 2 жанра или убираем совсем
+      genres: getMostPopularGenres(options.genres, 3), // Keep top 3 most popular genres
       ratingFrom: Math.max(0, options.ratingFrom - 1.5),
       yearFrom: Math.max(1950, options.yearFrom - 20),
       yearTo: Math.min(new Date().getFullYear(), options.yearTo + 20),
       maxRuntime: 240
     },
     
-    // 5. Минимальные фильтры (гарантированный результат)
+    // 6. Минимальные фильтры (гарантированный результат)
     {
           ...options,
       genres: [],
@@ -90,20 +124,42 @@ export async function fetchRandomMovie(options: FilterOptions): Promise<Movie | 
   // Пробуем каждый вариант фильтров
   for (let i = 0; i < filterVariations.length; i++) {
     const currentFilters = filterVariations[i];
-    logger.debug(`Trying filter variation ${i + 1}:`, currentFilters, { prefix: 'API' });
+    const strategy = currentFilters.genreMatchStrategy || 'standard';
+    logger.debug(`Trying filter variation ${i + 1} with ${strategy} strategy:`, {
+      genres: currentFilters.genres,
+      genreCount: currentFilters.genres.length,
+      strategy: strategy
+    }, { prefix: 'API' });
     
     try {
       const movie = await attemptFetch(currentFilters, watchlist);
       if (movie) {
         if (i > 0) {
-          logger.debug(`Found movie with relaxed filters (variation ${i + 1})`, undefined, { prefix: 'API' });
+          logger.debug(`Found movie with relaxed filters (variation ${i + 1}, ${strategy} strategy)`, undefined, { prefix: 'API' });
         }
         return movie;
       }
     } catch (error) {
-      logger.warn(`Filter variation ${i + 1} failed:`, error, { prefix: 'API' });
+      logger.warn(`Filter variation ${i + 1} (${strategy} strategy) failed:`, error, { prefix: 'API' });
       // Продолжаем со следующим вариантом
     }
+  }
+
+  // If we still haven't found a movie, try with completely relaxed filters
+  try {
+    logger.debug('Trying with completely relaxed filters as last resort...', undefined, { prefix: 'API' });
+    return await attemptFetch({
+      genres: [],
+      yearFrom: 1950,
+      yearTo: new Date().getFullYear(),
+      ratingFrom: 0,
+      maxRuntime: 240,
+      inTheatersOnly: false,
+      includeAdult: true,
+      tvShowsOnly: false
+    }, watchlist);
+  } catch (fallbackError) {
+    logger.warn('Fallback attempt failed:', fallbackError, { prefix: 'API' });
   }
 
   // Если даже минимальные фильтры не сработали, делаем последнюю попытку без ограничений
@@ -125,7 +181,7 @@ export async function fetchRandomMovie(options: FilterOptions): Promise<Movie | 
   }
 }
 
-async function attemptFetch(options: FilterOptions, watchlist: WatchlistMovie[] = []): Promise<Movie | null> {
+async function attemptFetch(options: FilterOptions & { genreMatchStrategy?: string }, watchlist: WatchlistMovie[] = []): Promise<Movie | null> {
   // Normalize filter values to reasonable ranges
   const normalizedOptions = {
     ...options,
@@ -156,8 +212,17 @@ async function attemptFetch(options: FilterOptions, watchlist: WatchlistMovie[] 
     queryParams.append('with_runtime.lte', normalizedOptions.maxRuntime.toString());
   }
 
+  // Smart genre filtering: if using at-least-2 strategy, fetch more movies for better matching
   if (normalizedOptions.genres.length) {
-    queryParams.append('with_genres', normalizedOptions.genres.join(','));
+    if (options.genreMatchStrategy === 'at-least-2' && normalizedOptions.genres.length >= 3) {
+      // For at-least-2 strategy, we'll fetch more movies and filter them post-API
+      // Use the 2 most popular genres for initial fetch to get better candidates
+      const topGenres = getMostPopularGenres(normalizedOptions.genres, 2);
+      queryParams.append('with_genres', topGenres.join(','));
+    } else {
+      // Standard genre filtering
+      queryParams.append('with_genres', normalizedOptions.genres.join(','));
+    }
   }
 
   let url = '';
@@ -174,7 +239,15 @@ async function attemptFetch(options: FilterOptions, watchlist: WatchlistMovie[] 
     });
 
     if (normalizedOptions.genres.length) {
-      tvQueryParams.append('with_genres', normalizedOptions.genres.join(','));
+      if (options.genreMatchStrategy === 'at-least-2' && normalizedOptions.genres.length >= 3) {
+        // For at-least-2 strategy, we'll fetch more TV shows and filter them post-API
+        // Use the 2 most popular genres for initial fetch to get better candidates
+        const topGenres = getMostPopularGenres(normalizedOptions.genres, 2);
+        tvQueryParams.append('with_genres', topGenres.join(','));
+      } else {
+        // Standard genre filtering
+        tvQueryParams.append('with_genres', normalizedOptions.genres.join(','));
+      }
     }
 
     url = `${ENDPOINTS.DISCOVER_TV}?${tvQueryParams.toString()}`;
@@ -241,8 +314,48 @@ async function attemptFetch(options: FilterOptions, watchlist: WatchlistMovie[] 
     throw new Error(`No ${contentType} found with these filters`);
   }
 
+  // Apply smart genre matching if using at-least-2 strategy
+  let genreFilteredMovies = validInitialMovies;
+  if (options.genreMatchStrategy === 'at-least-2' && normalizedOptions.genres.length >= 3) {
+    genreFilteredMovies = validInitialMovies.filter((movie: any) => {
+      if (!movie.genre_ids || movie.genre_ids.length === 0) return false;
+      
+      // Count how many of the selected genres match this movie
+      const matchingGenres = movie.genre_ids.filter((genreId: number) => 
+        normalizedOptions.genres.includes(genreId)
+      );
+      
+      // For at-least-2 strategy: require at least 2 genres to match
+      return matchingGenres.length >= 2;
+    });
+    
+    // If no movies match the at-least-2 criteria, fall back to at-least-1
+    if (genreFilteredMovies.length === 0) {
+      genreFilteredMovies = validInitialMovies.filter((movie: any) => {
+        if (!movie.genre_ids || movie.genre_ids.length === 0) return false;
+        
+        const matchingGenres = movie.genre_ids.filter((genreId: number) => 
+          normalizedOptions.genres.includes(genreId)
+        );
+        
+        return matchingGenres.length >= 1;
+      });
+      
+      logger.debug('Falling back to at-least-1 genre matching', { 
+        originalCount: validInitialMovies.length,
+        filteredCount: genreFilteredMovies.length 
+      }, { prefix: 'API' });
+    }
+    
+    logger.debug('Applied at-least-2 genre filtering', { 
+      originalCount: validInitialMovies.length,
+      filteredCount: genreFilteredMovies.length,
+      selectedGenres: normalizedOptions.genres
+    }, { prefix: 'API' });
+  }
+
   // Fetch full details for pre-filtered movies in parallel
-  const moviePromises = validInitialMovies.map(async (item: any) => {
+  const moviePromises = genreFilteredMovies.map(async (item: any) => {
     try {
       const isTV = options.tvShowsOnly;
       const endpoint = isTV ? `${ENDPOINTS.TV}/${item.id}` : `${ENDPOINTS.MOVIE}/${item.id}`;

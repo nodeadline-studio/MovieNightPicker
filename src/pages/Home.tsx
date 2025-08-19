@@ -63,6 +63,7 @@ const Home: React.FC = () => {
   const [isInitialLoading, setIsInitialLoading] = useState(true);
   const [hasInitiallyLoaded, setHasInitiallyLoaded] = useState(false);
   const [isManuallyOpened, setIsManuallyOpened] = useState(false);
+  const [isTransitioning, setIsTransitioning] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const pickCounter = usePickCounter();
   const [filterPanelOpen, setFilterPanelOpen] = useState(false);
@@ -104,14 +105,19 @@ const Home: React.FC = () => {
         // analytics.setLastMovie(currentMovie.id); // Removed analytics import
         // gtag.trackMoviePick(currentMovie.id, currentMovie.title); // Removed gtag import
       }
+      // Reset transition state after successful load
+      setIsTransitioning(false);
     } catch (error) {
       console.error('Failed to get initial movie:', error);
+      // Reset transition state even on error
+      setIsTransitioning(false);
     }
   }, [getRandomMovieSafe, currentMovie]);
 
   useEffect(() => {
     if (!isLoadingGenres && !isInitialLoading && !hasInitiallyLoaded) {
       setHasInitiallyLoaded(true);
+      setIsTransitioning(true); // Mark as transitioning
       handleInitialLoad();
     }
   }, [isLoadingGenres, isInitialLoading, hasInitiallyLoaded, handleInitialLoad]);
@@ -121,9 +127,23 @@ const Home: React.FC = () => {
       if (!isLoadingGenres) {
         setIsInitialLoading(false);
       }
-    }, 1000);
+    }, 300); // Reduced from 500ms for faster transition
     return () => clearTimeout(timer);
   }, [isLoadingGenres]);
+
+  // Keep showing loading until we have a movie or an error
+  // Also prevent showing placeholder during initial load or transitions
+  const shouldShowLoading = isInitialLoading || 
+                           loadingState === LoadingState.LOADING || 
+                           isTransitioning ||
+                           (!currentMovie && !error && !hasInitiallyLoaded);
+
+  // Reset transition state when loading completes
+  useEffect(() => {
+    if (loadingState === LoadingState.SUCCESS && currentMovie) {
+      setIsTransitioning(false);
+    }
+  }, [loadingState, currentMovie]);
 
   // REMOVED: Automatic video ad trigger on pickCount change
   // This was causing ads to show immediately on page load
@@ -315,8 +335,8 @@ const Home: React.FC = () => {
           <div className="max-w-6xl mx-auto h-full">
             <div className="flex flex-col items-center h-full">
               {/* Movie Card Section - Mobile optimized for single screen */}
-              <div className="w-full flex-1 flex items-center justify-center min-h-0">
-                {loadingState === LoadingState.LOADING ? (
+              <div className={`w-full flex-1 flex items-center justify-center min-h-0 movie-card-container content-stable ${shouldShowLoading ? 'loading-transition loading' : 'loading-transition loaded'}`}>
+                {shouldShowLoading ? (
                   <MovieCardSkeleton />
                 ) : error ? (
                   <NoMoviesFound />

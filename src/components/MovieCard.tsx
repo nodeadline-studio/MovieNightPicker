@@ -71,7 +71,7 @@ const MovieCard: React.FC<MovieCardProps> = ({ movie, isInWatchlist = false, vid
   };
 
   return (
-    <div className="w-full max-w-[95vw] md:max-w-5xl lg:max-w-6xl mx-auto space-y-4 md:space-y-4">
+    <div className="w-full max-w-[95vw] md:max-w-5xl lg:max-w-6xl mx-auto space-y-4 md:space-y-4 animate-in fade-in duration-500">
       {/* Movie Card */}
       <div className="relative group">
         {/* Background glow effect */}

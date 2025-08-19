@@ -199,8 +199,13 @@ export const MovieProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     try {
       // Use current filters (they were updated by applyRandomFilters if needed)
       const movie = await fetchRandomMovie(filterOptions);
+      
+      // Set movie first, then update loading state to ensure smooth transition
       setCurrentMovie(movie);
+      
+      // Immediate state update to prevent flickering
       setLoadingState(LoadingState.SUCCESS);
+      
       setPickCount(prev => prev + 1);
     } catch (e) {
       const errorMessage = (e as Error).message;
