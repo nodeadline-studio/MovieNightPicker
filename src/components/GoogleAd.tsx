@@ -8,11 +8,33 @@ interface GoogleAdProps {
   size?: [number, number];
 }
 
-// Extend Window interface for Google Ads
+// Google AdSense types
+interface GoogleTag {
+  cmd: string[];
+  defineSlot: (adUnitPath: string, size: string | string[], divId: string) => GoogleSlot;
+  pubads: () => GooglePubAds;
+  enableServices: () => void;
+  display: (divId: string) => void;
+}
+
+interface GoogleSlot {
+  addService: (service: GooglePubAds) => GoogleSlot;
+  setTargeting: (key: string, value: string | string[]) => GoogleSlot;
+}
+
+interface GooglePubAds {
+  enableSingleRequest: () => void;
+  setTargeting: (key: string, value: string | string[]) => GooglePubAds;
+}
+
+interface AdsByGoogle {
+  push: (config: Record<string, unknown>) => void;
+}
+
 declare global {
   interface Window {
-    googletag: any;
-    adsbygoogle: any[];
+    googletag: GoogleTag;
+    adsbygoogle: AdsByGoogle[];
   }
 }
 
@@ -84,7 +106,7 @@ const GoogleAd: React.FC<GoogleAdProps> = ({
       if (adRef.current && window.adsbygoogle) {
         try {
           // Push ad to Google AdSense
-          (window.adsbygoogle = window.adsbygoogle || []).push({});
+          (window.adsbygoogle = window.adsbygoogle || []).push({} as AdsByGoogle);
         } catch (error) {
           console.error('Error initializing ad:', error);
           onError();

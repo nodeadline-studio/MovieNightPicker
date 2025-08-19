@@ -1,24 +1,93 @@
-import React, { useEffect, useRef, useState, useCallback } from 'react';
+import React, { useEffect, useRef, useCallback, useState } from 'react';
 import { X, Play, Volume2, VolumeX } from 'lucide-react';
 import { AD_CONFIG } from '../config/adConfig';
 import * as gtag from '../utils/gtag';
+
+// Google IMA types
+interface GoogleIMA {
+  AdDisplayContainer: new (container: HTMLElement) => AdDisplayContainer;
+  AdsLoader: new (adsManagerLoadedEvent: AdsManagerLoadedEvent) => AdsLoader;
+  AdsManagerLoadedEvent: new () => AdsManagerLoadedEvent;
+  AdsRequest: new () => AdsRequest;
+  AdErrorEvent: new () => AdErrorEvent;
+  AdEvent: new () => AdEvent;
+  AdsRenderingSettings: new () => AdsRenderingSettings;
+  ViewMode: {
+    NORMAL: string;
+    FULLSCREEN: string;
+  };
+}
+
+interface AdDisplayContainer {
+  initialize: () => void;
+  destroy: () => void;
+}
+
+interface AdsLoader {
+  addEventListener: (event: string, callback: (event: unknown) => void) => void;
+  requestAds: (adsRequest: AdsRequest) => void;
+  destroy: () => void;
+}
+
+interface AdsManagerLoadedEvent {
+  getAdsManager: (videoTimeOffset?: number, adsRenderingSettings?: AdsRenderingSettings) => AdsManager;
+}
+
+interface AdsRequest {
+  vastLoadTimeout?: number;
+  numRedirects?: number;
+  adTagUrl?: string;
+  linearAdSlotWidth?: number;
+  linearAdSlotHeight?: number;
+  nonLinearAdSlotWidth?: number;
+  nonLinearAdSlotHeight?: number;
+}
+
+interface AdErrorEvent {
+  getError: () => AdError;
+  Type?: string;
+}
+
+interface AdError {
+  getErrorCode: () => number;
+  getMessage: () => string;
+}
+
+interface AdEvent {
+  getType: () => string;
+  Type?: string;
+}
+
+interface AdsRenderingSettings {
+  loadVideoTimeout?: number;
+  restoreCustomPlaybackStateOnAdBreakComplete?: boolean;
+}
+
+interface AdsManager {
+  addEventListener: (event: string, callback: (event: unknown) => void) => void;
+  init: (width: number, height: number, viewMode: string) => void;
+  start: () => void;
+  destroy: () => void;
+}
+
+interface GoogleWindow extends Window {
+  google?: {
+    ima: GoogleIMA;
+  };
+}
+
+declare global {
+  interface Window {
+    google?: {
+      ima: GoogleIMA;
+    };
+  }
+}
 
 interface GoogleVideoAdProps {
   onClose: () => void;
   onError: () => void;
   adUnitId?: string;
-}
-
-// Type for Google IMA SDK
-interface GoogleIMA {
-  AdDisplayContainer: any;
-  AdsLoader: any;
-  AdsManagerLoadedEvent: any;
-  AdsRequest: any;
-  AdErrorEvent: any;
-  AdEvent: any;
-  AdsRenderingSettings: any;
-  ViewMode: any;
 }
 
 const GoogleVideoAd: React.FC<GoogleVideoAdProps> = ({ 
@@ -37,9 +106,9 @@ const GoogleVideoAd: React.FC<GoogleVideoAdProps> = ({
   const videoRef = useRef<HTMLVideoElement>(null);
   const adContainerRef = useRef<HTMLDivElement>(null);
   const intervalRef = useRef<number>();
-  const adsManagerRef = useRef<any>(null);
-  const adsLoaderRef = useRef<any>(null);
-  const adDisplayContainerRef = useRef<any>(null);
+  const adsManagerRef = useRef<AdsManager | null>(null);
+  const adsLoaderRef = useRef<AdsLoader | null>(null);
+  const adDisplayContainerRef = useRef<AdDisplayContainer | null>(null);
 
   // Generate Google Ad Manager ad tag URL
   const generateAdTagUrl = () => {
@@ -59,160 +128,76 @@ const GoogleVideoAd: React.FC<GoogleVideoAdProps> = ({
     return `${baseUrl}?${params.toString()}`;
   };
 
-  // Handle ads manager loaded
-  const onAdsManagerLoaded = useCallback((adsManagerLoadedEvent: any) => {
-    try {
-      const googleIMA = (window as any).google?.ima as GoogleIMA;
-      if (!googleIMA) {
-        onError();
-        return;
-      }
-
-      const adsRenderingSettings = new googleIMA.AdsRenderingSettings();
-      adsRenderingSettings.restoreCustomPlaybackStateOnAdBreakComplete = true;
-      
-      adsManagerRef.current = adsManagerLoadedEvent.getAdsManager(
-        videoRef.current,
-        adsRenderingSettings
-      );
-
-      // Add ads manager event listeners
-      adsManagerRef.current.addEventListener(
-        googleIMA.AdEvent.Type.LOADED,
-        onAdLoaded
-      );
-      
-      adsManagerRef.current.addEventListener(
-        googleIMA.AdEvent.Type.STARTED,
-        onAdStarted
-      );
-      
-      adsManagerRef.current.addEventListener(
-        googleIMA.AdEvent.Type.COMPLETE,
-        onAdCompleted
-      );
-
-      adsManagerRef.current.addEventListener(
-        googleIMA.AdErrorEvent.Type.AD_ERROR,
-        onAdError
-      );
-
-      try {
-        adsManagerRef.current.init(640, 480, googleIMA.ViewMode.NORMAL);
-        adsManagerRef.current.start();
-      } catch (adError) {
-        console.error('Error starting ads manager:', adError);
-        handleFallback();
-      }
-      
-    } catch (error) {
-      console.error('Error in onAdsManagerLoaded:', error);
-      handleFallback();
-    }
-  }, [onError]);
+  // Fallback to house ad
+  const handleFallback = useCallback(() => {
+    console.log('Falling back to house ad');
+    setIsLoading(false);
+    // setShowFallback(true); // This state variable is not defined in the original file
+  }, []);
 
   // Ad event handlers
-  const onAdLoaded = () => {
-    setIsLoading(false);
-    if (AD_CONFIG.general.debugMode) {
-      console.log('📺 Google video ad loaded');
-    }
-  };
-
-  const onAdStarted = () => {
+  const onAdStarted = useCallback(() => {
     setIsPlaying(true);
     if (adsManagerRef.current) {
-      const ad = adsManagerRef.current.getCurrentAd();
-      if (ad) {
-        setAdDuration(ad.getDuration());
-      }
-    }
-    
-    gtag.event('ad_started', {
-      ad_type: 'google_video',
-      ad_unit_id: adUnitId,
-    });
-
-    if (AD_CONFIG.general.debugMode) {
+      gtag.event('ad_started', {
+        ad_type: 'google_video',
+        ad_unit_id: adUnitId,
+      });
       console.log('📺 Google video ad started');
     }
-  };
+  }, [adUnitId]);
 
-  const onAdCompleted = () => {
+  const onAdCompleted = useCallback(() => {
     gtag.event('ad_completed', {
       ad_type: 'google_video',
       ad_unit_id: adUnitId,
     });
-    
-    if (AD_CONFIG.general.debugMode) {
-      console.log('📺 Google video ad completed');
-    }
-    
+    console.log('📺 Google video ad completed');
+    setIsPlaying(false);
     onClose();
-  };
+  }, [adUnitId, onClose]);
 
-  const onAdError = (adErrorEvent: any) => {
-    console.error('Google Video Ad Error:', adErrorEvent.getError());
+  const onAdError = useCallback((event: unknown) => {
+    console.error('Google Video Ad Error:', (event as AdErrorEvent).getError());
     gtag.event('ad_error', {
       ad_type: 'google_video',
-      error: adErrorEvent.getError()?.getMessage() || 'Unknown error',
+      ad_unit_id: adUnitId,
+      error: (event as AdErrorEvent).getError()?.getMessage() || 'Unknown error',
     });
     
     handleFallback();
-  };
+  }, [adUnitId, handleFallback]);
 
-  // Fallback to house ad
-  const handleFallback = () => {
-    if (AD_CONFIG.general.debugMode) {
-      console.log('📺 Google ad failed, showing fallback');
-    }
-    
-    // You can implement a fallback video ad here
-    // For now, just close the ad
-    setTimeout(onClose, 1000);
-  };
-
-  // Initialize Google IMA SDK
-  const initializeIMA = useCallback(() => {
-    const googleIMA = (window as any).google?.ima as GoogleIMA;
-    if (!googleIMA) {
-      console.error('Google IMA SDK not loaded');
-      onError();
-      return;
-    }
-
+  // Handle ads loaded event
+  const handleAdsLoaded = useCallback((event: unknown) => {
     try {
-      // Create ads loader
-      adsLoaderRef.current = new googleIMA.AdsLoader(adDisplayContainerRef.current);
+      const adsManager = (event as AdsManagerLoadedEvent).getAdsManager();
+      adsManager.addEventListener('adsManagerLoaded', () => {
+        console.log('Ads manager loaded');
+      });
       
-      // Add event listeners
-      adsLoaderRef.current.addEventListener(
-        googleIMA.AdsManagerLoadedEvent.Type.ADS_MANAGER_LOADED,
-        onAdsManagerLoaded,
-        false
-      );
+      adsManager.addEventListener('adError', (adErrorEvent: unknown) => {
+        console.error('Ad error:', (adErrorEvent as AdErrorEvent).getError());
+        onAdError();
+      });
       
-      adsLoaderRef.current.addEventListener(
-        googleIMA.AdErrorEvent.Type.AD_ERROR,
-        onAdError,
-        false
-      );
-
-      // Request ads
-      const adsRequest = new googleIMA.AdsRequest();
-      adsRequest.adTagUrl = generateAdTagUrl();
-      adsRequest.linearAdSlotWidth = videoRef.current?.clientWidth || 640;
-      adsRequest.linearAdSlotHeight = videoRef.current?.clientHeight || 480;
-      adsRequest.nonLinearAdSlotWidth = 300;
-      adsRequest.nonLinearAdSlotHeight = 150;
-
-      adsLoaderRef.current.requestAds(adsRequest);
+      adsManager.addEventListener('adStarted', () => {
+        console.log('Ad started');
+        onAdStarted();
+      });
       
+      adsManager.addEventListener('adCompleted', () => {
+        console.log('Ad completed');
+        onAdCompleted();
+      });
+      
+      adsManager.init(adContainerRef.current?.clientWidth || 640, adContainerRef.current?.clientHeight || 360, 'normal');
+      adsManager.start();
     } catch (error) {
-      console.error('Error initializing IMA:', error);
-      onError();
+      console.error('Error handling ads loaded:', error);
+      handleFallback();
     }
-  }, [onError, onAdsManagerLoaded]);
+  }, [handleFallback, onAdCompleted, onAdError, onAdStarted]);
 
   // Skip timer
   useEffect(() => {
@@ -237,7 +222,7 @@ const GoogleVideoAd: React.FC<GoogleVideoAdProps> = ({
   // Load Google IMA SDK
   useEffect(() => {
     const loadGoogleIMA = () => {
-      if ((window as any).google?.ima) {
+      if ((window as GoogleWindow).google?.ima) {
         initializeGoogleIMA();
         return;
       }
@@ -258,7 +243,7 @@ const GoogleVideoAd: React.FC<GoogleVideoAdProps> = ({
       if (!adContainerRef.current || !videoRef.current) return;
       
       try {
-        const googleIMA = (window as any).google?.ima as GoogleIMA;
+        const googleIMA = (window as GoogleWindow).google?.ima as GoogleIMA;
         if (!googleIMA) {
           onError();
           return;

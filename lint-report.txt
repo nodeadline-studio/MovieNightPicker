@@ -1,0 +1,192 @@
+
+> movie-night-picker@0.1.0 lint
+> eslint .
+
+
+/Users/tommykuznets/Downloads/My Projects/React Projects/MovieNightPicker/src/components/GoogleAd.tsx
+  14:79  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  15:17  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  21:18  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  99:70  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/tommykuznets/Downloads/My Projects/React Projects/MovieNightPicker/src/components/GoogleVideoAd.tsx
+   27:55  error    Unexpected any. Specify a different type                                                                                                                                @typescript-eslint/no-explicit-any
+   64:55  error    Unexpected any. Specify a different type                                                                                                                                @typescript-eslint/no-explicit-any
+  100:32  error    Unexpected any. Specify a different type                                                                                                                                @typescript-eslint/no-explicit-any
+  101:31  error    Unexpected any. Specify a different type                                                                                                                                @typescript-eslint/no-explicit-any
+  102:40  error    Unexpected any. Specify a different type                                                                                                                                @typescript-eslint/no-explicit-any
+  123:66  error    Unexpected any. Specify a different type                                                                                                                                @typescript-eslint/no-explicit-any
+  125:36  error    Unexpected any. Specify a different type                                                                                                                                @typescript-eslint/no-explicit-any
+  172:6   warning  React Hook useCallback has missing dependencies: 'handleFallback', 'onAdCompleted', 'onAdError', and 'onAdStarted'. Either include them or remove the dependency array  react-hooks/exhaustive-deps
+  214:36  error    Unexpected any. Specify a different type                                                                                                                                @typescript-eslint/no-explicit-any
+  237:34  error    Unexpected any. Specify a different type                                                                                                                                @typescript-eslint/no-explicit-any
+  275:6   warning  React Hook useCallback has missing dependencies: 'generateAdTagUrl' and 'onAdError'. Either include them or remove the dependency array                                 react-hooks/exhaustive-deps
+  300:22  error    Unexpected any. Specify a different type                                                                                                                                @typescript-eslint/no-explicit-any
+  321:38  error    Unexpected any. Specify a different type                                                                                                                                @typescript-eslint/no-explicit-any
+
+/Users/tommykuznets/Downloads/My Projects/React Projects/MovieNightPicker/src/components/ProductionDebugger.tsx
+    2:75  error  'Settings' is defined but never used      @typescript-eslint/no-unused-vars
+   15:46  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   16:54  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   17:54  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   18:46  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   97:51  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  149:42  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  149:62  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  149:82  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  258:37  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  324:41  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  388:47  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  444:39  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/tommykuznets/Downloads/My Projects/React Projects/MovieNightPicker/src/components/VideoAd.tsx
+  12:63  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/tommykuznets/Downloads/My Projects/React Projects/MovieNightPicker/src/components/WatchlistPanel.tsx
+    8:10  error    'analytics' is defined but never used                                                                           @typescript-eslint/no-unused-vars
+   24:9   error    'isDebugMode' is assigned a value but never used                                                                @typescript-eslint/no-unused-vars
+   73:6   warning  React Hook useEffect has a missing dependency: 'hasAnimated'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+  336:31  error    'emptyMessage' is defined but never used                                                                        @typescript-eslint/no-unused-vars
+  391:87  error    Unsafe usage of optional chaining. If it short-circuits with 'undefined' the evaluation will throw TypeError    no-unsafe-optional-chaining
+  395:32  error    Unexpected any. Specify a different type                                                                        @typescript-eslint/no-explicit-any
+  398:42  error    Unexpected any. Specify a different type                                                                        @typescript-eslint/no-explicit-any
+  450:11  error    'formatDate' is assigned a value but never used                                                                 @typescript-eslint/no-unused-vars
+
+/Users/tommykuznets/Downloads/My Projects/React Projects/MovieNightPicker/src/components/ui/TimelineSlider.tsx
+  45:9  warning  The 'calculatePosition' function makes the dependencies of useEffect Hook (at line 94) change on every render. To fix this, wrap the definition of 'calculatePosition' in its own useCallback() Hook  react-hooks/exhaustive-deps
+
+/Users/tommykuznets/Downloads/My Projects/React Projects/MovieNightPicker/src/config/adConfig.ts
+  237:16  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  252:14  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  253:14  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/tommykuznets/Downloads/My Projects/React Projects/MovieNightPicker/src/config/api.ts
+  225:58  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  245:61  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/tommykuznets/Downloads/My Projects/React Projects/MovieNightPicker/src/context/MovieContext.tsx
+  153:11  error    'minYear' is assigned a value but never used                                                                                    @typescript-eslint/no-unused-vars
+  210:6   warning  React Hook useCallback has an unnecessary dependency: 'applyRandomFilters'. Either exclude it or remove the dependency array    react-hooks/exhaustive-deps
+  234:6   warning  React Hook useCallback has an unnecessary dependency: 'applyRandomFilters'. Either exclude it or remove the dependency array    react-hooks/exhaustive-deps
+  275:9   error    'getMovieFromCache' is assigned a value but never used                                                                          @typescript-eslint/no-unused-vars
+  287:14  error    'e' is defined but never used                                                                                                   @typescript-eslint/no-unused-vars
+  321:14  warning  Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components  react-refresh/only-export-components
+
+/Users/tommykuznets/Downloads/My Projects/React Projects/MovieNightPicker/src/hooks/useVideoAd.ts
+  13:39  error    'onError' is assigned a value but never used                                                                          @typescript-eslint/no-unused-vars
+  13:48  error    'pickCounter' is assigned a value but never used                                                                      @typescript-eslint/no-unused-vars
+  13:61  error    'enableTestAds' is assigned a value but never used                                                                    @typescript-eslint/no-unused-vars
+  16:10  error    'timeoutId' is assigned a value but never used                                                                        @typescript-eslint/no-unused-vars
+  16:21  error    'setTimeoutId' is assigned a value but never used                                                                     @typescript-eslint/no-unused-vars
+  66:6   warning  React Hook useEffect has a missing dependency: 'isVideoPreloading'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+  81:9   error    'handleFallback' is assigned a value but never used                                                                   @typescript-eslint/no-unused-vars
+
+/Users/tommykuznets/Downloads/My Projects/React Projects/MovieNightPicker/src/pages/ComingSoon.tsx
+  6:7  error  'ENCRYPTED_PASSWORD' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+/Users/tommykuznets/Downloads/My Projects/React Projects/MovieNightPicker/src/pages/Home.tsx
+   25:7  error    'Desktop' is assigned a value but never used                                                                           @typescript-eslint/no-unused-vars
+   27:7  error    'Mobile' is assigned a value but never used                                                                            @typescript-eslint/no-unused-vars
+   30:7  error    'generateMathProblem' is assigned a value but never used                                                               @typescript-eslint/no-unused-vars
+  183:9  error    'handleGetMovie' is assigned a value but never used                                                                    @typescript-eslint/no-unused-vars
+  195:6  warning  React Hook useCallback has an unnecessary dependency: 'pickCounter'. Either exclude it or remove the dependency array  react-hooks/exhaustive-deps
+
+/Users/tommykuznets/Downloads/My Projects/React Projects/MovieNightPicker/src/utils/adMonitoring.ts
+   44:36  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  213:53  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  214:18  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  223:53  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  224:18  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  279:31  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  296:29  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  301:42  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  303:53  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  304:18  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  386:27  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  398:32  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  463:14  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/tommykuznets/Downloads/My Projects/React Projects/MovieNightPicker/src/utils/analytics.ts
+   10:37  error  Unexpected any. Specify a different type          @typescript-eslint/no-explicit-any
+   91:64  error  Unexpected any. Specify a different type          @typescript-eslint/no-explicit-any
+  100:53  error  Unexpected any. Specify a different type          @typescript-eslint/no-explicit-any
+  108:28  error  Unexpected any. Specify a different type          @typescript-eslint/no-explicit-any
+  162:39  error  Unexpected any. Specify a different type          @typescript-eslint/no-explicit-any
+  213:11  error  'completions' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  413:22  error  Unexpected any. Specify a different type          @typescript-eslint/no-explicit-any
+  441:14  error  Unexpected any. Specify a different type          @typescript-eslint/no-explicit-any
+
+/Users/tommykuznets/Downloads/My Projects/React Projects/MovieNightPicker/src/utils/apiMonitoring.ts
+   27:10  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   35:37  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   36:36  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  248:35  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  256:49  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  267:54  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  278:38  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  287:31  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  304:29  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  309:42  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  311:53  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  312:18  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  344:24  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  419:27  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  435:14  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/tommykuznets/Downloads/My Projects/React Projects/MovieNightPicker/src/utils/cache.ts
+  186:17  error  'key' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+/Users/tommykuznets/Downloads/My Projects/React Projects/MovieNightPicker/src/utils/gtag.ts
+   7:31  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   9:16  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  25:67  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  56:65  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/tommykuznets/Downloads/My Projects/React Projects/MovieNightPicker/src/utils/imageGenerator.ts
+  293:7  error  'drawRoundedImage' is assigned a value but never used      @typescript-eslint/no-unused-vars
+  309:7  error  'drawMoviePlaceholder' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  367:7  error  'drawFooter' is assigned a value but never used            @typescript-eslint/no-unused-vars
+
+/Users/tommykuznets/Downloads/My Projects/React Projects/MovieNightPicker/src/utils/logger.ts
+  28:31  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  38:32  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  48:33  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  57:33  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/tommykuznets/Downloads/My Projects/React Projects/MovieNightPicker/src/vite-env.d.ts
+  5:10  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/tommykuznets/Downloads/My Projects/React Projects/MovieNightPicker/tests/components/VideoAd.test.tsx
+  2:37  error  'waitFor' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/tommykuznets/Downloads/My Projects/React Projects/MovieNightPicker/tests/components/WatchlistPanel-enhanced.test.tsx
+    5:10  error  'MovieProvider' is defined but never used          @typescript-eslint/no-unused-vars
+    6:10  error  'BookMarked' is defined but never used             @typescript-eslint/no-unused-vars
+  203:7   error  'mockMovie' is assigned a value but never used     @typescript-eslint/no-unused-vars
+  274:13  error  'initialStyle' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+/Users/tommykuznets/Downloads/My Projects/React Projects/MovieNightPicker/tests/functional/movie-picker.test.tsx
+   33:13  error    'mockButton' is assigned a value but never used                                                                          @typescript-eslint/no-unused-vars
+  375:35  warning  React Hook useCallback received a function whose dependencies are unknown. Pass an inline function instead               react-hooks/exhaustive-deps
+  397:31  error    The `Function` type accepts any function-like value.
+Prefer explicitly defining any function parameters and return type  @typescript-eslint/no-unsafe-function-type
+  399:35  error    Unexpected any. Specify a different type                                                                                 @typescript-eslint/no-explicit-any
+
+/Users/tommykuznets/Downloads/My Projects/React Projects/MovieNightPicker/tests/qa/video-ad-visual-qa.spec.ts
+   22:22  error  Unexpected any. Specify a different type     @typescript-eslint/no-explicit-any
+   23:20  error  Unexpected any. Specify a different type     @typescript-eslint/no-explicit-any
+   98:43  error  Unexpected any. Specify a different type     @typescript-eslint/no-explicit-any
+  225:15  error  'layout' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  233:15  error  'clicks' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+/Users/tommykuznets/Downloads/My Projects/React Projects/MovieNightPicker/tests/security/api-security.test.ts
+   90:56  error  Unexpected any. Specify a different type                @typescript-eslint/no-explicit-any
+  103:13  error  'filters' is assigned a value but never used            @typescript-eslint/no-unused-vars
+  150:13  error  'authorizedDomains' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  217:13  error  'errorSpy' is assigned a value but never used           @typescript-eslint/no-unused-vars
+
+/Users/tommykuznets/Downloads/My Projects/React Projects/MovieNightPicker/tests/setup.ts
+  88:8  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+✖ 132 problems (122 errors, 10 warnings)
+

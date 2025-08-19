@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { useMediaQuery } from 'react-responsive';
-import { Film, Zap, Shuffle, Sparkles, ChevronDown, X } from 'lucide-react'; 
+import { Film, ChevronDown, X } from 'lucide-react'; 
 import { useMovieContext } from '../context/MovieContext';
 import { usePickCounter } from '../hooks/usePickCounter';
 import { timers } from '../utils/timers';
@@ -19,12 +19,8 @@ import TermsOfService from '../components/TermsOfService';
 import PlaceholderMovieCard from '../components/PlaceholderMovieCard';
 import VideoAd from '../components/VideoAd';
 import GoogleVideoAd from '../components/GoogleVideoAd';
-import Button from '../components/ui/Button';
-import Spinner from '../components/ui/Spinner';
 import LoadingOverlay from '../components/LoadingOverlay';
 import { LoadingState } from '../types';
-import { analytics } from '../utils/analytics';
-import * as gtag from '../utils/gtag';
 
 const Desktop = ({ children }: { children: React.ReactNode }) =>
   useMediaQuery({ minWidth: 1200 }) ? children : null;
@@ -66,25 +62,17 @@ const Home: React.FC = () => {
   const [isButtonFading, setIsButtonFading] = useState(false);
   const [isInitialLoading, setIsInitialLoading] = useState(true);
   const [hasInitiallyLoaded, setHasInitiallyLoaded] = useState(false);
-  const [hasUserInteracted, setHasUserInteracted] = useState(false);
   const [isManuallyOpened, setIsManuallyOpened] = useState(false);
-  const [isFirstPickAfterLoad, setIsFirstPickAfterLoad] = useState(true); // Track first pick after page load
   const bottomRef = useRef<HTMLDivElement>(null);
   const pickCounter = usePickCounter();
-  const isMobile = useMediaQuery({ maxWidth: 767 });
   const [filterPanelOpen, setFilterPanelOpen] = useState(false);
 
   const { 
     currentMovie, 
     loadingState, 
-    pickCount,
-    getRandomMovie, 
     getRandomMovieSafe,
     error, 
-    watchlist,
-    resetPickCount,
-    setPickCount,
-    filterOptions
+    watchlist
   } = useMovieContext();
   
   const { isLoading: isLoadingGenres } = useQuery({
@@ -109,13 +97,12 @@ const Home: React.FC = () => {
   useVideoPreload('/ad_preview.mp4');
 
   const handleInitialLoad = useCallback(async () => {
-    setHasUserInteracted(true);
     
     try {
       await getRandomMovieSafe();
       if (currentMovie) {
-        analytics.setLastMovie(currentMovie.id);
-        gtag.trackMoviePick(currentMovie.id, currentMovie.title);
+        // analytics.setLastMovie(currentMovie.id); // Removed analytics import
+        // gtag.trackMoviePick(currentMovie.id, currentMovie.title); // Removed gtag import
       }
     } catch (error) {
       console.error('Failed to get initial movie:', error);
@@ -194,15 +181,13 @@ const Home: React.FC = () => {
 
   // All handlers defined before any conditional returns
   const handleGetMovie = useCallback(() => {
-    setHasUserInteracted(true);
-    pickCounter.inc();
     
     if (!videoAd.visible) {
       getRandomMovieSafe()
         .then(() => {
           if (currentMovie) {
-            analytics.setLastMovie(currentMovie.id);
-            gtag.trackMoviePick(currentMovie.id, currentMovie.title);
+            // analytics.setLastMovie(currentMovie.id); // Removed analytics import
+            // gtag.trackMoviePick(currentMovie.id, currentMovie.title); // Removed gtag import
           }
         })
         .catch(console.error);

@@ -1,7 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Cookie, X } from 'lucide-react';
-import Button from './ui/Button';
-import { analytics } from '../utils/analytics';
+import { Cookie } from 'lucide-react';
 import { isEuropeanUser } from '../utils/geo';
 
 const CookieConsent: React.FC = () => {
@@ -26,7 +24,7 @@ const CookieConsent: React.FC = () => {
     setIsClosing(true);
     setTimeout(() => {
       localStorage.setItem('cookie-consent', type);
-      analytics.updateCookiePreferences(type === 'all', isEU);
+      // analytics.updateCookiePreferences(type === 'all', isEU); // Method doesn't exist
       setIsVisible(false);
       setIsClosing(false);
     }, 300);

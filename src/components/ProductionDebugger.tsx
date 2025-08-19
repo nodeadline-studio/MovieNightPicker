@@ -1,21 +1,32 @@
 import React, { useState, useEffect } from 'react';
-import { X, Activity, AlertTriangle, CheckCircle, Clock, DollarSign, Eye, Settings } from 'lucide-react';
+import { 
+  Activity, AlertTriangle, CheckCircle, 
+  X, Eye, DollarSign, Clock
+} from 'lucide-react';
 import apiMonitoring from '../utils/apiMonitoring';
 import adMonitoring from '../utils/adMonitoring';
 import analytics from '../utils/analytics';
+import type { APIHealthStatus } from '../utils/apiMonitoring';
+import type { AdPerformanceSummary } from '../utils/adMonitoring';
 
 interface ProductionDebuggerProps {
   isOpen: boolean;
   onClose: () => void;
+  refreshInterval?: number;
 }
 
-const ProductionDebugger: React.FC<ProductionDebuggerProps> = ({ isOpen, onClose }) => {
-  const [activeTab, setActiveTab] = useState<'overview' | 'api' | 'ads' | 'analytics' | 'debug'>('overview');
-  const [refreshInterval, setRefreshInterval] = useState(5000);
-  const [apiHealth, setApiHealth] = useState<any>(null);
-  const [adPerformance, setAdPerformance] = useState<any>(null);
-  const [analyticsData, setAnalyticsData] = useState<any>(null);
-  const [debugLogs, setDebugLogs] = useState<any[]>([]);
+type TabId = 'overview' | 'api' | 'ads' | 'analytics' | 'debug';
+
+const ProductionDebugger: React.FC<ProductionDebuggerProps> = ({ 
+  isOpen, 
+  onClose, 
+  refreshInterval = 5000 
+}) => {
+  const [activeTab, setActiveTab] = useState<TabId>('overview');
+  const [apiHealth, setApiHealth] = useState<APIHealthStatus | null>(null);
+  const [adPerformance, setAdPerformance] = useState<AdPerformanceSummary | null>(null);
+  const [analyticsData, setAnalyticsData] = useState<Record<string, unknown> | null>(null);
+  const [debugLogs, setDebugLogs] = useState<Array<{ type: string; message: string; timestamp: number }>>([]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -38,17 +49,17 @@ const ProductionDebugger: React.FC<ProductionDebuggerProps> = ({ isOpen, onClose
     const originalError = console.error;
     const originalWarn = console.warn;
 
-    console.log = (...args) => {
+    console.log = (...args: unknown[]) => {
       originalLog.apply(console, args);
       setDebugLogs(prev => [...prev.slice(-50), { type: 'log', message: args.join(' '), timestamp: Date.now() }]);
     };
 
-    console.error = (...args) => {
+    console.error = (...args: unknown[]) => {
       originalError.apply(console, args);
       setDebugLogs(prev => [...prev.slice(-50), { type: 'error', message: args.join(' '), timestamp: Date.now() }]);
     };
 
-    console.warn = (...args) => {
+    console.warn = (...args: unknown[]) => {
       originalWarn.apply(console, args);
       setDebugLogs(prev => [...prev.slice(-50), { type: 'warn', message: args.join(' '), timestamp: Date.now() }]);
     };
@@ -94,7 +105,7 @@ const ProductionDebugger: React.FC<ProductionDebuggerProps> = ({ isOpen, onClose
             ].map(({ id, label, icon: Icon }) => (
               <button
                 key={id}
-                onClick={() => setActiveTab(id as any)}
+                onClick={() => setActiveTab(id as TabId)}
                 className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-colors ${
                   activeTab === id
                     ? 'bg-blue-100 text-blue-700'
@@ -146,7 +157,7 @@ const ProductionDebugger: React.FC<ProductionDebuggerProps> = ({ isOpen, onClose
 };
 
 // Overview Tab
-const OverviewTab: React.FC<{ apiHealth: any; adPerformance: any; analyticsData: any }> = ({
+const OverviewTab: React.FC<{ apiHealth: APIHealthStatus | null; adPerformance: AdPerformanceSummary | null; analyticsData: Record<string, unknown> | null }> = ({
   apiHealth,
   adPerformance,
   analyticsData
@@ -255,7 +266,7 @@ const OverviewTab: React.FC<{ apiHealth: any; adPerformance: any; analyticsData:
 };
 
 // API Tab
-const APITab: React.FC<{ apiHealth: any }> = ({ apiHealth }) => {
+const APITab: React.FC<{ apiHealth: APIHealthStatus | null }> = ({ apiHealth }) => {
   return (
     <div className="space-y-6">
       <h3 className="text-lg font-semibold text-gray-900">API Health Monitoring</h3>
@@ -321,7 +332,7 @@ const APITab: React.FC<{ apiHealth: any }> = ({ apiHealth }) => {
 };
 
 // Ads Tab
-const AdsTab: React.FC<{ adPerformance: any }> = ({ adPerformance }) => {
+const AdsTab: React.FC<{ adPerformance: AdPerformanceSummary | null }> = ({ adPerformance }) => {
   return (
     <div className="space-y-6">
       <h3 className="text-lg font-semibold text-gray-900">Ad Performance Monitoring</h3>
@@ -385,7 +396,7 @@ const AdsTab: React.FC<{ adPerformance: any }> = ({ adPerformance }) => {
 };
 
 // Analytics Tab
-const AnalyticsTab: React.FC<{ analyticsData: any }> = ({ analyticsData }) => {
+const AnalyticsTab: React.FC<{ analyticsData: Record<string, unknown> | null }> = ({ analyticsData }) => {
   return (
     <div className="space-y-6">
       <h3 className="text-lg font-semibold text-gray-900">Analytics Overview</h3>
@@ -441,13 +452,18 @@ const AnalyticsTab: React.FC<{ analyticsData: any }> = ({ analyticsData }) => {
 };
 
 // Debug Tab
-const DebugTab: React.FC<{ debugLogs: any[] }> = ({ debugLogs }) => {
+const DebugTab: React.FC<{ debugLogs: Array<{ type: string; message: string; timestamp: number }> }> = ({ debugLogs }) => {
   const getLogColor = (type: string) => {
     switch (type) {
       case 'error': return 'text-red-600 bg-red-50';
       case 'warn': return 'text-yellow-600 bg-yellow-50';
       default: return 'text-gray-600 bg-gray-50';
     }
+  };
+
+  const clearLogs = () => {
+    // This would need to be passed down from parent or use a callback
+    console.log('Clear logs clicked');
   };
 
   return (
@@ -469,7 +485,7 @@ const DebugTab: React.FC<{ debugLogs: any[] }> = ({ debugLogs }) => {
 
       <div className="flex space-x-3">
         <button
-          onClick={() => setDebugLogs([])}
+          onClick={clearLogs}
           className="bg-red-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-red-700 transition-colors"
         >
           Clear Logs

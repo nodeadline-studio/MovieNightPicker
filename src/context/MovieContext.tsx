@@ -142,46 +142,23 @@ export const MovieProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   }, []);
 
   const applyRandomFilters = useCallback(() => {
-    if (genres.length === 0) return; // Wait for genres to load
-    
-    // More diverse genre selection - avoid popular combinations
-    const numGenres = Math.floor(Math.random() * 2) + 2; // 2-3 genres for better diversity
-    const shuffledGenres = [...genres].sort(() => Math.random() - 0.5);
-    const randomGenres = shuffledGenres.slice(0, numGenres).map(g => g.id);
-    
     const currentYear = new Date().getFullYear();
-    const minYear = 1960; // Start from 1960 for greater diversity
+    const maxYear = currentYear;
     
-    // More diverse time periods
-    const periods = [
-      { from: 1960, to: 1980 }, // Classic era
-      { from: 1980, to: 2000 }, // 80s-90s
-      { from: 2000, to: 2010 }, // 2000s
-      { from: 2010, to: currentYear }, // Modern
-      { from: 1960, to: currentYear }, // All time
-    ];
-    
-    const selectedPeriod = periods[Math.floor(Math.random() * periods.length)];
-    const yearFrom = selectedPeriod.from + Math.floor(Math.random() * 5); // Small variation
-    const yearTo = Math.min(selectedPeriod.to, currentYear);
-    
-    const rating = Math.floor(Math.random() * 2.5) + 5.5; // 5.5-8.0 for better diversity
-    
-    const newFilters = {
-      genres: randomGenres,
-      yearFrom,
-      yearTo,
-      ratingFrom: rating,
-      inTheatersOnly: false,
-      includeAdult: true,
-      tvShowsOnly: false,
-      maxRuntime: 180
+    const randomFilters: FilterState = {
+      genre: genres[Math.floor(Math.random() * genres.length)]?.id?.toString() || '',
+      year: Math.floor(Math.random() * (maxYear - 1900) + 1900).toString(),
+      rating: (Math.floor(Math.random() * 5) + 1).toString(),
+      runtime: (Math.floor(Math.random() * 180) + 60).toString(),
+      language: ['en', 'es', 'fr', 'de', 'it'][Math.floor(Math.random() * 5)],
+      sortBy: ['popularity', 'rating', 'release_date'][Math.floor(Math.random() * 3)]
     };
     
-    logger.debug('🎲 Applied random filters:', newFilters, { prefix: 'Context' });
-    updateFilterOptions(newFilters);
-    // Removed automatic movie search - now only updates filters
-  }, [genres, updateFilterOptions]);
+    setFilters(randomFilters);
+    gtag.event('apply_random_filters', {
+      filters: randomFilters
+    });
+  }, [genres]);
 
   const getRandomMovie = useCallback(async () => {
     setLoadingState(LoadingState.LOADING);
@@ -255,8 +232,8 @@ export const MovieProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     });
   }, [filterOptions.tvShowsOnly]);
 
-  const removeFromWatchlist = useCallback((id: number) => {
-    setWatchlist((prev) => prev.filter((movie) => movie.id !== id));
+  const removeFromWatchlist = useCallback((movieId: number) => {
+    setWatchlist(prev => prev.filter(movie => movie.id !== movieId));
   }, []);
 
   const resetPickCount = useCallback(() => {
@@ -270,25 +247,6 @@ export const MovieProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const handleDebugLocalStorage = useCallback(() => {
     debugLocalStorage();
-  }, []);
-
-  const getMovieFromCache = useCallback(async (): Promise<CacheResult> => {
-    setLoadingState(LoadingState.LOADING);
-    setError(null);
-    
-    try {
-      const movie = await movieCache.getMovie();
-      if (movie) {
-        setCurrentMovie(movie);
-        setLoadingState(LoadingState.SUCCESS);
-        return { success: true, movie };
-      }
-      return { success: false };
-    } catch (e) {
-      setError('Failed to load movie from cache');
-      setLoadingState(LoadingState.ERROR);
-      return { success: false };
-    }
   }, []);
 
   return (

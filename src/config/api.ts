@@ -20,7 +20,6 @@ if (API_KEY && API_KEY.length < 10) {
 const BASE_URL = 'https://api.themoviedb.org/3';
 const IMAGE_BASE_URL = 'https://image.tmdb.org/t/p';
 const POSTER_SIZE = 'w500';
-const BACKDROP_SIZE = 'original';
 
 const ENDPOINTS = {
   DISCOVER: `${BASE_URL}/discover/movie`,
@@ -35,8 +34,6 @@ const ENDPOINTS = {
   ON_THE_AIR: `${BASE_URL}/tv/on_the_air?region=US`,
 };
 
-const MAX_RETRIES = 3; // Maximum number of API retries
-
 const headers = {
   Authorization: `Bearer ${API_KEY}`,
   'Content-Type': 'application/json',
@@ -46,8 +43,6 @@ export async function fetchRandomMovie(options: FilterOptions): Promise<Movie | 
   logger.debug('Fetching random movie with options:', options, { prefix: 'API' });
 
   const watchlist = getWatchlist();
-  let retryCount = 0;
-  const maxRetries = 5; // Увеличил количество попыток
 
   // Создаем последовательность все более мягких фильтров
   const filterVariations = [
@@ -125,6 +120,7 @@ export async function fetchRandomMovie(options: FilterOptions): Promise<Movie | 
       tvShowsOnly: false
     });
         } catch (finalError) {
+    logger.error('Final attempt failed:', finalError, { prefix: 'API' });
     throw new Error('Unable to find any movies. Please check your internet connection.');
   }
 }
@@ -263,8 +259,7 @@ async function attemptFetch(options: FilterOptions, watchlist: WatchlistMovie[] 
       if (isTV) {
         itemData.title = itemData.name || itemData.original_name;
         itemData.release_date = itemData.first_air_date;
-        itemData.poster_path = itemData.poster_path;
-        itemData.backdrop_path = itemData.backdrop_path;
+        // itemData.poster_path and backdrop_path are already set, no need to reassign
       }
       
       // Ensure vote_average is a valid number and not zero

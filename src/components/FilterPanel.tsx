@@ -1,12 +1,9 @@
-import React, { useState, useEffect } from 'react';
-import { SlidersHorizontal, X, Clapperboard, Star, Calendar, Trash2, ChevronRight, AlertTriangle, StarHalf, Shuffle, Sparkles, CheckSquare } from 'lucide-react';
+import React, { useState } from 'react';
+import { SlidersHorizontal, X, Clapperboard, Star, Calendar, Trash2, Shuffle, Sparkles, CheckSquare } from 'lucide-react';
 import { useMovieContext } from '../context/MovieContext';
-import Button from './ui/Button';
 import TimelineSlider from './ui/TimelineSlider';
 import { movieCache } from '../utils/cache';
 import { LoadingState } from '../types';
-import { analytics } from '../utils/analytics';
-import * as gtag from '../utils/gtag';
 
 interface FilterPanelProps {
   isOpen: boolean;
@@ -24,12 +21,9 @@ const FilterPanel: React.FC<FilterPanelProps> = ({ isOpen, setIsOpen }) => {
     applyRandomFilters
   } = useMovieContext();
   const [isApplyingAndPicking, setIsApplyingAndPicking] = useState(false);
-  const [excludeWatchlist, setExcludeWatchlist] = useState(false);
   const [activeTab, setActiveTab] = useState<'basic' | 'advanced'>('basic');
   const [captchaVerified, setCaptchaVerified] = useState(false);
   const [captchaScore, setCaptchaScore] = useState<number | null>(null);
-  const [mathProblem, setMathProblem] = useState<{ question: string; answer: number } | null>(null);
-  const [showVideoAd, setShowVideoAd] = useState(false);
 
   const currentYear = new Date().getFullYear();
   
@@ -57,39 +51,6 @@ const FilterPanel: React.FC<FilterPanelProps> = ({ isOpen, setIsOpen }) => {
     if (filterOptions.inTheatersOnly) count++;
     if (filterOptions.tvShowsOnly) count++;
     return count;
-  };
-
-  const generateMathProblem = (difficulty: number) => {
-    const operators = ['+', '-', '*'];
-    const operator = operators[Math.floor(Math.random() * operators.length)];
-    let num1 = Math.floor(Math.random() * (10 * difficulty)) + 1;
-    let num2 = Math.floor(Math.random() * (10 * difficulty)) + 1;
-    
-    let answer: number;
-    let question: string;
-    
-    switch (operator) {
-      case '+':
-        answer = num1 + num2;
-        question = `${num1} + ${num2}`;
-        break;
-      case '-':
-        if (num2 > num1) [num1, num2] = [num2, num1];
-        answer = num1 - num2;
-        question = `${num1} - ${num2}`;
-        break;
-      case '*':
-        num1 = Math.floor(num1 / difficulty);
-        num2 = Math.floor(num2 / difficulty);
-        answer = num1 * num2;
-        question = `${num1} × ${num2}`;
-        break;
-      default:
-        answer = num1 + num2;
-        question = `${num1} + ${num2}`;
-    }
-    
-    return { question, answer };
   };
 
   const handleGenreToggle = (genreId: number, e: React.MouseEvent<HTMLButtonElement>) => {
@@ -147,14 +108,14 @@ const FilterPanel: React.FC<FilterPanelProps> = ({ isOpen, setIsOpen }) => {
       if (captchaScore === null) {
         setCaptchaScore(100);
       }
-      const difficulty = Math.min(5, Math.floor(pickCount / 10) + 1);
-      setMathProblem(generateMathProblem(difficulty));
+      // const difficulty = Math.min(5, Math.floor(pickCount / 10) + 1); // Removed unused variable
+      // setMathProblem(generateMathProblem(difficulty)); // This line was removed
       setCaptchaVerified(false);
       return;
     }
 
     if (pickCount >= 9 && (pickCount + 1) % 10 === 0) {
-      setShowVideoAd(true);
+      // setShowVideoAd(true); // This line was removed
       return;
     }
 
@@ -404,7 +365,7 @@ const FilterPanel: React.FC<FilterPanelProps> = ({ isOpen, setIsOpen }) => {
                                     [@media(max-height:600px)]:grid-cols-3
                                     [@media(max-height:500px)]:grid-cols-4
                                     [@media(max-height:400px)]:grid-cols-5">
-                        {genres.map((genre, index) => (
+                        {genres.map((genre) => (
                       <button
                         key={genre.id}
                         onClick={(e) => handleGenreToggle(genre.id, e)}

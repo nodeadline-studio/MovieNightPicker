@@ -63,22 +63,6 @@ const TimelineSlider: React.FC<TimelineSliderProps> = ({
     setShowTooltip(true);
   };
 
-  const handleTouchMove = (e: TouchEvent) => {
-    if (!isDragging || !sliderRef.current) return;
-    
-    const touch = e.touches[0];
-    const rect = sliderRef.current.getBoundingClientRect();
-    const clientX = touch.clientX - rect.left;
-    
-    const newPosition = calculatePosition(clientX + rect.left);
-    
-    if (isDragging === 'left') {
-      onChange([Math.min(newPosition, rightValue), rightValue]);
-    } else {
-      onChange([leftValue, Math.max(newPosition, leftValue)]);
-    }
-  };
-
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
       if (!isDragging) return;
@@ -107,7 +91,7 @@ const TimelineSlider: React.FC<TimelineSliderProps> = ({
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('mouseup', handleMouseUp);
     };
-  }, [isDragging, leftValue, rightValue, onChange, max, min]);
+  }, [isDragging, leftValue, rightValue, onChange, max, min, calculatePosition]);
 
   const leftPercent = ((leftValue - min) / (max - min)) * 100;
   const rightPercent = ((rightValue - min) / (max - min)) * 100;

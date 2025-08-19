@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { AlertTriangle, Shuffle, RotateCcw, Sparkles } from 'lucide-react';
 import Button from './ui/Button';
 import { useMovieContext } from '../context/MovieContext';

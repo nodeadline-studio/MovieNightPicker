@@ -1,8 +1,7 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Movie } from '../types';
 import { getImageUrl, isInTheaters } from '../config/api';
-import { Heart, Star, Calendar, Clock, Clapperboard, ExternalLink, Sparkles, Shuffle } from 'lucide-react';
-import Button from './ui/Button';
+import { Heart, Star, Calendar, Clapperboard, ExternalLink, Sparkles, Shuffle } from 'lucide-react';
 import { useMovieContext } from '../context/MovieContext';
 import { usePickCounter } from '../hooks/usePickCounter';
 import * as gtag from '../utils/gtag';
@@ -20,7 +19,7 @@ interface MovieCardProps {
 }
 
 const MovieCard: React.FC<MovieCardProps> = ({ movie, isInWatchlist = false, videoAd }) => {
-  const { addToWatchlist, removeFromWatchlist, getRandomMovie, getRandomMovieSafe, filterOptions } = useMovieContext();
+  const { addToWatchlist, removeFromWatchlist, getRandomMovie, filterOptions } = useMovieContext();
   const pickCounter = usePickCounter();
   
   const handleWatchlistToggle = () => {

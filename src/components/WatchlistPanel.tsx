@@ -5,13 +5,12 @@ import {
 } from 'lucide-react';
 import { useMovieContext } from '../context/MovieContext';
 import { generateWatchlistImage } from '../utils/imageGenerator';
-import { analytics } from '../utils/analytics';
 import * as gtag from '../utils/gtag';
 import { fetchMovieDetails, getImageUrl } from '../config/api';
 import { canUseNativeShare, canShareWithFiles, canUseClipboard } from '../utils/shareUtils';
 
 const WatchlistPanel: React.FC = () => {
-  const { watchlist, removeFromWatchlist, clearWatchlist, debugLocalStorage } = useMovieContext();
+  const { watchlist, removeFromWatchlist } = useMovieContext();
   const [isOpen, setIsOpen] = useState(false);
   const [showShareMenu, setShowShareMenu] = useState(false);
   const [updatedMovies, setUpdatedMovies] = useState<Record<number, { vote_average: number; imdb_id: string | null }>>({});
@@ -19,9 +18,6 @@ const WatchlistPanel: React.FC = () => {
   const [showSuccessMessage, setShowSuccessMessage] = useState(false);
   const [previewMovie, setPreviewMovie] = useState<number | null>(null);
   const [hasAnimated, setHasAnimated] = useState(false);
-
-  // Debug mode check
-  const isDebugMode = import.meta.env.DEV;
 
   // Separate movies and TV shows
   const movies = watchlist.filter(item => item.contentType === 'movie');
@@ -43,7 +39,7 @@ const WatchlistPanel: React.FC = () => {
 
   useEffect(() => {
     if (isOpen && watchlist.length > 0) {
-      analytics.updateWatchlistSize(watchlist.length);
+      // analytics.updateWatchlistSize(watchlist.length); // Method doesn't exist
       watchlist.forEach(async (movie) => {
         try {
           const updatedMovie = await fetchMovieDetails(movie.id);
@@ -70,11 +66,11 @@ const WatchlistPanel: React.FC = () => {
     } else if (!isOpen) {
       setHasAnimated(false);
     }
-  }, [isOpen]);
+  }, [isOpen, hasAnimated]);
 
   // Close share menu when clicking outside
   useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
+    const handleClickOutside = () => {
       if (showShareMenu) {
         setShowShareMenu(false);
       }
@@ -144,7 +140,6 @@ const WatchlistPanel: React.FC = () => {
       document.body.removeChild(link);
       
       setShowShareMenu(false);
-      analytics.trackShare('download', watchlist.length);
       gtag.trackShare('download', watchlist.length);
     } catch (error) {
       console.error('Error generating watchlist image:', error);
@@ -185,7 +180,6 @@ const WatchlistPanel: React.FC = () => {
       if (canShareWithFiles([file])) {
         await navigator.share(shareData);
         setShowShareMenu(false);
-        analytics.trackShare('native', watchlist.length);
         gtag.trackShare('native', watchlist.length);
       } else {
         // Fallback to download
@@ -249,7 +243,6 @@ const WatchlistPanel: React.FC = () => {
       }
       
       setShowShareMenu(false);
-      analytics.trackShare('clipboard', watchlist.length);
       gtag.trackShare('clipboard', watchlist.length);
     } catch (error) {
       console.error('Error copying to clipboard:', error);
@@ -287,7 +280,6 @@ const WatchlistPanel: React.FC = () => {
         if (canShareWithFiles([file])) {
           await navigator.share(shareData);
           setShowShareMenu(false);
-          analytics.trackShare('native', watchlist.length);
           gtag.trackShare('native', watchlist.length);
         } else {
           // Fallback to clipboard
@@ -328,7 +320,6 @@ const WatchlistPanel: React.FC = () => {
       return;
     }
     
-    analytics.trackShare(platform, watchlist.length);
     gtag.trackShare(platform, watchlist.length);
   };
 
@@ -337,8 +328,7 @@ const WatchlistPanel: React.FC = () => {
     title: string;
     icon: React.ReactNode;
     items: typeof watchlist;
-    emptyMessage: string;
-  }> = ({ title, icon, items, emptyMessage }) => {
+  }> = ({ title, icon, items }) => {
     if (items.length === 0) return null;
 
     return (
@@ -415,11 +405,14 @@ const WatchlistPanel: React.FC = () => {
                       {previewMovie === movie.id ? <EyeOff size={16} /> : <Eye size={16} />}
                     </button>
                     
-                    {(updatedMovies[movie.id]?.imdb_id || movie.imdb_id) && (
+                    {((updatedMovies[movie.id] && updatedMovies[movie.id].imdb_id) || movie.imdb_id) && (
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
-                          window.open(`https://www.imdb.com/title/${updatedMovies[movie.id]?.imdb_id || movie.imdb_id}`, '_blank');
+                          const imdbId = (updatedMovies[movie.id] && updatedMovies[movie.id].imdb_id) || movie.imdb_id;
+                          if (imdbId) {
+                            window.open(`https://www.imdb.com/title/${imdbId}`, '_blank');
+                          }
                         }}
                         className="text-yellow-400 hover:text-yellow-300 p-1 rounded transition-colors duration-200"
                         title="View on IMDb"
@@ -501,9 +494,14 @@ const WatchlistPanel: React.FC = () => {
 
             {/* Action Buttons */}
             <div className="flex gap-2">
-              {(updatedMovies[movie.id]?.imdb_id || movie.imdb_id) && (
+              {((updatedMovies[movie.id] && updatedMovies[movie.id].imdb_id) || movie.imdb_id) && (
                 <button
-                  onClick={() => window.open(`https://www.imdb.com/title/${updatedMovies[movie.id]?.imdb_id || movie.imdb_id}`, '_blank')}
+                  onClick={() => {
+                    const imdbId = (updatedMovies[movie.id] && updatedMovies[movie.id].imdb_id) || movie.imdb_id;
+                    if (imdbId) {
+                      window.open(`https://www.imdb.com/title/${imdbId}`, '_blank');
+                    }
+                  }}
                   className="flex-1 bg-gradient-to-r from-yellow-500 to-orange-500 
                            hover:from-yellow-400 hover:to-orange-400
                            text-black font-semibold py-2 px-3 rounded-xl
@@ -693,7 +691,6 @@ const WatchlistPanel: React.FC = () => {
                           title="Movies"
                           icon={<Film size={16} className="text-blue-400" />}
                           items={allMovies}
-                          emptyMessage="No movies in your watchlist"
                         />
                       )}
                       
@@ -706,7 +703,6 @@ const WatchlistPanel: React.FC = () => {
                           title="TV Shows"
                           icon={<Tv size={16} className="text-purple-400" />}
                           items={tvShows}
-                          emptyMessage="No TV shows in your watchlist"
                         />
                       )}
                     </div>

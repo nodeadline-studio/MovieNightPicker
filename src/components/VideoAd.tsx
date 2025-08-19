@@ -1,18 +1,25 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { X } from 'lucide-react';
 import adStrings from '../locales/en.json';
-import adMonitoring from '../utils/adMonitoring';
 
 interface VideoAdProps {
   onClose: () => void;
 }
 
+interface AdStrings {
+  videoAd: {
+    headline: string;
+    paragraph: string;
+    bullets: string[];
+    cta: string;
+  };
+}
+
 const VideoAd: React.FC<VideoAdProps> = ({ onClose }) => {
   const [autoSkipCountdown, setAutoSkipCountdown] = useState(10);
   const videoRef = useRef<HTMLVideoElement>(null);
-  const { headline, paragraph, bullets, cta } = (adStrings as any).videoAd;
+  const { headline, paragraph, bullets, cta } = (adStrings as AdStrings).videoAd;
   const timerRef = useRef<NodeJS.Timeout | null>(null);
-  const adId = `video-ad-${Date.now()}`;
 
   useEffect(() => {
     
