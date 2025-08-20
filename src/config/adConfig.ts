@@ -234,7 +234,7 @@ export const AD_TESTING = {
     logger.debug('Ad debug mode enabled. Use window.adDebug to access ad state.', undefined, { prefix: 'AdConfig' });
     
     // Make debug info globally available
-    (window as any).adDebug = {
+    (window as WindowWithAdDebug).adDebug = {
       config: AD_CONFIG,
       manager: null, // Will be set by the frequency manager
       resetState: () => {
@@ -249,8 +249,18 @@ export const AD_TESTING = {
 
 // Global debug access
 if (typeof window !== 'undefined') {
-  (window as any).AD_CONFIG = AD_CONFIG;
-  (window as any).AD_TESTING = AD_TESTING;
+  interface WindowWithAdDebug extends Window {
+    adDebug?: {
+      config: typeof AD_CONFIG;
+      manager: AdFrequencyManager | null;
+      resetState: () => void;
+    };
+    AD_CONFIG?: typeof AD_CONFIG;
+    AD_TESTING?: typeof AD_TESTING;
+  }
+  
+  (window as WindowWithAdDebug).AD_CONFIG = AD_CONFIG;
+  (window as WindowWithAdDebug).AD_TESTING = AD_TESTING;
 }
 
 export default AD_CONFIG; 

@@ -10,10 +10,9 @@ interface UseVideoAdOptions {
   pickCounter?: ReturnType<typeof usePickCounter>;
 }
 
-export function useVideoAd({ onClose, onError, pickCounter, enableTestAds = true }: UseVideoAdOptions = {}) {
+export function useVideoAd({ onClose }: UseVideoAdOptions = {}) {
   const [visible, setVisible] = useState(false);
   const [skipIn, setSkipIn] = useState<number|null>(null);
-  const [timeoutId, setTimeoutId] = useState<ReturnType<typeof setTimeout>|undefined>();
   const [hasStarted, setHasStarted] = useState(false);
   const [isVideoPreloading, setIsVideoPreloading] = useState(false);
   const [adType, setAdType] = useState<'video' | 'google'>('video');
@@ -77,28 +76,6 @@ export function useVideoAd({ onClose, onError, pickCounter, enableTestAds = true
     timersRef.current = [];
     onClose?.();
   }, [onClose]);
-
-  const handleFallback = useCallback(() => {
-    if (!navigator.onLine) {
-      close();
-      return;
-    }
-    
-    // Show house ad fallback
-    if (adRef.current) {
-      const video = document.createElement('video');
-      video.src = '/assets/house-ad.mp4';
-      video.autoplay = true;
-      video.muted = true;
-      video.playsInline = true;
-      adRef.current.appendChild(video);
-      
-      // Allow skip after 10s for fallback
-      setTimeout(() => {
-        setSkipIn(0);
-      }, 10000);
-    }
-  }, [close]);
 
   const maybeShow = useCallback((count: number) => {
     // Check for forced ads (testing)

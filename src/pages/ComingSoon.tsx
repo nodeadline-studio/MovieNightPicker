@@ -3,7 +3,6 @@ import { Film, Lock, ChevronRight, Github, ExternalLink, Loader2 } from 'lucide-
 import Button from '../components/ui/Button';
 import { useNavigate } from 'react-router-dom';
 
-const ENCRYPTED_PASSWORD = '0cc175b9c0f1b6a831c399e269772661'; // "artemtest" in md5
 
 const ComingSoon: React.FC = () => {
   const navigate = useNavigate();

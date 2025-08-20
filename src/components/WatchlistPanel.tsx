@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { 
   BookMarked, X, Share2, 
-  Film, Tv, Star, Clock, Calendar, ExternalLink, Trash2, Eye, EyeOff 
+  Film, Tv, Star, Calendar, ExternalLink, Trash2, Eye, EyeOff 
 } from 'lucide-react';
 import { useMovieContext } from '../context/MovieContext';
 import { generateWatchlistImage } from '../utils/imageGenerator';
@@ -298,7 +298,7 @@ const WatchlistPanel: React.FC = () => {
     }
   };
 
-  const handleShare = async (platform: 'twitter' | 'facebook' | 'copy' | 'download' | 'native' | 'smart') => {
+  const handleShare = useCallback(async (platform: 'twitter' | 'facebook' | 'copy' | 'download' | 'native' | 'smart') => {
     if (platform === 'download') {
       await handleDownloadImage();
       return;
@@ -321,7 +321,7 @@ const WatchlistPanel: React.FC = () => {
     }
     
     gtag.trackShare(platform, watchlist.length);
-  };
+  }, [watchlist.length, handleClipboardShare, handleDownloadImage, handleNativeShare, handleSmartShare]);
 
   // Component for rendering a section of watchlist items
   const WatchlistSection: React.FC<{
@@ -383,14 +383,7 @@ const WatchlistPanel: React.FC = () => {
                     {(updatedMovies[movie.id]?.vote_average !== undefined ? updatedMovies[movie.id]?.vote_average : movie.vote_average) && (
                       <div className="flex items-center gap-1">
                         <Star size={12} className="text-yellow-400 fill-current" />
-                        <span>{(updatedMovies[movie.id]?.vote_average !== undefined ? updatedMovies[movie.id]?.vote_average : movie.vote_average).toFixed(1)}</span>
-                      </div>
-                    )}
-                    
-                    {(movie as any).runtime && (
-                      <div className="flex items-center gap-1">
-                        <Clock size={12} />
-                        <span>{(movie as any).runtime}m</span>
+                        <span>{(updatedMovies[movie.id] && updatedMovies[movie.id].vote_average !== undefined ? updatedMovies[movie.id].vote_average : movie.vote_average).toFixed(1)}</span>
                       </div>
                     )}
                   </div>
@@ -445,14 +438,6 @@ const WatchlistPanel: React.FC = () => {
 
   // Movie Preview Component (inline expanded details)
   const MoviePreview: React.FC<{ movie: typeof watchlist[0] }> = ({ movie }) => {
-    const formatDate = (dateString: string) => {
-      return new Date(dateString).toLocaleDateString('en-US', {
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric'
-      });
-    };
-
     const getYear = (dateString: string): string => {
       return new Date(dateString).getFullYear().toString();
     };
@@ -727,6 +712,20 @@ const WatchlistPanel: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Copied Message */}
+      {/* showCopiedMessage && (
+        <div className="fixed top-4 left-1/2 transform -translate-x-1/2 z-[60] animate-slideInUp">
+          <div className="bg-blue-500/90 backdrop-blur-sm text-white px-6 py-3 rounded-2xl shadow-2xl border border-blue-400/20">
+            <div className="flex items-center gap-3">
+              <div className="w-6 h-6 bg-white/20 rounded-full flex items-center justify-center">
+                ✨
+              </div>
+              <span className="font-medium">Link copied to clipboard!</span>
+            </div>
+          </div>
+        </div>
+      ) */}
     </div>
   );
 };

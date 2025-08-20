@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useState } from 'react';
+import React, { useRef, useEffect, useState, useCallback } from 'react';
 
 interface TimelineSliderProps {
   min: number;
@@ -42,12 +42,12 @@ const TimelineSlider: React.FC<TimelineSliderProps> = ({
     }
   };
 
-  const calculatePosition = (clientX: number): number => {
+  const calculatePosition = useCallback((clientX: number): number => {
     if (!sliderRef.current) return 0;
     const rect = sliderRef.current.getBoundingClientRect();
     const position = ((clientX - rect.left) / rect.width) * (max - min) + min;
     return snapToStep(Math.max(min, Math.min(max, position)));
-  };
+  }, [max, min, snapToStep]);
 
   const handleMouseDown = (e: React.MouseEvent, handle: 'left' | 'right') => {
     e.preventDefault();

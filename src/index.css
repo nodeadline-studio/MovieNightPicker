@@ -1232,3 +1232,128 @@ input[type="range"]::-moz-range-thumb {
   min-height: 400px;
   overflow: hidden;
 }
+
+/* Mobile viewport height fixes for Note 20 and other mobile devices */
+:root {
+  --vh: 1vh;
+  --screen-height: 100vh;
+  --safe-area-top: env(safe-area-inset-top, 0px);
+  --safe-area-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-area-left: env(safe-area-inset-left, 0px);
+  --safe-area-right: env(safe-area-inset-right, 0px);
+}
+
+/* Mobile-specific height calculations */
+@supports (height: 100dvh) {
+  :root {
+    --vh: 1dvh;
+  }
+}
+
+/* Fix for mobile browsers that don't support dvh */
+@supports not (height: 100dvh) {
+  :root {
+    --vh: 1vh;
+  }
+}
+
+/* Mobile height utility classes */
+.mobile-h-screen {
+  height: calc(var(--vh, 1vh) * 100);
+  min-height: calc(var(--vh, 1vh) * 100);
+}
+
+.mobile-h-full {
+/* Mobile-specific movie card heights */
+}.mobile-movie-container {
+  max-height: calc(var(--vh, 1vh) * 100 - 8rem - var(--safe-area-top) - var(--safe-area-bottom));
+}
+
+.mobile-poster-height {
+  max-height: calc(var(--vh, 1vh) * 45);
+}
+
+.mobile-content-height {
+  max-height: calc(var(--vh, 1vh) * 60 - 2rem);
+}
+
+/* Note 20 specific fixes */
+@media screen and (min-height: 2400px) {
+  .mobile-movie-container {
+    max-height: calc(var(--vh, 1vh) * 100 - 6rem - var(--safe-area-top) - var(--safe-area-bottom));
+  }
+  
+  .mobile-poster-height {
+    max-height: calc(var(--vh, 1vh) * 40);
+  }
+  
+  .mobile-content-height {
+    max-height: calc(var(--vh, 1vh) * 55 - 1rem);
+  }
+}
+
+/* High DPI mobile devices */
+@media screen and (-webkit-min-device-pixel-ratio: 2) and (max-width: 768px) {
+  .mobile-movie-container {
+    max-height: calc(var(--vh, 1vh) * 100 - 7rem - var(--safe-area-top) - var(--safe-area-bottom));
+  }
+}
+
+/* JavaScript will update --vh on mobile */
+
+/* Note 20 specific fixes */
+@media screen and (min-height: 2400px) {
+  .mobile-movie-container {
+    max-height: calc(var(--vh, 1vh) * 100 - 6rem - var(--safe-area-top) - var(--safe-area-bottom));
+  }
+  
+  .mobile-poster-height {
+    max-height: calc(var(--vh, 1vh) * 40);
+  }
+  
+  .mobile-content-height {
+    max-height: calc(var(--vh, 1vh) * 55 - 1rem);
+  }
+}
+
+/* High DPI mobile devices */
+@media screen and (-webkit-min-device-pixel-ratio: 2) and (max-width: 768px) {
+  .mobile-movie-container {
+    max-height: calc(var(--vh, 1vh) * 100 - 7rem - var(--safe-area-top) - var(--safe-area-bottom));
+  }
+}
+/* Add this script to the HTML head or as a separate script */
+/* 
+function setVH() {
+  const vh = window.innerHeight * 0.01;
+  document.documentElement.style.setProperty('--vh', `${vh}px`);
+}
+
+// Set initial value
+setVH();
+
+// Update on resize and orientation change
+window.addEventListener('resize', setVH);
+window.addEventListener('orientationchange', setVH);
+*/
+/* Note 20 specific fixes */
+@media screen and (min-height: 2400px) {
+  .mobile-movie-container {
+    max-height: calc(var(--vh, 1vh) * 100 - 6rem - var(--safe-area-top) - var(--safe-area-bottom));
+  }
+  
+  .mobile-poster-height {
+    max-height: calc(var(--vh, 1vh) * 40);
+  }
+  
+  .mobile-content-height {
+    max-height: calc(var(--vh, 1vh) * 55 - 1rem);
+  }
+}
+
+/* High DPI mobile devices */
+@media screen and (-webkit-min-device-pixel-ratio: 2) and (max-width: 768px) {
+  .mobile-movie-container {
+    max-height: calc(var(--vh, 1vh) * 100 - 7rem - var(--safe-area-top) - var(--safe-area-bottom));
+  }
+}

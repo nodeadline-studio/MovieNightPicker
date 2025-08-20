@@ -1,58 +1,22 @@
-import React, { useEffect, useState, useRef, useCallback } from 'react';
-import { useMediaQuery } from 'react-responsive';
-import { Film, ChevronDown, X } from 'lucide-react'; 
+import React, { useState, useCallback, useEffect, useRef } from 'react';
+import { Film, ChevronDown, X } from 'lucide-react';
 import { useMovieContext } from '../context/MovieContext';
-import { usePickCounter } from '../hooks/usePickCounter';
-import { timers } from '../utils/timers';
 import { useVideoAd } from '../hooks/useVideoAd';
 import { useVideoPreload } from '../hooks/useVideoPreload';
-import { useQuery } from '@tanstack/react-query';
-import { fetchGenres } from '../config/api';
+import { usePickCounter } from '../hooks/usePickCounter';
 import MovieCard from '../components/MovieCard';
 import MovieCardSkeleton from '../components/MovieCardSkeleton';
+import NoMoviesFound from '../components/NoMoviesFound';
+import PlaceholderMovieCard from '../components/PlaceholderMovieCard';
 import FilterPanel from '../components/FilterPanel';
 import WatchlistPanel from '../components/WatchlistPanel';
-import NoMoviesFound from '../components/NoMoviesFound';
+import VideoAd from '../components/VideoAd';
+import GoogleVideoAd from '../components/GoogleVideoAd';
 import CookieConsent from '../components/CookieConsent';
 import PrivacyPolicy from '../components/PrivacyPolicy';
 import TermsOfService from '../components/TermsOfService';
-import PlaceholderMovieCard from '../components/PlaceholderMovieCard';
-import VideoAd from '../components/VideoAd';
-import GoogleVideoAd from '../components/GoogleVideoAd';
-import LoadingOverlay from '../components/LoadingOverlay';
 import { LoadingState } from '../types';
-
-const Desktop = ({ children }: { children: React.ReactNode }) =>
-  useMediaQuery({ minWidth: 1200 }) ? children : null;
-const Mobile = ({ children }: { children: React.ReactNode }) =>
-  useMediaQuery({ maxWidth: 767 }) ? children : null;
-
-const generateMathProblem = (difficulty: number = 1) => {
-  const operations = ['+', '-', '*'];
-  const operation = operations[Math.floor(Math.random() * operations.length)];
-  let num1 = Math.floor(Math.random() * (10 * difficulty)) + 1;
-  let num2 = Math.floor(Math.random() * (10 * difficulty)) + 1;
-  
-  let answer;
-  switch (operation) {
-    case '+':
-      answer = num1 + num2;
-      break;
-    case '-':
-      if (num2 > num1) [num1, num2] = [num2, num1];
-      answer = num1 - num2;
-      break;
-    case '*':
-      num1 = Math.floor(Math.random() * (5 * difficulty)) + 1;
-      num2 = Math.floor(Math.random() * (5 * difficulty)) + 1;
-      answer = num1 * num2;
-      break;
-    default:
-      answer = num1 + num2;
-  }
-  
-  return { num1, num2, operation, answer };
-};
+import { timers } from '../utils/timers';
 
 const Home: React.FC = () => {
   const [isHeaderVisible, setIsHeaderVisible] = useState(true);
@@ -73,13 +37,11 @@ const Home: React.FC = () => {
     loadingState, 
     getRandomMovieSafe,
     error, 
-    watchlist
+    watchlist,
+    genres
   } = useMovieContext();
   
-  const { isLoading: isLoadingGenres } = useQuery({
-    queryKey: ['genres'],
-    queryFn: fetchGenres,
-  });
+  const isLoadingGenres = !genres || genres.length === 0;
 
   const videoAd = useVideoAd({
     onClose: () => {
@@ -200,20 +162,6 @@ const Home: React.FC = () => {
   }, [isHeaderVisible, isManuallyOpened]);
 
   // All handlers defined before any conditional returns
-  const handleGetMovie = useCallback(() => {
-    
-    if (!videoAd.visible) {
-      getRandomMovieSafe()
-        .then(() => {
-          if (currentMovie) {
-            // analytics.setLastMovie(currentMovie.id); // Removed analytics import
-            // gtag.trackMoviePick(currentMovie.id, currentMovie.title); // Removed gtag import
-          }
-        })
-        .catch(console.error);
-    }
-  }, [pickCounter, videoAd.visible, getRandomMovieSafe, currentMovie]);
-
   const handleShowDescription = useCallback(() => {
     setShowDescriptionButton(false);
     setIsHeaderVisible(true);
@@ -238,9 +186,14 @@ const Home: React.FC = () => {
     io.observe(bottomRef.current);
   }, []);
 
-  // Early return after all hooks are defined
-  if (isInitialLoading || isLoadingGenres) {
-    return <LoadingOverlay message="Loading Movie Picker..." />;
+  // Early return for loading state
+  if (isInitialLoading) {
+    return <div className="min-h-screen bg-gray-950 flex items-center justify-center">
+      <div className="text-center">
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-indigo-500 mx-auto mb-4"></div>
+        <p className="text-white text-lg">Loading Movie Picker...</p>
+      </div>
+    </div>;
   }
 
   const isInWatchlist = currentMovie 
@@ -248,7 +201,7 @@ const Home: React.FC = () => {
     : false;
 
   return (
-    <div className="min-h-screen bg-gray-950 text-white flex flex-col relative overflow-hidden" itemScope itemType="https://schema.org/WebApplication">
+    <div className="min-h-screen mobile-h-screen bg-gray-950 text-white flex flex-col relative overflow-hidden" itemScope itemType="https://schema.org/WebApplication">
       {/* Background Effects */}
       <div className="absolute inset-0 bg-gradient-to-br from-gray-900/30 via-slate-900/30 to-gray-900/30 pointer-events-none" />
       <div className="absolute top-0 left-1/4 w-96 h-96 bg-purple-500/5 rounded-full blur-3xl pointer-events-none" />

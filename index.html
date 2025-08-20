@@ -25,6 +25,52 @@
       gtag('config', 'G-Y3097KM0C5');
     </script>
     
+    <!-- Mobile viewport height fix for Note 20 and other mobile devices -->
+    <script>
+      function setVH() {
+        // Use the most accurate height for mobile devices
+        let vh;
+        
+        if ('visualViewport' in window && window.visualViewport) {
+          // visualViewport.height is most accurate for mobile (accounts for keyboard, etc.)
+          vh = window.visualViewport.height * 0.01;
+        } else if (window.innerHeight > 0) {
+          // Fallback to innerHeight
+          vh = window.innerHeight * 0.01;
+        } else {
+          // Last resort: use screen height
+          vh = window.screen.height * 0.01;
+        }
+        
+        document.documentElement.style.setProperty('--vh', `${vh}px`);
+        
+        // Debug logging for Note 20
+        console.log('Height Debug:', {
+          innerHeight: window.innerHeight,
+          screenHeight: window.screen.height,
+          visualViewportHeight: window.visualViewport?.height,
+          calculatedVH: vh * 100
+        });
+      }
+
+      // Set initial value
+      setVH();
+
+      // Update on resize and orientation change
+      window.addEventListener('resize', setVH);
+      window.addEventListener('orientationchange', setVH);
+      
+      // Update when virtual keyboard appears/disappears (Android)
+      if ('visualViewport' in window) {
+        window.visualViewport.addEventListener('resize', setVH);
+        window.visualViewport.addEventListener('scroll', setVH);
+      }
+      
+      // Additional mobile-specific events
+      window.addEventListener('focusin', setVH); // When input gets focus (keyboard appears)
+      window.addEventListener('focusout', setVH); // When input loses focus (keyboard disappears)
+    </script>
+    
     <script async src="https://imasdk.googleapis.com/js/sdkloader/ima3.js"></script>
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-8912589351325590"
      crossorigin="anonymous"></script>

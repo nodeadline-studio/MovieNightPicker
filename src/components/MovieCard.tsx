@@ -80,11 +80,11 @@ const MovieCard: React.FC<MovieCardProps> = ({ movie, isInWatchlist = false, vid
         <div className="relative bg-gradient-to-br from-slate-900/95 via-gray-900/95 to-slate-800/95 
                        backdrop-blur-xl border border-white/10 rounded-3xl overflow-hidden 
                        shadow-2xl ring-1 ring-white/5 transform transition-transform duration-300 
-                       hover:scale-[1.01] max-h-[calc(100vh-10rem)] md:max-h-[calc(100vh-16rem)] lg:max-h-[calc(100vh-16rem)]">
+                       hover:scale-[1.01] mobile-movie-container md:max-h-[calc(100vh-16rem)] lg:max-h-[calc(100vh-16rem)]">
           
           <div className="flex flex-col md:flex-row h-full md:h-auto">
             {/* Movie Poster - More space allocated */}
-            <div className="w-full md:w-2/5 relative aspect-[3/4] md:aspect-auto max-h-[42vh] md:max-h-none">
+            <div className="w-full md:w-2/5 relative aspect-[3/4] md:aspect-auto mobile-poster-height md:max-h-none">
               {/* Now Playing Badge */}
               {isInTheaters(movie.release_date) && (
                 <div className="absolute top-2 md:top-4 left-2 md:left-4 bg-gradient-to-r from-green-500 to-emerald-500 
@@ -144,7 +144,7 @@ const MovieCard: React.FC<MovieCardProps> = ({ movie, isInWatchlist = false, vid
             </div>
             
             {/* Movie Details */}
-            <div className="md:w-3/5 p-3 md:p-6 lg:p-8 flex flex-col flex-1 min-h-0 max-h-[calc(65vh-2rem)] md:max-h-[calc(100vh-16rem)] lg:max-h-[calc(100vh-16rem)] overflow-y-auto scrollbar-hide">
+            <div className="md:w-3/5 p-3 md:p-6 lg:p-8 flex flex-col flex-1 min-h-0 mobile-content-height md:max-h-[calc(100vh-16rem)] lg:max-h-[calc(100vh-16rem)] overflow-y-auto scrollbar-hide">
               {/* Header */}
               <div className="mb-3 md:mb-6">
                 <h2 className="text-lg md:text-2xl lg:text-4xl font-bold text-white leading-tight mb-2 md:mb-3 

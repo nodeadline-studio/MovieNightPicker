@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, useCallback, useEffect } fr
 import { useQuery } from '@tanstack/react-query';
 import { Movie, Genre, FilterOptions, LoadingState, WatchlistMovie } from '../types';
 import { fetchRandomMovie, fetchGenres } from '../config/api';
-import { movieCache, CacheResult } from '../utils/cache';
+import { movieCache } from '../utils/cache';
 import { getWatchlist, saveWatchlist, clearWatchlist, debugLocalStorage } from '../utils/storage';
 import { logger } from '../utils/logger';
 

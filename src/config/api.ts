@@ -1,7 +1,21 @@
-import { Movie, FilterOptions, Genre, WatchlistMovie } from '../types';
+import { Movie, Genre, FilterOptions } from '../types';
 import { movieCache } from '../utils/cache';
 import { getWatchlist } from '../utils/storage';
 import { logger } from '../utils/logger';
+
+// Interface for API movie results
+interface APIMovieResult {
+  id: number;
+  title?: string;
+  name?: string;
+  original_name?: string;
+  poster_path: string | null;
+  vote_average: number;
+  vote_count: number;
+  popularity: number;
+  genre_ids: number[];
+  [key: string]: string | number | boolean | null | undefined | (string | number)[]; // Include arrays
+}
 
 // Movie API configuration
 // We'll use TMDB API for this project
@@ -137,7 +151,7 @@ export async function fetchRandomMovie(options: FilterOptions): Promise<Movie | 
   }
 }
 
-async function attemptFetch(options: FilterOptions, watchlist: WatchlistMovie[] = []): Promise<Movie | null> {
+async function attemptFetch(options: FilterOptions, watchlist: Movie[] = []): Promise<Movie | null> {
   // Normalize filter values to reasonable ranges
   const normalizedOptions = {
     ...options,
@@ -245,7 +259,7 @@ async function attemptFetch(options: FilterOptions, watchlist: WatchlistMovie[] 
   }
 
   // Pre-filter movies that don't have required fields with improved quality checks
-  const validInitialMovies = data.results.filter((movie: any) => {
+  const validInitialMovies = data.results.filter((movie: APIMovieResult) => {
     const isTV = options.tvShowsOnly;
     const title = isTV ? (movie.name || movie.original_name) : movie.title;
     
@@ -287,14 +301,14 @@ async function attemptFetch(options: FilterOptions, watchlist: WatchlistMovie[] 
   }
 
   // Prioritize movies with better genre matches
-  const prioritizedMovies = validInitialMovies.sort((a: any, b: any) => {
+  const prioritizedMovies = validInitialMovies.sort((a: APIMovieResult, b: APIMovieResult) => {
     if (normalizedOptions.genres.length === 0) {
       // If no genre filters, sort by popularity and rating
       return (b.popularity || 0) - (a.popularity || 0);
     }
     
     // Calculate genre match scores
-    const getGenreMatchScore = (movie: any) => {
+    const getGenreMatchScore = (movie: APIMovieResult) => {
       if (!movie.genre_ids || normalizedOptions.genres.length === 0) return 0;
       
       const matchingGenres = normalizedOptions.genres.filter(genreId => 
@@ -334,7 +348,7 @@ async function attemptFetch(options: FilterOptions, watchlist: WatchlistMovie[] 
   }
 
   // Fetch full details for prioritized movies in parallel
-  const moviePromises = prioritizedMovies.slice(0, 5).map(async (item: any) => {
+  const moviePromises = prioritizedMovies.slice(0, 5).map(async (item: APIMovieResult) => {
     try {
       const isTV = options.tvShowsOnly;
       const endpoint = isTV ? `${ENDPOINTS.TV}/${item.id}` : `${ENDPOINTS.MOVIE}/${item.id}`;

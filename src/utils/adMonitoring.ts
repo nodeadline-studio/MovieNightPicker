@@ -1,7 +1,5 @@
-// Video Ad Monitoring Service for MovieNightPicker
-// Monitors video ad performance, debugging, and fallback mechanisms
-
-export interface AdMetrics {
+// Ad monitoring interfaces
+interface AdMetrics {
   adId: string;
   adType: 'video' | 'google';
   startTime: number;
@@ -11,9 +9,16 @@ export interface AdMetrics {
   wasSkipped: boolean;
   wasClicked: boolean;
   wasCompleted: boolean;
-  error?: string;
   userEngagementLevel: string;
   timestamp: number;
+}
+
+interface AdAlert {
+  type: 'error' | 'warning' | 'info';
+  message: string;
+  timestamp: number;
+  adId?: string;
+  severity: 'low' | 'medium' | 'high';
 }
 
 export interface AdPerformanceSummary {

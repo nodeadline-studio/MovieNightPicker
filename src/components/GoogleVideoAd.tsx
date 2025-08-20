@@ -99,7 +99,7 @@ const GoogleVideoAd: React.FC<GoogleVideoAdProps> = ({
   const [remainingTime, setRemainingTime] = useState(AD_CONFIG.googleAds.skipDelay);
   const [isLoading, setIsLoading] = useState(true);
   const [isMuted, setIsMuted] = useState(true);
-  const [adDuration, setAdDuration] = useState(0);
+  // const [adDuration, setAdDuration] = useState(0);
   const [currentTime, setCurrentTime] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
   
@@ -340,11 +340,11 @@ const GoogleVideoAd: React.FC<GoogleVideoAdProps> = ({
             {isMuted ? <VolumeX size={18} /> : <Volume2 size={18} />}
           </button>
           
-          {adDuration > 0 && (
+          {/* adDuration > 0 && (
             <div className="px-3 py-2 bg-black/70 backdrop-blur-sm rounded-lg text-white text-sm">
               {Math.floor(currentTime)}s / {Math.floor(adDuration)}s
             </div>
-          )}
+          ) */}
         </div>
 
         {/* Google Ad Content */}
