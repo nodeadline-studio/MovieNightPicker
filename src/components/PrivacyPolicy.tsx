@@ -14,8 +14,8 @@ const PrivacyPolicy: React.FC = () => {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-[70]">
-      <div className="bg-gray-900 rounded-xl max-w-2xl w-full max-h-[80vh] overflow-hidden border border-gray-800">
+    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-2 md:p-4 z-[70] safe-area-insets">
+      <div className="bg-gray-900 rounded-xl max-w-2xl w-full max-h-[85vh] md:max-h-[80vh] overflow-hidden border border-gray-800">
         <div className="p-6 border-b border-gray-800 flex items-center justify-between">
           <div className="flex items-center">
             <Shield className="text-blue-500 mr-2" size={24} />
@@ -30,7 +30,7 @@ const PrivacyPolicy: React.FC = () => {
             {""}
           </Button>
         </div>
-        <div className="p-6 overflow-y-auto max-h-[calc(80vh-140px)]">
+        <div className="p-4 md:p-6 overflow-y-auto max-h-[calc(85vh-140px)] md:max-h-[calc(80vh-140px)]">
           <div className="prose prose-invert max-w-none">
             <h3>Data Collection and Usage</h3>
             <p><strong>MovieNightPicker does NOT collect any personal data or user information.</strong></p>
@@ -83,7 +83,7 @@ const PrivacyPolicy: React.FC = () => {
             <p>If you have any questions about this Privacy Policy, please contact us.</p>
           </div>
         </div>
-        <div className="p-6 border-t border-gray-800">
+        <div className="p-4 md:p-6 border-t border-gray-800">
           <Button variant="primary" onClick={() => setIsOpen(false)} fullWidth>
             Close
           </Button>

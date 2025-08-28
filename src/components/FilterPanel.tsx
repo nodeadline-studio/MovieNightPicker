@@ -171,7 +171,8 @@ const FilterPanel: React.FC<FilterPanelProps> = ({ isOpen, setIsOpen }) => {
           <div className="h-full bg-gradient-to-br from-slate-900/95 via-gray-900/95 to-slate-800/95 
                          backdrop-blur-xl border-l border-white/10 shadow-2xl
                          ring-1 ring-white/5 flex flex-col
-                         pb-[env(safe-area-inset-bottom)]">
+                         pb-[env(safe-area-inset-bottom)]
+                         max-h-[100dvh] md:max-h-[90vh]">
             
             {/* Header - Fixed Height */}
             <div className="relative p-3 md:p-4 border-b border-white/10 flex-shrink-0 h-16 md:h-20">
@@ -187,9 +188,9 @@ const FilterPanel: React.FC<FilterPanelProps> = ({ isOpen, setIsOpen }) => {
                   </div>
                 </div>
                 <button
-                onClick={closePanel}
+                  onClick={closePanel}
                   className="p-2 text-gray-400 hover:text-white hover:bg-white/10 rounded-xl transition-all duration-200"
-              >
+                >
                   <X size={20} />
                 </button>
               </div>
@@ -222,14 +223,14 @@ const FilterPanel: React.FC<FilterPanelProps> = ({ isOpen, setIsOpen }) => {
             {/* Content - Flexible Height */}
             <div className="flex-1 overflow-y-auto custom-scrollbar p-3 md:p-4 min-h-0">
             {activeTab === 'basic' ? (
-                <div className="h-full flex flex-col gap-6">
+                <div className="h-full flex flex-col gap-4 md:gap-6">
                   {/* Time & Rating Filters */}
                   <div className="space-y-4">
                     {/* Year Range */}
                     <div>
                       <div className="flex items-center gap-2 mb-3">
-                        <Calendar size={16} className="text-blue-400" />
-                        <h4 className="text-base font-semibold text-white">Release Year</h4>
+                        <Calendar size={18} className="text-blue-400 md:w-4 md:h-4" />
+                        <h4 className="text-lg md:text-base font-semibold text-white">Release Year</h4>
                         <span className="text-sm text-gray-400 ml-auto">
                           {filterOptions.yearFrom} - {filterOptions.yearTo}
                         </span>
@@ -255,8 +256,8 @@ const FilterPanel: React.FC<FilterPanelProps> = ({ isOpen, setIsOpen }) => {
                     {/* Rating */}
                     <div>
                       <div className="flex items-center gap-2 mb-3">
-                        <Star size={16} className="text-yellow-400" />
-                        <h4 className="text-base font-semibold text-white">Minimum Rating</h4>
+                        <Star size={18} className="text-yellow-400 md:w-4 md:h-4" />
+                        <h4 className="text-lg md:text-base font-semibold text-white">Minimum Rating</h4>
                         <span className="text-sm text-gray-400 ml-auto">{filterOptions.ratingFrom.toFixed(1)}</span>
                       </div>
                       <div className="bg-white/5 rounded-xl p-4 border border-white/10">

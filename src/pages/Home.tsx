@@ -300,15 +300,15 @@ const Home: React.FC = () => {
         {showDescriptionButton && !isHeaderVisible && (
           <div className="absolute top-0 left-0 right-0 z-20 pointer-events-none">
             <div className="max-w-6xl mx-auto px-4 pointer-events-none">
-              <div className={`flex justify-center pt-[98px] md:pt-[76px] transition-all duration-300 ease-out pointer-events-none ${
+              <div className={`flex justify-center pt-[48px] md:pt-[76px] ml-[10px] md:ml-0 transition-all duration-300 ease-out pointer-events-none ${
                 isButtonFading ? 'animate-[slideUp_0.3s_ease-out_forwards]' : 'animate-[slideDown_0.3s_ease-out_forwards]'
               }`}>
                 <div className="flex items-center gap-2 pointer-events-auto">
-                  <button
-                    onClick={handleShowDescription}
-                    className="group inline-flex items-center gap-2 px-3 py-1.5 
-                             bg-gradient-to-r from-slate-900/30 via-gray-900/20 to-slate-800/30
-                             hover:from-slate-800/40 hover:via-gray-800/30 hover:to-slate-700/40
+                                      <button
+                      onClick={handleShowDescription}
+                      className="group inline-flex items-center gap-2 px-3 py-1 md:py-1.5 
+                               bg-gradient-to-r from-slate-900/30 via-gray-900/20 to-slate-800/30
+                               hover:from-slate-800/40 hover:via-gray-800/30 hover:to-slate-700/40
                              border border-white/5 hover:border-white/10 rounded-lg
                              text-gray-600 hover:text-gray-400 text-xs font-medium
                              transition-all duration-300 ease-out
@@ -331,7 +331,7 @@ const Home: React.FC = () => {
           </div>
         )}
 
-        <main className="flex-1 px-4 py-0 md:py-2">
+        <main className="flex-1 px-4 py-0 md:py-2 -mt-2 md:mt-0">
           <div className="max-w-6xl mx-auto h-full">
             <div className="flex flex-col items-center h-full">
               {/* Movie Card Section - Mobile optimized for single screen */}

@@ -34,10 +34,10 @@ const CookieConsent: React.FC = () => {
 
   return (
     <div 
-      className={`fixed bottom-4 left-4 right-4 md:bottom-6 md:left-6 md:right-auto md:max-w-md
+      className={`fixed bottom-2 left-2 right-2 md:bottom-6 md:left-6 md:right-auto md:max-w-md
                   bg-gradient-to-br from-slate-900/95 via-gray-900/95 to-slate-800/95 
-                  backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl
-                  ring-1 ring-white/5 p-6 z-[60] transition-all duration-500 ease-out ${
+                  backdrop-blur-xl border border-white/10 rounded-2xl md:rounded-3xl shadow-2xl
+                  ring-1 ring-white/5 p-4 md:p-6 z-[60] transition-all duration-500 ease-out safe-area-bottom ${
         isClosing ? 'translate-y-full opacity-0 scale-95' : 'translate-y-0 opacity-100 scale-100'
       }`}
     >

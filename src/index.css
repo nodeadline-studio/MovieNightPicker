@@ -1212,23 +1212,419 @@ input[type="range"]::-moz-range-thumb {
   position: relative;
 }
 
-/* Loading state transitions */
-.loading-transition {
-  transition: opacity 0.3s ease-out, transform 0.3s ease-out;
-}
-
-.loading-transition.loading {
-  opacity: 0.8;
-  transform: scale(0.98);
-}
-
-.loading-transition.loaded {
-  opacity: 1;
-  transform: scale(1);
-}
+ /* Loading state transitions */
+ .loading-transition {
+   transition: opacity 0.2s ease-out, transform 0.2s ease-out;
+   will-change: opacity, transform;
+ }
+ 
+ .loading-transition.loading {
+   opacity: 0.95;
+   transform: scale(0.99);
+ }
+ 
+ .loading-transition.loaded {
+   opacity: 1;
+   transform: scale(1);
+ }
 
 /* Prevent content jumping */
 .content-stable {
   min-height: 400px;
   overflow: hidden;
+}
+
+/* ===== MOBILE OPTIMIZATION ===== */
+
+/* Mobile-first responsive improvements */
+@media (max-width: 768px) {
+  /* Increase touch targets */
+  button, 
+  [role="button"],
+  .btn {
+    min-height: 44px !important;
+    min-width: 44px !important;
+    padding: 0.75rem 1rem !important;
+  }
+  
+  /* Better spacing for mobile */
+  .container,
+  .movie-card-container {
+    padding: 1rem !important;
+    gap: 1rem !important;
+  }
+  
+  /* Larger text for mobile readability */
+  h1 { font-size: 1.75rem !important; }
+  h2 { font-size: 1.5rem !important; }
+  h3 { font-size: 1.25rem !important; }
+  h4 { font-size: 1.125rem !important; }
+  
+  /* Better mobile card layout */
+  .movie-card {
+    min-height: 180px !important;
+    padding: 0.75rem !important;
+  }
+  
+  /* Improved mobile filter panel */
+  .filter-panel {
+    max-height: 80vh !important;
+    overflow-y: auto !important;
+  }
+  
+  /* Better mobile navigation */
+  .mobile-nav {
+    padding: 1rem !important;
+    gap: 0.75rem !important;
+  }
+  
+  /* Larger mobile buttons */
+  .mobile-btn {
+    min-height: 48px !important;
+    padding: 0.875rem 1.25rem !important;
+    font-size: 1rem !important;
+  }
+  
+  /* Better mobile spacing */
+  .mobile-spacing {
+    gap: 1rem !important;
+    padding: 1rem !important;
+  }
+  
+  /* Improved mobile typography */
+  .mobile-text {
+    font-size: 1rem !important;
+    line-height: 1.5 !important;
+  }
+  
+  /* Better mobile grid */
+  .mobile-grid {
+    grid-template-columns: 1fr !important;
+    gap: 1rem !important;
+  }
+  
+  /* Mobile scroll improvements */
+  .mobile-scroll {
+    -webkit-overflow-scrolling: touch !important;
+    scroll-behavior: smooth !important;
+  }
+  
+  /* Better mobile touch feedback */
+  .mobile-touch {
+    -webkit-tap-highlight-color: rgba(255, 255, 255, 0.1) !important;
+    touch-action: manipulation !important;
+  }
+  
+  /* Mobile card improvements */
+  .mobile-card-header {
+    margin-bottom: 0.75rem !important;
+  }
+  
+  .mobile-card-genres {
+    margin-bottom: 0.75rem !important;
+  }
+  
+  .mobile-card-overview {
+    margin-bottom: 1rem !important;
+    line-height: 1.6 !important;
+    overflow: visible !important;
+    max-height: none !important;
+    height: auto !important;
+  }
+  
+  /* Better mobile filter controls */
+  .mobile-filter-controls {
+    gap: 0.75rem !important;
+    padding: 0.75rem !important;
+  }
+  
+  /* Mobile slider improvements */
+  .mobile-slider {
+    height: 6px !important;
+    border-radius: 3px !important;
+  }
+  
+  .mobile-slider-thumb {
+    width: 20px !important;
+    height: 20px !important;
+    border-radius: 50% !important;
+  }
+  
+  /* Better mobile modal */
+  .mobile-modal {
+    padding: 1rem !important;
+    max-height: 90vh !important;
+    overflow-y: auto !important;
+  }
+  
+  /* Mobile button improvements */
+  .mobile-action-btn {
+    min-height: 48px !important;
+    padding: 0.875rem 1.25rem !important;
+    font-size: 1rem !important;
+    font-weight: 600 !important;
+  }
+  
+  /* Better mobile layout */
+  .mobile-layout {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 1rem !important;
+    padding: 1rem !important;
+  }
+  
+  /* Mobile icon improvements */
+  .mobile-icon {
+    width: 20px !important;
+    height: 20px !important;
+  }
+  
+  /* Better mobile spacing utilities */
+  .mobile-p-4 { padding: 1rem !important; }
+  .mobile-p-6 { padding: 1.5rem !important; }
+  .mobile-gap-4 { gap: 1rem !important; }
+  .mobile-gap-6 { gap: 1.5rem !important; }
+  .mobile-mb-4 { margin-bottom: 1rem !important; }
+  .mobile-mb-6 { margin-bottom: 1.5rem !important; }
+}
+
+/* Extra small mobile devices */
+@media (max-width: 480px) {
+  /* Even larger touch targets */
+  button, 
+  [role="button"],
+  .btn {
+    min-height: 48px !important;
+    min-width: 48px !important;
+    padding: 1rem 1.25rem !important;
+  }
+  
+  /* Better spacing for small screens */
+  .container,
+  .movie-card-container {
+    padding: 0.75rem !important;
+    gap: 0.75rem !important;
+  }
+  
+  /* Larger text for small screens */
+  h1 { font-size: 1.5rem !important; }
+  h2 { font-size: 1.25rem !important; }
+  h3 { font-size: 1.125rem !important; }
+  h4 { font-size: 1rem !important; }
+  
+  /* Better small screen layout */
+  .small-screen-layout {
+    padding: 0.75rem !important;
+    gap: 0.75rem !important;
+  }
+  
+  /* Improved small screen buttons */
+  .small-screen-btn {
+    min-height: 52px !important;
+    padding: 1rem 1.5rem !important;
+    font-size: 1.125rem !important;
+  }
+}
+
+/* Landscape mobile optimization */
+@media (max-width: 768px) and (orientation: landscape) {
+  /* Better landscape layout */
+  .landscape-layout {
+    flex-direction: row !important;
+    gap: 1rem !important;
+  }
+  
+  /* Reduced heights for landscape */
+  .landscape-height {
+    max-height: 70vh !important;
+  }
+  
+  /* Better landscape spacing */
+  .landscape-spacing {
+    padding: 0.75rem !important;
+    gap: 0.75rem !important;
+  }
+}
+
+/* High DPI mobile devices */
+@media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
+  /* Better rendering for high DPI */
+  .high-dpi {
+    -webkit-font-smoothing: antialiased !important;
+    -moz-osx-font-smoothing: grayscale !important;
+  }
+}
+
+/* Mobile performance optimizations */
+@media (max-width: 768px) {
+  /* Reduce animations on mobile for better performance */
+  .mobile-performance * {
+    animation-duration: 0.2s !important;
+    transition-duration: 0.2s !important;
+  }
+  
+  /* Better mobile scrolling */
+  .mobile-scroll-smooth {
+    -webkit-overflow-scrolling: touch !important;
+    scroll-behavior: smooth !important;
+    overscroll-behavior: contain !important;
+  }
+  
+  /* Prevent zoom on input focus */
+  .mobile-no-zoom {
+    font-size: 16px !important;
+  }
+  
+  /* Better mobile touch handling */
+  .mobile-touch-optimized {
+    touch-action: manipulation !important;
+    -webkit-tap-highlight-color: transparent !important;
+  }
+}
+
+/* Mobile accessibility improvements */
+@media (max-width: 768px) {
+  /* Better focus indicators for mobile */
+  .mobile-focus:focus {
+    outline: 2px solid #3b82f6 !important;
+    outline-offset: 2px !important;
+  }
+  
+  /* Better contrast for mobile */
+  .mobile-contrast {
+    color: #ffffff !important;
+    background-color: rgba(0, 0, 0, 0.8) !important;
+  }
+  
+  /* Larger click areas */
+  .mobile-click-area {
+    min-height: 44px !important;
+    min-width: 44px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+  }
+}
+
+/* Mobile-specific utility classes */
+.mobile-optimized {
+  /* Apply all mobile optimizations */
+  min-height: 44px !important;
+  padding: 0.75rem 1rem !important;
+  font-size: 1rem !important;
+  line-height: 1.5 !important;
+  touch-action: manipulation !important;
+  -webkit-tap-highlight-color: transparent !important;
+}
+
+.mobile-card-optimized {
+  /* Optimized mobile card */
+  min-height: 180px !important;
+  padding: 0.75rem !important;
+  gap: 0.75rem !important;
+  overflow-y: auto !important;
+  -webkit-overflow-scrolling: touch !important;
+  max-height: none !important;
+  height: auto !important;
+}
+
+.mobile-filter-optimized {
+  /* Optimized mobile filter panel */
+  max-height: 80vh !important;
+  overflow-y: auto !important;
+  padding: 1rem !important;
+  gap: 1rem !important;
+}
+
+/* Mobile scrollbar improvements */
+@media (max-width: 768px) {
+  .mobile-scrollbar::-webkit-scrollbar {
+    width: 4px !important;
+  }
+  
+  .mobile-scrollbar::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.1) !important;
+    border-radius: 2px !important;
+  }
+  
+  .mobile-scrollbar::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.3) !important;
+    border-radius: 2px !important;
+  }
+  
+  .mobile-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.5) !important;
+  }
+}
+
+/* Safe area handling for mobile */
+.safe-area-top {
+  top: max(0.5rem, env(safe-area-inset-top)) !important;
+}
+
+.safe-area-bottom {
+  bottom: max(0.5rem, env(safe-area-inset-bottom)) !important;
+}
+
+.safe-area-insets {
+  padding-top: env(safe-area-inset-top) !important;
+  padding-bottom: env(safe-area-inset-bottom) !important;
+  padding-left: env(safe-area-inset-left) !important;
+  padding-right: env(safe-area-inset-right) !important;
+}
+
+/* Fix hover scaling and background issues */
+.movie-card-hover-fix {
+  /* Prevent content from being cut off on hover */
+  overflow: visible !important;
+  transform-origin: center center !important;
+}
+
+/* Ensure background covers the entire hover area */
+.movie-card-hover-fix:hover {
+  z-index: 10 !important;
+}
+
+/* Fix background color on corners outside the mesh */
+.movie-card-container {
+  background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #334155 100%) !important;
+  min-height: 100vh !important;
+  width: 100% !important;
+}
+
+/* Desktop hover optimizations */
+@media (min-width: 768px) {
+  .movie-card-hover-fix {
+    /* Smoother hover transitions on desktop */
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  }
+  
+  .movie-card-hover-fix:hover {
+    /* Ensure proper layering on hover */
+    position: relative !important;
+    z-index: 20 !important;
+  }
+}
+
+/* Mobile text expansion styles */
+.mobile-text-expandable {
+  transition: all 0.3s ease-in-out !important;
+}
+
+.mobile-text-expandable.expanded {
+  max-height: none !important;
+  overflow: visible !important;
+}
+
+/* Mobile poster modal optimization */
+.mobile-poster-modal {
+  position: absolute !important;
+  inset: 0 !important;
+  z-index: 50 !important;
+  background: rgba(0, 0, 0, 0.9) !important;
+  backdrop-filter: blur(8px) !important;
+  border-radius: inherit !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
 }

@@ -57,34 +57,34 @@ export async function fetchRandomMovie(options: FilterOptions): Promise<Movie | 
       // Keep all genres but slightly relax other criteria
     },
     
-    // 3. Smart genre reduction: if 3+ genres, try with top 2 most popular
+    // 3. Slight genre relaxation: if 4+ genres, try with top 3
+    {
+      ...options,
+      genres: options.genres.length >= 4 ? options.genres.slice(0, 3) : options.genres,
+      ratingFrom: Math.max(0, options.ratingFrom - 0.5),
+      yearFrom: Math.max(1950, options.yearFrom - 3),
+      yearTo: Math.min(new Date().getFullYear(), options.yearTo + 3),
+      maxRuntime: Math.min(240, options.maxRuntime + 30)
+    },
+    
+    // 4. Moderate genre relaxation: if 3+ genres, try with top 2
     {
       ...options,
       genres: options.genres.length >= 3 ? options.genres.slice(0, 2) : options.genres,
       ratingFrom: Math.max(0, options.ratingFrom - 0.8),
-      yearFrom: Math.max(1950, options.yearFrom - 5),
-      yearTo: Math.min(new Date().getFullYear(), options.yearTo + 5),
+      yearFrom: Math.max(1950, options.yearFrom - 8),
+      yearTo: Math.min(new Date().getFullYear(), options.yearTo + 8),
       maxRuntime: Math.min(240, options.maxRuntime + 45)
     },
     
-    // 4. Moderate relaxation with genre preservation
+    // 5. Keep at least 2 genres if available, otherwise keep 1
     {
       ...options,
       genres: options.genres.length >= 2 ? options.genres.slice(0, 2) : options.genres,
-      ratingFrom: Math.max(0, options.ratingFrom - 1.2),
+      ratingFrom: Math.max(0, options.ratingFrom - 1.0),
       yearFrom: Math.max(1950, options.yearFrom - 15),
       yearTo: Math.min(new Date().getFullYear(), options.yearTo + 15),
       maxRuntime: Math.min(240, options.maxRuntime + 60)
-    },
-    
-    // 5. Significant relaxation but maintain at least 1 core genre if possible
-    {
-      ...options,
-      genres: options.genres.length > 0 ? [options.genres[0]] : [],
-      ratingFrom: Math.max(0, options.ratingFrom - 1.5),
-      yearFrom: Math.max(1950, options.yearFrom - 25),
-      yearTo: Math.min(new Date().getFullYear(), options.yearTo + 25),
-      maxRuntime: 240
     },
     
     // 6. Minimal filters (guaranteed result) - only if all else fails
@@ -170,12 +170,8 @@ async function attemptFetch(options: FilterOptions, watchlist: WatchlistMovie[] 
     queryParams.append('with_runtime.lte', normalizedOptions.maxRuntime.toString());
   }
 
-  // Improved genre handling - ensure at least 2 genres match when 3+ are selected
-  if (normalizedOptions.genres.length >= 3) {
-    // For 3+ genres, use "with_genres" to ensure at least 2 match
-    queryParams.append('with_genres', normalizedOptions.genres.slice(0, 2).join(','));
-  } else if (normalizedOptions.genres.length > 0) {
-    // For 1-2 genres, use standard filtering
+  // Improved genre handling - use all selected genres for better accuracy
+  if (normalizedOptions.genres.length > 0) {
     queryParams.append('with_genres', normalizedOptions.genres.join(','));
   }
 
@@ -261,21 +257,16 @@ async function attemptFetch(options: FilterOptions, watchlist: WatchlistMovie[] 
                            movie.poster_path &&
                            !watchlist.some(w => w.id === movie.id); // Exclude watchlist movies
     
-    // Additional genre validation for better accuracy
+    // Stricter genre validation for better accuracy
     let hasValidGenres = true;
     if (normalizedOptions.genres.length > 0 && movie.genre_ids) {
-      // For 3+ selected genres, ensure at least 2 match
-      if (normalizedOptions.genres.length >= 3) {
-        const matchingGenres = normalizedOptions.genres.filter(genreId => 
-          movie.genre_ids.includes(genreId)
-        );
-        hasValidGenres = matchingGenres.length >= 2;
-      } else {
-        // For 1-2 genres, ensure at least 1 matches
-        hasValidGenres = normalizedOptions.genres.some(genreId => 
-          movie.genre_ids.includes(genreId)
-        );
-      }
+      const matchingGenres = normalizedOptions.genres.filter(genreId => 
+        movie.genre_ids.includes(genreId)
+      );
+      
+      // Require at least 50% of selected genres to match for better accuracy
+      const requiredMatches = Math.max(1, Math.ceil(normalizedOptions.genres.length * 0.5));
+      hasValidGenres = matchingGenres.length >= requiredMatches;
     }
     
     return hasValidContent && hasValidRating && hasEnoughVotes && hasValidGenres;
@@ -293,7 +284,7 @@ async function attemptFetch(options: FilterOptions, watchlist: WatchlistMovie[] 
       return (b.popularity || 0) - (a.popularity || 0);
     }
     
-    // Calculate genre match scores
+    // Calculate genre match scores with higher accuracy
     const getGenreMatchScore = (movie: any) => {
       if (!movie.genre_ids || normalizedOptions.genres.length === 0) return 0;
       
@@ -301,17 +292,22 @@ async function attemptFetch(options: FilterOptions, watchlist: WatchlistMovie[] 
         movie.genre_ids.includes(genreId)
       );
       
-      // Higher score for more genre matches
-      let score = matchingGenres.length * 100;
+      // Calculate match percentage
+      const matchPercentage = matchingGenres.length / normalizedOptions.genres.length;
       
-      // Bonus for exact matches
-      if (matchingGenres.length === normalizedOptions.genres.length) {
-        score += 50;
+      // Base score heavily weighted on genre match percentage
+      let score = matchPercentage * 1000;
+      
+      // Bonus for high match percentages
+      if (matchPercentage >= 0.8) {
+        score += 200; // High accuracy bonus
+      } else if (matchPercentage >= 0.6) {
+        score += 100; // Medium accuracy bonus
       }
       
-      // Consider popularity and rating as tiebreakers
-      score += (movie.popularity || 0) / 1000;
-      score += (movie.vote_average || 0) / 10;
+      // Consider popularity and rating as minor tiebreakers
+      score += (movie.popularity || 0) / 10000;
+      score += (movie.vote_average || 0) / 100;
       
       return score;
     };

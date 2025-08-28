@@ -17,6 +17,7 @@ interface AdStrings {
 
 const VideoAd: React.FC<VideoAdProps> = ({ onClose }) => {
   const [autoSkipCountdown, setAutoSkipCountdown] = useState(10);
+  const [canSkip, setCanSkip] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const { headline, paragraph, bullets, cta } = (adStrings as AdStrings).videoAd;
   const timerRef = useRef<NodeJS.Timeout | null>(null);
@@ -30,6 +31,11 @@ const VideoAd: React.FC<VideoAdProps> = ({ onClose }) => {
     timerRef.current = setInterval(() => {
       timeLeft--;
       setAutoSkipCountdown(timeLeft);
+      
+      // Enable skip after 5 seconds
+      if (timeLeft === 5) {
+        setCanSkip(true);
+      }
       
       if (timeLeft <= 0) {
         onClose();
@@ -76,7 +82,7 @@ const VideoAd: React.FC<VideoAdProps> = ({ onClose }) => {
         paddingRight: 'env(safe-area-inset-right)'
       }}
     >
-      <div className="bg-gradient-to-br from-white to-gray-50 rounded-xl max-w-[95vw] md:max-w-5xl lg:max-w-6xl w-full max-h-[90vh] overflow-hidden shadow-2xl" data-testid="video-ad-container">
+              <div className="bg-gradient-to-br from-white to-gray-50 rounded-xl max-w-[95vw] md:max-w-5xl lg:max-w-6xl w-full max-h-[85vh] md:max-h-[90vh] overflow-hidden shadow-2xl" data-testid="video-ad-container">
         {/* Close button and countdown - Mobile optimized */}
         <div className="absolute top-4 right-4 z-50 flex flex-col sm:flex-row items-end sm:items-center gap-2 sm:gap-3">
           {/* Countdown - positioned above close button on mobile */}
@@ -86,8 +92,11 @@ const VideoAd: React.FC<VideoAdProps> = ({ onClose }) => {
           
           {/* Close button - larger touch target for mobile */}
           <button
-            onClick={onClose}
-            className="bg-black bg-opacity-50 hover:bg-opacity-70 text-white rounded-full p-3 sm:p-2 transition-all duration-200 order-1 sm:order-2 min-w-[44px] min-h-[44px] flex items-center justify-center"
+            onClick={canSkip ? onClose : undefined}
+            disabled={!canSkip}
+            className={`bg-black bg-opacity-50 hover:bg-opacity-70 text-white rounded-full p-3 sm:p-2 transition-all duration-200 order-1 sm:order-2 min-w-[44px] min-h-[44px] flex items-center justify-center ${
+              !canSkip ? 'opacity-50 cursor-not-allowed' : 'hover:bg-opacity-70'
+            }`}
             data-testid="close-button"
           >
             <X size={20} />
@@ -95,9 +104,9 @@ const VideoAd: React.FC<VideoAdProps> = ({ onClose }) => {
         </div>
 
         {/* Main container - Mobile optimized layout */}
-        <div className="grid grid-cols-1 lg:grid-cols-5 min-h-[400px] lg:min-h-[500px]">
+        <div className="grid grid-cols-1 lg:grid-cols-5 min-h-[350px] md:min-h-[400px] lg:min-h-[500px]">
           {/* Video section - reduced height on mobile for better content visibility */}
-          <div className="lg:col-span-3 relative bg-gray-900 flex items-center justify-center h-[40vh] sm:h-[45vh] lg:h-auto" data-testid="video-section">
+          <div className="lg:col-span-3 relative bg-gray-900 flex items-center justify-center h-[35vh] sm:h-[40vh] lg:h-auto" data-testid="video-section">
             <div className="relative w-full h-full">
               {/* Try actual video first, fallback to animated demo */}
               <video
