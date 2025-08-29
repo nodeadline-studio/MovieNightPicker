@@ -170,8 +170,20 @@ async function attemptFetch(options: FilterOptions, watchlist: WatchlistMovie[] 
     queryParams.append('with_runtime.lte', normalizedOptions.maxRuntime.toString());
   }
 
-  // Improved genre handling - use all selected genres for better accuracy
-  if (normalizedOptions.genres.length > 0) {
+  // Handle Detective genre specially - it combines Mystery and Crime
+  const detectiveGenreId = 999999;
+  const hasDetectiveGenre = normalizedOptions.genres.includes(detectiveGenreId);
+  
+  if (hasDetectiveGenre) {
+    // Remove Detective genre from the list and add Mystery and Crime instead
+    const genresWithoutDetective = normalizedOptions.genres.filter(id => id !== detectiveGenreId);
+    const detectiveGenres = [9648, 80]; // Mystery and Crime IDs
+    
+    // Combine all genres
+    const allGenres = [...genresWithoutDetective, ...detectiveGenres];
+    queryParams.append('with_genres', allGenres.join(','));
+  } else if (normalizedOptions.genres.length > 0) {
+    // Use all selected genres for better accuracy
     queryParams.append('with_genres', normalizedOptions.genres.join(','));
   }
 
@@ -260,13 +272,37 @@ async function attemptFetch(options: FilterOptions, watchlist: WatchlistMovie[] 
     // Stricter genre validation for better accuracy
     let hasValidGenres = true;
     if (normalizedOptions.genres.length > 0 && movie.genre_ids) {
-      const matchingGenres = normalizedOptions.genres.filter(genreId => 
-        movie.genre_ids.includes(genreId)
-      );
+      const detectiveGenreId = 999999;
+      const hasDetectiveGenre = normalizedOptions.genres.includes(detectiveGenreId);
       
-      // Require at least 50% of selected genres to match for better accuracy
-      const requiredMatches = Math.max(1, Math.ceil(normalizedOptions.genres.length * 0.5));
-      hasValidGenres = matchingGenres.length >= requiredMatches;
+      if (hasDetectiveGenre) {
+        // For Detective genre, check if movie has either Mystery (9648) or Crime (80)
+        const genresWithoutDetective = normalizedOptions.genres.filter(id => id !== detectiveGenreId);
+        const detectiveGenres = [9648, 80]; // Mystery and Crime IDs
+        
+        const matchingRegularGenres = genresWithoutDetective.filter(genreId => 
+          movie.genre_ids.includes(genreId)
+        );
+        
+        const matchingDetectiveGenres = detectiveGenres.filter(genreId => 
+          movie.genre_ids.includes(genreId)
+        );
+        
+        // Require at least 50% of regular genres AND at least one detective genre
+        const totalRegularGenres = genresWithoutDetective.length;
+        const requiredRegularMatches = totalRegularGenres > 0 ? Math.max(1, Math.ceil(totalRegularGenres * 0.5)) : 0;
+        
+        hasValidGenres = matchingRegularGenres.length >= requiredRegularMatches && matchingDetectiveGenres.length > 0;
+      } else {
+        // Standard genre validation
+        const matchingGenres = normalizedOptions.genres.filter(genreId => 
+          movie.genre_ids.includes(genreId)
+        );
+        
+        // Require at least 50% of selected genres to match for better accuracy
+        const requiredMatches = Math.max(1, Math.ceil(normalizedOptions.genres.length * 0.5));
+        hasValidGenres = matchingGenres.length >= requiredMatches;
+      }
     }
     
     return hasValidContent && hasValidRating && hasEnoughVotes && hasValidGenres;
@@ -288,28 +324,72 @@ async function attemptFetch(options: FilterOptions, watchlist: WatchlistMovie[] 
     const getGenreMatchScore = (movie: any) => {
       if (!movie.genre_ids || normalizedOptions.genres.length === 0) return 0;
       
-      const matchingGenres = normalizedOptions.genres.filter(genreId => 
-        movie.genre_ids.includes(genreId)
-      );
+      const detectiveGenreId = 999999;
+      const hasDetectiveGenre = normalizedOptions.genres.includes(detectiveGenreId);
       
-      // Calculate match percentage
-      const matchPercentage = matchingGenres.length / normalizedOptions.genres.length;
-      
-      // Base score heavily weighted on genre match percentage
-      let score = matchPercentage * 1000;
-      
-      // Bonus for high match percentages
-      if (matchPercentage >= 0.8) {
-        score += 200; // High accuracy bonus
-      } else if (matchPercentage >= 0.6) {
-        score += 100; // Medium accuracy bonus
+      if (hasDetectiveGenre) {
+        // Handle Detective genre scoring
+        const genresWithoutDetective = normalizedOptions.genres.filter(id => id !== detectiveGenreId);
+        const detectiveGenres = [9648, 80]; // Mystery and Crime IDs
+        
+        const matchingRegularGenres = genresWithoutDetective.filter(genreId => 
+          movie.genre_ids.includes(genreId)
+        );
+        
+        const matchingDetectiveGenres = detectiveGenres.filter(genreId => 
+          movie.genre_ids.includes(genreId)
+        );
+        
+        // Calculate scores for regular genres
+        const regularMatchPercentage = genresWithoutDetective.length > 0 ? 
+          matchingRegularGenres.length / genresWithoutDetective.length : 1;
+        
+        // Calculate detective genre score (bonus for having both mystery and crime)
+        const detectiveScore = matchingDetectiveGenres.length * 200; // 200 for each detective genre
+        
+        // Base score from regular genres
+        let score = regularMatchPercentage * 1000;
+        
+        // Add detective bonus
+        score += detectiveScore;
+        
+        // Bonus for high match percentages
+        if (regularMatchPercentage >= 0.8) {
+          score += 200; // High accuracy bonus
+        } else if (regularMatchPercentage >= 0.6) {
+          score += 100; // Medium accuracy bonus
+        }
+        
+        // Consider popularity and rating as minor tiebreakers
+        score += (movie.popularity || 0) / 10000;
+        score += (movie.vote_average || 0) / 100;
+        
+        return score;
+      } else {
+        // Standard genre scoring
+        const matchingGenres = normalizedOptions.genres.filter(genreId => 
+          movie.genre_ids.includes(genreId)
+        );
+        
+        // Calculate match percentage
+        const matchPercentage = matchingGenres.length / normalizedOptions.genres.length;
+        
+        // Base score heavily weighted on genre match percentage
+        let score = matchPercentage * 1000;
+        
+        // Bonus for high match percentages
+        if (matchPercentage >= 0.8) {
+          score += 200; // High accuracy bonus
+        } else if (matchPercentage >= 0.6) {
+          score += 100; // Medium accuracy bonus
+        }
+        
+        // Consider popularity and rating as minor tiebreakers
+        score += (movie.popularity || 0) / 10000;
+        score += (movie.vote_average || 0) / 100;
+        
+        return score;
       }
-      
-      // Consider popularity and rating as minor tiebreakers
-      score += (movie.popularity || 0) / 10000;
-      score += (movie.vote_average || 0) / 100;
-      
-      return score;
     };
     
     const scoreA = getGenreMatchScore(a);
@@ -322,10 +402,28 @@ async function attemptFetch(options: FilterOptions, watchlist: WatchlistMovie[] 
   if (normalizedOptions.genres.length > 0) {
     const topMovie = prioritizedMovies[0];
     if (topMovie && topMovie.genre_ids) {
-      const matchingGenres = normalizedOptions.genres.filter(genreId => 
-        topMovie.genre_ids.includes(genreId)
-      );
-      logger.debug(`Top movie has ${matchingGenres.length}/${normalizedOptions.genres.length} matching genres`, undefined, { prefix: 'API' });
+      const detectiveGenreId = 999999;
+      const hasDetectiveGenre = normalizedOptions.genres.includes(detectiveGenreId);
+      
+      if (hasDetectiveGenre) {
+        const genresWithoutDetective = normalizedOptions.genres.filter(id => id !== detectiveGenreId);
+        const detectiveGenres = [9648, 80]; // Mystery and Crime IDs
+        
+        const matchingRegularGenres = genresWithoutDetective.filter(genreId => 
+          topMovie.genre_ids.includes(genreId)
+        );
+        
+        const matchingDetectiveGenres = detectiveGenres.filter(genreId => 
+          topMovie.genre_ids.includes(genreId)
+        );
+        
+        logger.debug(`Top movie has ${matchingRegularGenres.length}/${genresWithoutDetective.length} regular genres and ${matchingDetectiveGenres.length}/2 detective genres (Mystery/Crime)`, undefined, { prefix: 'API' });
+      } else {
+        const matchingGenres = normalizedOptions.genres.filter(genreId => 
+          topMovie.genre_ids.includes(genreId)
+        );
+        logger.debug(`Top movie has ${matchingGenres.length}/${normalizedOptions.genres.length} matching genres`, undefined, { prefix: 'API' });
+      }
     }
   }
 
@@ -454,6 +552,21 @@ export async function fetchGenres(): Promise<Genre[]> {
     const uniqueGenres = allGenres.filter((genre, index, self) => 
       index === self.findIndex(g => g.id === genre.id)
     );
+    
+    // Add custom Detective genre that combines Mystery and Crime
+    const detectiveGenre: Genre = {
+      id: 999999, // Custom ID to avoid conflicts
+      name: 'Detective'
+    };
+    
+    // Check if Mystery (9648) and Crime (80) genres exist
+    const hasMystery = uniqueGenres.some(g => g.id === 9648);
+    const hasCrime = uniqueGenres.some(g => g.id === 80);
+    
+    // Only add Detective genre if both Mystery and Crime exist
+    if (hasMystery && hasCrime) {
+      uniqueGenres.push(detectiveGenre);
+    }
     
     return uniqueGenres;
   } catch (error) {

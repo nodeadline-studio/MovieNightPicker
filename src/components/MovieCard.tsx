@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef } from 'react';
 import { Movie } from '../types';
 import { getImageUrl, isInTheaters } from '../config/api';
 import { Heart, Star, Calendar, Clapperboard, ExternalLink, Sparkles, Shuffle, X } from 'lucide-react';
@@ -22,18 +22,8 @@ const MovieCard: React.FC<MovieCardProps> = ({ movie, isInWatchlist = false, vid
   const { addToWatchlist, removeFromWatchlist, getRandomMovie, filterOptions } = useMovieContext();
   const pickCounter = usePickCounter();
   const [isPosterExpanded, setIsPosterExpanded] = useState(false);
-  const [isTextExpanded, setIsTextExpanded] = useState(false);
-  const [isMobile, setIsMobile] = useState(false);
+  const [isOverviewExpanded, setIsOverviewExpanded] = useState(false);
   const posterRef = useRef<HTMLDivElement>(null);
-  const textRef = useRef<HTMLParagraphElement>(null);
-  
-  // Check if mobile on mount and resize
-  useEffect(() => {
-    const checkMobile = () => setIsMobile(window.innerWidth <= 767);
-    checkMobile();
-    window.addEventListener('resize', checkMobile);
-    return () => window.removeEventListener('resize', checkMobile);
-  }, []);
   
   const handleWatchlistToggle = () => {
     if (isInWatchlist) {
@@ -60,10 +50,6 @@ const MovieCard: React.FC<MovieCardProps> = ({ movie, isInWatchlist = false, vid
   const handlePosterClose = () => {
     setIsPosterExpanded(false);
     document.body.classList.remove('modal-open');
-  };
-
-  const handleTextToggle = () => {
-    setIsTextExpanded(!isTextExpanded);
   };
 
   // Cleanup body class on unmount
@@ -115,19 +101,19 @@ const MovieCard: React.FC<MovieCardProps> = ({ movie, isInWatchlist = false, vid
           <div className="w-full max-w-[95vw] md:max-w-5xl lg:max-w-6xl mx-auto space-y-3 md:space-y-4 animate-in fade-in duration-500">
       {/* Movie Card */}
       <div className="relative group">
-        {/* Background glow effect */}
-        <div className="absolute -inset-1 bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 rounded-3xl blur opacity-20 group-hover:opacity-30 transition-opacity duration-300" />
+        {/* Background glow - covers all sides with radial gradient */}
+        <div className="absolute -inset-1 bg-gradient-radial from-indigo-600/20 via-purple-600/20 to-pink-600/20 rounded-2xl md:rounded-3xl blur opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
         
         <div className="relative bg-gradient-to-br from-slate-900/95 via-gray-900/95 to-slate-800/95 
                        backdrop-blur-xl border border-white/10 rounded-2xl md:rounded-3xl overflow-hidden 
-                       shadow-2xl ring-1 ring-white/5 transform transition-transform duration-300 
-                       hover:scale-[1.005] md:hover:scale-[1.01] movie-card-hover-fix">
+                       shadow-2xl ring-1 ring-white/5 transform transition-all duration-300 ease-out
+                       hover:shadow-2xl hover:ring-white/20">
           
           <div className="flex flex-col md:flex-row h-full md:h-auto">
             {/* Movie Poster - More space allocated */}
             <div 
               ref={posterRef}
-              className="w-full md:w-2/5 relative aspect-[3/4] md:aspect-auto max-h-[35vh] md:max-h-[80vh] cursor-pointer md:cursor-default group"
+              className="w-full md:w-2/5 relative aspect-[3/4] md:aspect-auto max-h-[35vh] md:max-h-none cursor-pointer md:cursor-default group"
               onClick={() => window.innerWidth <= 767 && handlePosterToggle()}
             >
               {/* Now Playing Badge */}
@@ -144,7 +130,7 @@ const MovieCard: React.FC<MovieCardProps> = ({ movie, isInWatchlist = false, vid
               {/* Poster Image */}
               <div className="relative w-full h-full overflow-hidden">
               <img
-                  className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105 group-active:scale-95 md:group-active:scale-105"
+                  className="w-full h-full object-cover transition-transform duration-500 group-active:scale-95 md:group-active:scale-105"
                 src={getImageUrl(movie.poster_path)}
                 alt={`Movie poster for ${movie.title}`}
                 loading="eager"
@@ -197,7 +183,7 @@ const MovieCard: React.FC<MovieCardProps> = ({ movie, isInWatchlist = false, vid
             </div>
             
             {/* Movie Details */}
-            <div className="md:w-3/5 p-3 md:p-6 lg:p-8 flex flex-col flex-1 min-h-0 overflow-y-auto scrollbar-hide mobile-card-optimized">
+            <div className="md:w-3/5 p-3 md:p-6 lg:p-8 flex flex-col flex-1 min-h-0 md:min-h-[400px] overflow-y-auto scrollbar-hide mobile-card-optimized">
               {/* Header */}
               <div className="mb-2 md:mb-4 mobile-card-header">
                 <h2 className="text-lg md:text-2xl lg:text-4xl font-bold text-white leading-tight mb-2 md:mb-3 
@@ -226,52 +212,78 @@ const MovieCard: React.FC<MovieCardProps> = ({ movie, isInWatchlist = false, vid
                 </div>
               </div>
               
-              {/* Genres */}
-              <div className="mb-2 md:mb-4 mobile-card-genres overflow-hidden">
-                <div className="flex flex-wrap gap-1 md:gap-2 mb-1 md:mb-0 max-w-full">
-                  {movie.genres && movie.genres.slice(0, 3).map((genre, index) => (
-                    <span
-                      key={genre.id}
-                      className="px-2 md:px-3 py-1 md:py-2 bg-gradient-to-r from-indigo-500/20 to-purple-500/20 
-                               text-xs md:text-sm text-gray-300 rounded-lg md:rounded-xl border border-white/10
-                               hover:from-indigo-500/30 hover:to-purple-500/30 transition-all duration-200 
-                               flex-shrink-0 max-w-[calc(50%-0.125rem)]"
-                      style={{
-                        animationName: 'slideInUp',
-                        animationDuration: '0.5s',
-                        animationTimingFunction: 'ease-out',
-                        animationFillMode: 'forwards',
-                        animationDelay: `${index * 100}ms`
-                      }}
-                    >
-                      {genre.name}
-                    </span>
-                  ))}
-                  {movie.genres && movie.genres.length > 3 && (
+              {/* Genres - Responsive to Container */}
+              <div className="mb-2 md:mb-4 mobile-card-genres">
+                <div className="flex flex-wrap gap-1 md:gap-2 w-full">
+                  {movie.genres && movie.genres.slice(0, 4).map((genre, index) => {
+                    // Calculate responsive sizing based on container and genre count
+                    const totalGenres = Math.min(movie.genres.length, 4);
+                    const isMobile = window.innerWidth <= 767;
+                    
+                    let fontSize, padding, maxWidth;
+                    if (isMobile) {
+                      if (totalGenres <= 2) {
+                        fontSize = 'text-sm';
+                        padding = 'px-3 py-1.5';
+                        maxWidth = 'max-w-[calc(50%-0.125rem)]';
+                      } else if (totalGenres === 3) {
+                        fontSize = 'text-xs';
+                        padding = 'px-2.5 py-1';
+                        maxWidth = 'max-w-[calc(33.333%-0.167rem)]';
+                      } else {
+                        fontSize = 'text-[10px]';
+                        padding = 'px-2 py-0.5';
+                        maxWidth = 'max-w-[calc(25%-0.125rem)]';
+                      }
+                    } else {
+                      fontSize = 'text-sm';
+                      padding = 'px-3 py-2';
+                      maxWidth = 'max-w-[calc(50%-0.125rem)]';
+                    }
+                    
+                    return (
+                      <span
+                        key={genre.id}
+                        className={`${padding} ${fontSize} bg-gradient-to-r from-indigo-500/20 to-purple-500/20 
+                                   text-gray-300 rounded-lg md:rounded-xl border border-white/10
+                                   hover:from-indigo-500/30 hover:to-purple-500/30 transition-all duration-200 
+                                   flex-shrink-0 ${maxWidth}`}
+                        style={{
+                          animationDelay: `${index * 100}ms`
+                        }}
+                      >
+                        {genre.name}
+                      </span>
+                    );
+                  })}
+                  {movie.genres && movie.genres.length > 4 && (
                     <span className="px-2 md:px-3 py-1 md:py-2 bg-white/5 text-xs md:text-sm text-gray-400 rounded-lg md:rounded-xl flex-shrink-0">
-                      +{movie.genres.length - 3} more
+                      +{movie.genres.length - 4} more
                     </span>
                   )}
                 </div>
               </div>
               
-              {/* Overview */}
-              <div className="mb-3 md:mb-6 flex-1 min-h-0 overflow-hidden mobile-card-overview">
-                <p 
-                  ref={textRef}
-                  className={`text-gray-300 text-sm md:text-base lg:text-lg leading-relaxed md:line-clamp-none ${
-                    isMobile && !isTextExpanded ? 'line-clamp-3' : ''
-                  }`}
-                >
+              {/* Overview - Clickable for expand/collapse */}
+              <div 
+                className="mb-3 md:mb-6 flex-1 min-h-0 overflow-hidden mobile-card-overview cursor-pointer"
+                onClick={() => window.innerWidth <= 767 && movie.overview.length > 120 && setIsOverviewExpanded(!isOverviewExpanded)}
+              >
+                <p className={`text-gray-300 text-sm md:text-base lg:text-lg leading-relaxed md:line-clamp-none ${isOverviewExpanded ? 'expanded' : ''}`}>
                   {movie.overview}
-                  {isMobile && (
-                    <button
-                      onClick={handleTextToggle}
-                      className="ml-1 text-blue-400 hover:text-blue-300 font-medium transition-colors duration-200"
-                    >
-                      {isTextExpanded ? '...less' : '...more'}
-                    </button>
-                  )}
+                  {/* Mobile expand/collapse indicator */}
+                  <span className="md:hidden">
+                    {!isOverviewExpanded && movie.overview.length > 120 && (
+                      <span className="text-blue-400 ml-1">
+                        ... more
+                      </span>
+                    )}
+                    {isOverviewExpanded && (
+                      <span className="text-blue-400 ml-1">
+                        ... less
+                      </span>
+                    )}
+                  </span>
                 </p>
               </div>
               
@@ -349,26 +361,67 @@ const MovieCard: React.FC<MovieCardProps> = ({ movie, isInWatchlist = false, vid
         </button>
       </div>
 
-      {/* Mobile Poster Expansion Modal - Inside Movie Card */}
+      {/* Unified Poster Modal - Mobile & Desktop */}
       {isPosterExpanded && (
         <div 
-          className="absolute inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-md md:hidden animate-in fade-in duration-300 rounded-2xl mobile-poster-modal"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/95 backdrop-blur-xl animate-in fade-in duration-300"
           onClick={handlePosterClose}
         >
-          <div className="relative w-full h-full flex items-center justify-center p-4">
+          {/* Mobile Modal - Fits within movie card */}
+          <div className="relative w-full h-full flex items-center justify-center p-2 md:p-8">
+            {/* Close Button */}
             <button
               onClick={handlePosterClose}
-              className="absolute top-2 right-2 z-10 p-2 bg-black/60 text-white rounded-full hover:bg-black/80 transition-colors"
+              className="absolute top-2 md:top-6 right-2 md:right-6 z-20 p-2 md:p-4 
+                         bg-black/80 hover:bg-black/90 text-white rounded-full 
+                         transition-all duration-200 shadow-lg md:shadow-2xl hover:shadow-white/10
+                         border border-white/20 hover:border-white/30"
               aria-label="Close poster view"
             >
-              <X size={20} />
+              <X size={16} className="md:hidden" />
+              <X size={24} className="hidden md:block" />
             </button>
-            <img
-              src={getImageUrl(movie.poster_path)}
-              alt={`Movie poster for ${movie.title}`}
-              className="w-auto h-auto max-w-full max-h-full object-contain rounded-lg shadow-2xl"
-              onClick={(e) => e.stopPropagation()}
-            />
+            
+            {/* Mobile Poster - Simple, fits within card */}
+            <div className="relative w-full h-full flex items-center justify-center md:hidden">
+              <img
+                src={getImageUrl(movie.poster_path)}
+                alt={`Movie poster for ${movie.title}`}
+                className="w-auto h-auto max-w-[95vw] max-h-[85vh] object-contain rounded-lg shadow-xl"
+                onClick={(e) => e.stopPropagation()}
+              />
+            </div>
+            
+            {/* Desktop Poster - Elegant styling */}
+            <div className="relative max-w-[80vw] max-h-[80vh] hidden md:block
+                            bg-gradient-to-br from-slate-900/90 via-gray-900/90 to-slate-800/90 
+                            backdrop-blur-xl rounded-3xl p-6
+                            border border-white/20 shadow-2xl ring-1 ring-white/10
+                            transform scale-95 animate-in zoom-in duration-300">
+              
+              {/* Poster Image */}
+              <div className="relative w-full h-full flex items-center justify-center">
+                <img
+                  src={getImageUrl(movie.poster_path)}
+                  alt={`Movie poster for ${movie.title}`}
+                  className="w-auto h-auto max-w-full max-h-full object-contain rounded-2xl shadow-2xl transition-transform duration-300"
+                  onClick={(e) => e.stopPropagation()}
+                />
+                
+                {/* Movie Info Overlay */}
+                <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent 
+                                p-6 rounded-b-2xl">
+                  <h3 className="text-white font-bold text-2xl mb-2 text-center">
+                    {movie.title}
+                  </h3>
+                  {movie.release_date && (
+                    <p className="text-gray-300 text-base text-center">
+                      {getYear(movie.release_date)}
+                    </p>
+                  )}
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       )}

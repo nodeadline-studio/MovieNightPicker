@@ -210,6 +210,32 @@ body::-webkit-scrollbar {
 
 /* Hide scrollbars on mobile devices */
 @media (max-width: 767px) {
+  /* Fix background color on corners */
+  body {
+    background: linear-gradient(135deg, #0f0f23 0%, #1a1a2e 50%, #16213e 100%) !important;
+    min-height: 100vh !important;
+    overflow-x: hidden !important;
+  }
+  
+  /* Ensure movie cards don't overflow and fix corner issues */
+  .movie-card-container {
+    overflow: hidden !important;
+  }
+  
+  /* Fix movie card corner overflow issues */
+  .movie-card-container .group {
+    overflow: hidden !important;
+  }
+  
+  .movie-card-container .group > div {
+    overflow: hidden !important;
+  }
+  
+  /* Simple mobile hover handling */
+  .movie-card-container .group:hover {
+    z-index: 10 !important;
+  }
+  
   ::-webkit-scrollbar {
     display: none;
   }
@@ -230,6 +256,17 @@ body::-webkit-scrollbar {
     opacity: 1;
     transform: translateY(0);
     backdrop-filter: blur(8px);
+  }
+}
+
+@keyframes zoomIn {
+  from {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
   }
 }
 
@@ -1327,9 +1364,22 @@ input[type="range"]::-moz-range-thumb {
   .mobile-card-overview {
     margin-bottom: 1rem !important;
     line-height: 1.6 !important;
-    overflow: visible !important;
-    max-height: none !important;
-    height: auto !important;
+  }
+  
+  /* Mobile overview text truncation */
+  .mobile-card-overview p {
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    transition: all 0.3s ease;
+    word-wrap: break-word;
+  }
+  
+  .mobile-card-overview p.expanded {
+    -webkit-line-clamp: unset;
+    overflow: visible;
+    display: block;
   }
   
   /* Better mobile filter controls */
@@ -1518,14 +1568,16 @@ input[type="range"]::-moz-range-thumb {
 }
 
 .mobile-card-optimized {
-  /* Optimized mobile card */
+  /* Simple mobile card */
   min-height: 180px !important;
   padding: 0.75rem !important;
-  gap: 0.75rem !important;
-  overflow-y: auto !important;
-  -webkit-overflow-scrolling: touch !important;
-  max-height: none !important;
-  height: auto !important;
+}
+
+/* Simple desktop hover effects */
+@media (min-width: 768px) {
+  .movie-card-container .group:hover {
+    z-index: 10;
+  }
 }
 
 .mobile-filter-optimized {
@@ -1566,65 +1618,16 @@ input[type="range"]::-moz-range-thumb {
   bottom: max(0.5rem, env(safe-area-inset-bottom)) !important;
 }
 
-.safe-area-insets {
-  padding-top: env(safe-area-inset-top) !important;
-  padding-bottom: env(safe-area-inset-bottom) !important;
-  padding-left: env(safe-area-inset-left) !important;
-  padding-right: env(safe-area-inset-right) !important;
-}
-
-/* Fix hover scaling and background issues */
-.movie-card-hover-fix {
-  /* Prevent content from being cut off on hover */
-  overflow: visible !important;
-  transform-origin: center center !important;
-}
-
-/* Ensure background covers the entire hover area */
-.movie-card-hover-fix:hover {
-  z-index: 10 !important;
-}
-
-/* Fix background color on corners outside the mesh */
-.movie-card-container {
-  background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #334155 100%) !important;
-  min-height: 100vh !important;
-  width: 100% !important;
-}
-
-/* Desktop hover optimizations */
-@media (min-width: 768px) {
-  .movie-card-hover-fix {
-    /* Smoother hover transitions on desktop */
-    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  .safe-area-insets {
+    padding-top: env(safe-area-inset-top) !important;
+    padding-bottom: env(safe-area-inset-bottom) !important;
+    padding-left: env(safe-area-inset-left) !important;
+    padding-right: env(safe-area-inset-right) !important;
   }
   
-  .movie-card-hover-fix:hover {
-    /* Ensure proper layering on hover */
-    position: relative !important;
-    z-index: 20 !important;
+  /* Mobile title z-index */
+  @media (max-width: 767px) {
+    .mobile-title-above-about {
+      z-index: 25 !important;
+    }
   }
-}
-
-/* Mobile text expansion styles */
-.mobile-text-expandable {
-  transition: all 0.3s ease-in-out !important;
-}
-
-.mobile-text-expandable.expanded {
-  max-height: none !important;
-  overflow: visible !important;
-}
-
-/* Mobile poster modal optimization */
-.mobile-poster-modal {
-  position: absolute !important;
-  inset: 0 !important;
-  z-index: 50 !important;
-  background: rgba(0, 0, 0, 0.9) !important;
-  backdrop-filter: blur(8px) !important;
-  border-radius: inherit !important;
-  display: flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-}

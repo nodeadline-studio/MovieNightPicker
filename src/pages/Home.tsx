@@ -265,7 +265,7 @@ const Home: React.FC = () => {
                   <Film size={32} className="text-white" aria-hidden="true" />
                 </div>
                 <div>
-                  <h1 className="text-2xl md:text-3xl font-bold bg-gradient-to-r from-white via-gray-100 to-gray-300 bg-clip-text text-transparent" itemProp="name">
+                  <h1 className="text-2xl md:text-3xl font-bold bg-gradient-to-r from-white via-gray-100 to-gray-300 bg-clip-text text-transparent relative z-30 mobile-title-above-about" itemProp="name">
                     MovieNightPicker
                   </h1>
                   <p className="text-sm text-gray-400 hidden md:block">Discover your next favorite movie</p>
@@ -300,31 +300,33 @@ const Home: React.FC = () => {
         {showDescriptionButton && !isHeaderVisible && (
           <div className="absolute top-0 left-0 right-0 z-20 pointer-events-none">
             <div className="max-w-6xl mx-auto px-4 pointer-events-none">
-              <div className={`flex justify-center pt-[48px] md:pt-[76px] ml-[10px] md:ml-0 transition-all duration-300 ease-out pointer-events-none ${
+                            <div className={`flex items-center justify-center pt-[41px] md:pt-[76px] ml-[10px] md:ml-0 transition-all duration-300 ease-out pointer-events-none ${
                 isButtonFading ? 'animate-[slideUp_0.3s_ease-out_forwards]' : 'animate-[slideDown_0.3s_ease-out_forwards]'
               }`}>
+                
+                {/* About Button - No blur effect on mobile */}
                 <div className="flex items-center gap-2 pointer-events-auto">
-                                      <button
-                      onClick={handleShowDescription}
-                      className="group inline-flex items-center gap-2 px-3 py-1 md:py-1.5 
-                               bg-gradient-to-r from-slate-900/30 via-gray-900/20 to-slate-800/30
-                               hover:from-slate-800/40 hover:via-gray-800/30 hover:to-slate-700/40
+                  <button
+                    onClick={handleShowDescription}
+                    className="group inline-flex items-center gap-2 px-3 py-1.5 
+                             bg-gradient-to-r from-slate-900/30 via-gray-900/20 to-slate-800/30
+                             hover:from-slate-800/40 hover:via-gray-800/30 hover:to-slate-700/40
                              border border-white/5 hover:border-white/10 rounded-lg
                              text-gray-600 hover:text-gray-400 text-xs font-medium
                              transition-all duration-300 ease-out
-                             hover:scale-105 active:scale-95 backdrop-blur-sm whitespace-nowrap"
+                             hover:scale-105 active:scale-95 md:backdrop-blur-sm backdrop-blur-none whitespace-nowrap"
                   >
                     <span>What's all about?</span>
                     <ChevronDown size={12} className="group-hover:translate-y-0.5 transition-transform duration-200" />
                   </button>
-          <button 
+                  <button 
                     onClick={handleHideDescription}
                     className="p-1.5 text-gray-700 hover:text-gray-500 hover:bg-white/3 rounded-md
                              transition-all duration-200 ease-out"
                     aria-label="Hide button"
-          >
+                  >
                     <X size={12} />
-          </button>
+                  </button>
                 </div>
               </div>
             </div>
