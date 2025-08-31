@@ -7,7 +7,7 @@ import { useMovieContext } from '../context/MovieContext';
 import { generateWatchlistImage } from '../utils/imageGenerator';
 import * as gtag from '../utils/gtag';
 import { fetchMovieDetails, getImageUrl } from '../config/api';
-import { canUseNativeShare, canShareWithFiles, canUseClipboard } from '../utils/shareUtils';
+import { canUseNativeShare, canShareWithFiles, canUseClipboard, isNativeFileSharingReliable, isChromeMobile, isSafariMobile, isMobileDevice } from '../utils/shareUtils';
 
 const WatchlistPanel: React.FC = () => {
   const { watchlist, removeFromWatchlist } = useMovieContext();
@@ -160,6 +160,24 @@ const WatchlistPanel: React.FC = () => {
       const shareText = generateShareText();
       const url = window.location.origin;
       
+      // For Chrome mobile, try text-only sharing first to avoid download issues
+      if (isChromeMobile()) {
+        try {
+          const textShareData = {
+            title: '🎬 My Watchlist',
+            text: shareText,
+            url: url
+          };
+          
+          await navigator.share(textShareData);
+          setShowShareMenu(false);
+          gtag.trackShare('native', watchlist.length);
+          return;
+        } catch (error) {
+          console.log('Chrome mobile text-only share failed, trying with image...');
+        }
+      }
+      
       const imageDataUrl = await generateWatchlistImage({ 
         movies: watchlist,
         maxMovies: 6 
@@ -177,18 +195,31 @@ const WatchlistPanel: React.FC = () => {
         files: [file]
       };
       
-      if (canShareWithFiles([file])) {
+      // Only try file sharing if it's reliable on this browser
+      if (isNativeFileSharingReliable() && canShareWithFiles([file])) {
         await navigator.share(shareData);
         setShowShareMenu(false);
         gtag.trackShare('native', watchlist.length);
       } else {
-        // Fallback to download
-        await handleDownloadImage();
+        // For unreliable browsers, try text-only sharing
+        const textShareData = {
+          title: '🎬 My Watchlist',
+          text: shareText,
+          url: url
+        };
+        
+        await navigator.share(textShareData);
+        setShowShareMenu(false);
+        gtag.trackShare('native', watchlist.length);
       }
     } catch (error) {
       console.error('Error with native share:', error);
-      // Fallback to download
-      await handleDownloadImage();
+      // Fallback to clipboard or download based on platform
+      if (isMobileDevice()) {
+        await handleClipboardShare();
+      } else {
+        await handleDownloadImage();
+      }
     } finally {
       setIsGeneratingImage(false);
     }
@@ -260,6 +291,24 @@ const WatchlistPanel: React.FC = () => {
         const shareText = generateShareText();
         const url = window.location.origin;
         
+        // For Chrome mobile, try text-only sharing first
+        if (isChromeMobile()) {
+          try {
+            const textShareData = {
+              title: '🎬 My Watchlist',
+              text: shareText,
+              url: url
+            };
+            
+            await navigator.share(textShareData);
+            setShowShareMenu(false);
+            gtag.trackShare('native', watchlist.length);
+            return;
+          } catch (error) {
+            console.log('Chrome mobile text-only share failed, trying with image...');
+          }
+        }
+        
         const imageDataUrl = await generateWatchlistImage({ 
           movies: watchlist,
           maxMovies: 6 
@@ -277,13 +326,22 @@ const WatchlistPanel: React.FC = () => {
           files: [file]
         };
         
-        if (canShareWithFiles([file])) {
+        // Only try file sharing if it's reliable on this browser
+        if (isNativeFileSharingReliable() && canShareWithFiles([file])) {
           await navigator.share(shareData);
           setShowShareMenu(false);
           gtag.trackShare('native', watchlist.length);
         } else {
-          // Fallback to clipboard
-          await handleClipboardShare();
+          // For unreliable browsers, try text-only sharing
+          const textShareData = {
+            title: '🎬 My Watchlist',
+            text: shareText,
+            url: url
+          };
+          
+          await navigator.share(textShareData);
+          setShowShareMenu(false);
+          gtag.trackShare('native', watchlist.length);
         }
       } else {
         // Desktop: copy to clipboard with both text and image
@@ -291,8 +349,12 @@ const WatchlistPanel: React.FC = () => {
       }
     } catch (error) {
       console.error('Error with smart share:', error);
-      // Final fallback to download
-      await handleDownloadImage();
+      // Final fallback to clipboard or download based on platform
+      if (isMobileDevice()) {
+        await handleClipboardShare();
+      } else {
+        await handleDownloadImage();
+      }
     } finally {
       setIsGeneratingImage(false);
     }
@@ -399,7 +461,7 @@ const WatchlistPanel: React.FC = () => {
                   <div className="flex items-center gap-2">
                     <button
                       onClick={(e) => handlePreviewClick(movie.id, e)}
-                      className="text-indigo-400 hover:text-indigo-300 p-1 rounded transition-colors duration-200"
+                      className="text-indigo-400 hover:text-indigo-300 p-1 rounded transition-colors duration-200 md:block hidden"
                       title={previewMovie === movie.id ? "Hide details" : "Show details"}
                     >
                       {previewMovie === movie.id ? <EyeOff size={16} /> : <Eye size={16} />}

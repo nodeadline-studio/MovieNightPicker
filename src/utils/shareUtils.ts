@@ -32,6 +32,20 @@ export const isMobileDevice = (): boolean => {
   );
 };
 
+// Check if we're on Chrome mobile
+export const isChromeMobile = (): boolean => {
+  return /Android|webOS|iPhone|iPad|iPod/i.test(navigator.userAgent) && 
+         /Chrome/i.test(navigator.userAgent) &&
+         !/Edge/i.test(navigator.userAgent);
+};
+
+// Check if we're on Safari mobile
+export const isSafariMobile = (): boolean => {
+  return /iPhone|iPad|iPod/i.test(navigator.userAgent) && 
+         /Safari/i.test(navigator.userAgent) &&
+         !/Chrome/i.test(navigator.userAgent);
+};
+
 // Get the best sharing method available
 export const getBestSharingMethod = (): 'native' | 'clipboard' | 'download' => {
   if (canUseNativeShare() && isMobileDevice()) {
@@ -43,4 +57,18 @@ export const getBestSharingMethod = (): 'native' | 'clipboard' | 'download' => {
   }
   
   return 'download';
+};
+
+// Check if native sharing with files is reliable on current browser
+export const isNativeFileSharingReliable = (): boolean => {
+  // Safari mobile has good native file sharing support
+  if (isSafariMobile()) return true;
+  
+  // Chrome mobile can be unreliable with file sharing
+  if (isChromeMobile()) return false;
+  
+  // Other mobile browsers
+  if (isMobileDevice()) return canShareWithFiles([]);
+  
+  return false;
 }; 
