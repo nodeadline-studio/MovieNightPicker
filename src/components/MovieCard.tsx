@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Movie } from '../types';
 import { getImageUrl, isInTheaters } from '../config/api';
 import { Heart, Star, Calendar, Clapperboard, ExternalLink, Sparkles, Shuffle, X } from 'lucide-react';
@@ -23,7 +23,23 @@ const MovieCard: React.FC<MovieCardProps> = ({ movie, isInWatchlist = false, vid
   const pickCounter = usePickCounter();
   const [isPosterExpanded, setIsPosterExpanded] = useState(false);
   const [isOverviewExpanded, setIsOverviewExpanded] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
   const posterRef = useRef<HTMLDivElement>(null);
+
+  // Calculate if text expansion should be shown (25% more than default 3 lines)
+  const shouldShowExpand = movie.overview.length > 180; // Approximately 3 lines worth of text
+
+  // Mobile detection hook to avoid SSR issues
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth <= 767);
+    };
+    
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
   
   const handleWatchlistToggle = () => {
     if (isInWatchlist) {
@@ -114,7 +130,7 @@ const MovieCard: React.FC<MovieCardProps> = ({ movie, isInWatchlist = false, vid
             <div 
               ref={posterRef}
               className="w-full md:w-2/5 relative aspect-[3/4] md:aspect-auto max-h-[35vh] md:max-h-none cursor-pointer md:cursor-default group"
-              onClick={() => window.innerWidth <= 767 && handlePosterToggle()}
+              onClick={() => isMobile && handlePosterToggle()}
             >
               {/* Now Playing Badge */}
               {isInTheaters(movie.release_date) && (
@@ -128,7 +144,7 @@ const MovieCard: React.FC<MovieCardProps> = ({ movie, isInWatchlist = false, vid
               )}
               
               {/* Poster Image */}
-              <div className="relative w-full h-full overflow-hidden">
+              <div className="relative w-full h-full overflow-hidden rounded-2xl md:rounded-3xl">
               <img
                   className="w-full h-full object-cover transition-transform duration-500 group-active:scale-95 md:group-active:scale-105"
                 src={getImageUrl(movie.poster_path)}
@@ -136,7 +152,7 @@ const MovieCard: React.FC<MovieCardProps> = ({ movie, isInWatchlist = false, vid
                 loading="eager"
                 itemProp="image"
                 style={{
-                  objectPosition: 'center 20%' // Показываем верхнюю часть постера для лучшего отображения лиц и заголовков
+                  objectPosition: 'center 20%'
                 }}
               />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
@@ -212,75 +228,43 @@ const MovieCard: React.FC<MovieCardProps> = ({ movie, isInWatchlist = false, vid
                 </div>
               </div>
               
-              {/* Genres - Responsive to Container */}
-              <div className="mb-2 md:mb-4 mobile-card-genres">
-                <div className="flex flex-wrap gap-1 md:gap-2 w-full">
-                  {movie.genres && movie.genres.slice(0, 4).map((genre, index) => {
-                    // Calculate responsive sizing based on container and genre count
-                    const totalGenres = Math.min(movie.genres.length, 4);
-                    const isMobile = window.innerWidth <= 767;
-                    
-                    let fontSize, padding, maxWidth;
-                    if (isMobile) {
-                      if (totalGenres <= 2) {
-                        fontSize = 'text-sm';
-                        padding = 'px-3 py-1.5';
-                        maxWidth = 'max-w-[calc(50%-0.125rem)]';
-                      } else if (totalGenres === 3) {
-                        fontSize = 'text-xs';
-                        padding = 'px-2.5 py-1';
-                        maxWidth = 'max-w-[calc(33.333%-0.167rem)]';
-                      } else {
-                        fontSize = 'text-[10px]';
-                        padding = 'px-2 py-0.5';
-                        maxWidth = 'max-w-[calc(25%-0.125rem)]';
-                      }
-                    } else {
-                      fontSize = 'text-sm';
-                      padding = 'px-3 py-2';
-                      maxWidth = 'max-w-[calc(50%-0.125rem)]';
-                    }
-                    
-                    return (
+                              {/* Genres - Simplified Fixed Sizing */}
+                <div className="mb-2 md:mb-4 mobile-card-genres">
+                  <div className="flex flex-wrap gap-1 md:gap-2">
+                    {movie.genres && movie.genres.slice(0, 4).map((genre, index) => (
                       <span
                         key={genre.id}
-                        className={`${padding} ${fontSize} bg-gradient-to-r from-indigo-500/20 to-purple-500/20 
-                                   text-gray-300 rounded-lg md:rounded-xl border border-white/10
-                                   hover:from-indigo-500/30 hover:to-purple-500/30 transition-all duration-200 
-                                   flex-shrink-0 ${maxWidth}`}
+                        className="px-2 md:px-3 py-1 md:py-2 bg-gradient-to-r from-indigo-500/20 to-purple-500/20 
+                                 text-xs md:text-sm text-gray-300 rounded-lg md:rounded-xl border border-white/10
+                                 hover:from-indigo-500/30 hover:to-purple-500/30 transition-all duration-200 
+                                 flex-shrink-0"
                         style={{
                           animationDelay: `${index * 100}ms`
                         }}
                       >
                         {genre.name}
                       </span>
-                    );
-                  })}
-                  {movie.genres && movie.genres.length > 4 && (
-                    <span className="px-2 md:px-3 py-1 md:py-2 bg-white/5 text-xs md:text-sm text-gray-400 rounded-lg md:rounded-xl flex-shrink-0">
-                      +{movie.genres.length - 4} more
-                    </span>
-                  )}
+                    ))}
+                    {movie.genres && movie.genres.length > 4 && (
+                      <span className="px-2 md:px-3 py-1 md:py-2 bg-white/5 text-xs md:text-sm text-gray-400 rounded-lg md:rounded-xl flex-shrink-0">
+                        +{movie.genres.length - 4} more
+                      </span>
+                    )}
+                  </div>
                 </div>
-              </div>
               
               {/* Overview - Clickable for expand/collapse */}
               <div 
                 className="mb-3 md:mb-6 flex-1 min-h-0 overflow-hidden mobile-card-overview cursor-pointer"
-                onClick={() => window.innerWidth <= 767 && movie.overview.length > 120 && setIsOverviewExpanded(!isOverviewExpanded)}
+                onClick={() => isMobile && shouldShowExpand && setIsOverviewExpanded(!isOverviewExpanded)}
               >
                 <p className={`text-gray-300 text-sm md:text-base lg:text-lg leading-relaxed md:line-clamp-none ${isOverviewExpanded ? 'expanded' : ''}`}>
                   {movie.overview}
                   {/* Mobile expand/collapse indicator */}
                   <span className="md:hidden">
-                    {!isOverviewExpanded && movie.overview.length > 120 && (
+                    {!isOverviewExpanded && shouldShowExpand && (
                       <span className="text-blue-400 ml-1">
                         ... more
-                      </span>
-                    )}
-                    {isOverviewExpanded && (
-                      <span className="text-blue-400 ml-1">
-                        ... less
                       </span>
                     )}
                   </span>
@@ -361,39 +345,67 @@ const MovieCard: React.FC<MovieCardProps> = ({ movie, isInWatchlist = false, vid
         </button>
       </div>
 
-      {/* Unified Poster Modal - Mobile & Desktop */}
+      {/* Mobile Poster Modal - Cover Product Card Completely */}
       {isPosterExpanded && (
         <div 
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/95 backdrop-blur-xl animate-in fade-in duration-300"
+          className="fixed inset-0 z-50 bg-black/90 animate-in fade-in duration-300 md:hidden"
           onClick={handlePosterClose}
         >
-          {/* Mobile Modal - Fits within movie card */}
-          <div className="relative w-full h-full flex items-center justify-center p-2 md:p-8">
+          {/* Mobile Poster Container - Cover entire screen, moved 10px up */}
+          <div className="relative w-full h-full flex items-center justify-center -mt-2.5">
             {/* Close Button */}
             <button
               onClick={handlePosterClose}
-              className="absolute top-2 md:top-6 right-2 md:right-6 z-20 p-2 md:p-4 
+              className="absolute top-4 right-4 z-20 p-3 
                          bg-black/80 hover:bg-black/90 text-white rounded-full 
-                         transition-all duration-200 shadow-lg md:shadow-2xl hover:shadow-white/10
+                         transition-all duration-200 shadow-lg"
+              aria-label="Close poster view"
+            >
+              <X size={18} />
+            </button>
+            
+            {/* Poster Container - Cover product card completely */}
+            <div className="relative bg-gradient-to-br from-slate-900/95 via-gray-900/95 to-slate-800/95 
+                            backdrop-blur-xl border border-white/10 rounded-2xl overflow-hidden 
+                            shadow-2xl ring-1 ring-white/5 w-full h-full">
+              <div className="relative w-full h-full overflow-hidden rounded-2xl">
+                <img
+                  src={getImageUrl(movie.poster_path)}
+                  alt={`Movie poster for ${movie.title}`}
+                  className="w-full h-full object-cover"
+                  onClick={(e) => e.stopPropagation()}
+                  style={{
+                    objectPosition: 'center 20%'
+                  }}
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Desktop Poster Modal */}
+      {isPosterExpanded && (
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/95 backdrop-blur-xl animate-in fade-in duration-300 hidden md:flex"
+          onClick={handlePosterClose}
+        >
+          {/* Desktop Modal Container */}
+          <div className="relative w-full h-full flex items-center justify-center p-8">
+            {/* Close Button */}
+            <button
+              onClick={handlePosterClose}
+              className="absolute top-6 right-6 z-20 p-4 
+                         bg-black/80 hover:bg-black/90 text-white rounded-full 
+                         transition-all duration-200 shadow-2xl hover:shadow-white/10
                          border border-white/20 hover:border-white/30"
               aria-label="Close poster view"
             >
-              <X size={16} className="md:hidden" />
-              <X size={24} className="hidden md:block" />
+              <X size={24} />
             </button>
             
-            {/* Mobile Poster - Simple, fits within card */}
-            <div className="relative w-full h-full flex items-center justify-center md:hidden">
-              <img
-                src={getImageUrl(movie.poster_path)}
-                alt={`Movie poster for ${movie.title}`}
-                className="w-auto h-auto max-w-[95vw] max-h-[85vh] object-contain rounded-lg shadow-xl"
-                onClick={(e) => e.stopPropagation()}
-              />
-            </div>
-            
-            {/* Desktop Poster - Elegant styling */}
-            <div className="relative max-w-[80vw] max-h-[80vh] hidden md:block
+            {/* Desktop Poster Container */}
+            <div className="relative max-w-[80vw] max-h-[80vh] 
                             bg-gradient-to-br from-slate-900/90 via-gray-900/90 to-slate-800/90 
                             backdrop-blur-xl rounded-3xl p-6
                             border border-white/20 shadow-2xl ring-1 ring-white/10

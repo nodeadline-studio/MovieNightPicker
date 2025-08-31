@@ -300,7 +300,7 @@ const Home: React.FC = () => {
         {showDescriptionButton && !isHeaderVisible && (
           <div className="absolute top-0 left-0 right-0 z-20 pointer-events-none">
             <div className="max-w-6xl mx-auto px-4 pointer-events-none">
-                            <div className={`flex items-center justify-center pt-[41px] md:pt-[76px] ml-[10px] md:ml-0 transition-all duration-300 ease-out pointer-events-none ${
+                            <div className={`flex items-center justify-center pt-[42px] md:pt-[76px] ml-[10px] md:ml-0 transition-all duration-300 ease-out pointer-events-none ${
                 isButtonFading ? 'animate-[slideUp_0.3s_ease-out_forwards]' : 'animate-[slideDown_0.3s_ease-out_forwards]'
               }`}>
                 
@@ -308,11 +308,11 @@ const Home: React.FC = () => {
                 <div className="flex items-center gap-2 pointer-events-auto">
                   <button
                     onClick={handleShowDescription}
-                    className="group inline-flex items-center gap-2 px-3 py-1.5 
+                    className="group inline-flex items-center gap-2 px-3 py-1.5 md:py-0.7 
                              bg-gradient-to-r from-slate-900/30 via-gray-900/20 to-slate-800/30
                              hover:from-slate-800/40 hover:via-gray-800/30 hover:to-slate-700/40
                              border border-white/5 hover:border-white/10 rounded-lg
-                             text-gray-600 hover:text-gray-400 text-xs font-medium
+                             text-gray-600 hover:text-gray-400 text-xs font-medium leading-tight
                              transition-all duration-300 ease-out
                              hover:scale-105 active:scale-95 md:backdrop-blur-sm backdrop-blur-none whitespace-nowrap"
                   >

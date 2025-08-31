@@ -1249,6 +1249,14 @@ input[type="range"]::-moz-range-thumb {
   position: relative;
 }
 
+/* Mobile height optimization to prevent unnecessary scrolling */
+@media (max-width: 768px) {
+  .movie-card-container {
+    min-height: 280px !important;
+    max-height: 85vh !important;
+  }
+}
+
  /* Loading state transitions */
  .loading-transition {
    transition: opacity 0.2s ease-out, transform 0.2s ease-out;
@@ -1269,6 +1277,14 @@ input[type="range"]::-moz-range-thumb {
 .content-stable {
   min-height: 400px;
   overflow: hidden;
+}
+
+/* Mobile height optimization for content stability */
+@media (max-width: 768px) {
+  .content-stable {
+    min-height: 280px !important;
+    max-height: 85vh !important;
+  }
 }
 
 /* ===== MOBILE OPTIMIZATION ===== */
