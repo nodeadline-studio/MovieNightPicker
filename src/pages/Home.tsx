@@ -308,7 +308,7 @@ const Home: React.FC = () => {
                 <div className="flex items-center gap-2 pointer-events-auto">
                   <button
                     onClick={handleShowDescription}
-                    className="group inline-flex items-center gap-2 px-3 py-1.5 md:py-0.7 
+                    className="group inline-flex items-center gap-2 px-3 py-0.75 md:py-0.7 
                              bg-gradient-to-r from-slate-900/30 via-gray-900/20 to-slate-800/30
                              hover:from-slate-800/40 hover:via-gray-800/30 hover:to-slate-700/40
                              border border-white/5 hover:border-white/10 rounded-lg

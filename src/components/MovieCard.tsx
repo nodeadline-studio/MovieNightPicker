@@ -162,7 +162,7 @@ const MovieCard: React.FC<MovieCardProps> = ({ movie, isInWatchlist = false, vid
                 
                 {/* Mobile tap hint */}
                 <div className="absolute bottom-2 right-2 bg-black/60 text-white text-xs px-2 py-1 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 md:hidden pointer-events-none">
-                  Tap to expand
+                  Tap poster to expand
                 </div>
               </div>
               
@@ -185,7 +185,10 @@ const MovieCard: React.FC<MovieCardProps> = ({ movie, isInWatchlist = false, vid
               {/* Watchlist Button */}
               <div className="absolute top-2 md:top-4 right-2 md:right-4 safe-area-top">
                 <button
-                  onClick={handleWatchlistToggle}
+                  onClick={(e) => {
+                    e.stopPropagation(); // Prevent event bubbling to poster container
+                    handleWatchlistToggle();
+                  }}
                   className={`p-2 md:p-3 rounded-xl md:rounded-2xl backdrop-blur-sm transition-all duration-300 shadow-lg ${
                     isInWatchlist 
                       ? 'bg-gradient-to-r from-pink-500 to-rose-500 text-white' 
@@ -199,7 +202,9 @@ const MovieCard: React.FC<MovieCardProps> = ({ movie, isInWatchlist = false, vid
             </div>
             
             {/* Movie Details */}
-            <div className="md:w-3/5 p-3 md:p-6 lg:p-8 flex flex-col flex-1 min-h-0 md:min-h-[400px] overflow-y-auto scrollbar-hide mobile-card-optimized">
+            <div 
+              className="md:w-3/5 p-3 md:p-6 lg:p-8 flex flex-col flex-1 min-h-0 md:min-h-[400px] overflow-y-auto scrollbar-hide mobile-card-optimized"
+            >
               {/* Header */}
               <div className="mb-2 md:mb-4 mobile-card-header">
                 <h2 className="text-lg md:text-2xl lg:text-4xl font-bold text-white leading-tight mb-2 md:mb-3 
@@ -345,26 +350,25 @@ const MovieCard: React.FC<MovieCardProps> = ({ movie, isInWatchlist = false, vid
         </button>
       </div>
 
-      {/* Mobile Poster Modal - Cover Product Card Completely */}
+      {/* Mobile Poster Modal - Clean, Simple Structure */}
       {isPosterExpanded && (
         <div 
           className="fixed inset-0 z-50 bg-black/90 animate-in fade-in duration-300 md:hidden"
           onClick={handlePosterClose}
         >
-          {/* Mobile Poster Container - Cover entire screen, moved 10px up */}
-          <div className="relative w-full h-full flex items-center justify-center -mt-2.5">
-            {/* Close Button */}
+          {/* Mobile Poster Container - Centered with offset */}
+          <div className="relative w-full h-full flex items-center justify-center -mt-[17.5px]">
+            {/* Close Button - Visual only */}
             <button
-              onClick={handlePosterClose}
               className="absolute top-4 right-4 z-20 p-3 
-                         bg-black/80 hover:bg-black/90 text-white rounded-full 
-                         transition-all duration-200 shadow-lg"
-              aria-label="Close poster view"
+                         bg-black/80 text-white rounded-full 
+                         transition-all duration-200 shadow-lg cursor-default"
+              aria-label="Close poster view (tap anywhere to close)"
             >
               <X size={18} />
             </button>
             
-            {/* Poster Container - Cover product card completely */}
+            {/* Poster Container */}
             <div className="relative bg-gradient-to-br from-slate-900/95 via-gray-900/95 to-slate-800/95 
                             backdrop-blur-xl border border-white/10 rounded-2xl overflow-hidden 
                             shadow-2xl ring-1 ring-white/5 w-full h-full">
@@ -373,7 +377,6 @@ const MovieCard: React.FC<MovieCardProps> = ({ movie, isInWatchlist = false, vid
                   src={getImageUrl(movie.poster_path)}
                   alt={`Movie poster for ${movie.title}`}
                   className="w-full h-full object-cover"
-                  onClick={(e) => e.stopPropagation()}
                   style={{
                     objectPosition: 'center 20%'
                   }}

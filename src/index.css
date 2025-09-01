@@ -1259,13 +1259,15 @@ input[type="range"]::-moz-range-thumb {
 
  /* Loading state transitions */
  .loading-transition {
-   transition: opacity 0.2s ease-out, transform 0.2s ease-out;
+   transition: opacity 0.3s ease-out, transform 0.3s ease-out;
    will-change: opacity, transform;
+   backface-visibility: hidden;
+   -webkit-backface-visibility: hidden;
  }
  
  .loading-transition.loading {
-   opacity: 0.95;
-   transform: scale(0.99);
+   opacity: 0.98;
+   transform: scale(0.995);
  }
  
  .loading-transition.loaded {
@@ -1587,6 +1589,18 @@ input[type="range"]::-moz-range-thumb {
   /* Simple mobile card */
   min-height: 180px !important;
   padding: 0.75rem !important;
+  /* Prevent text truncation on mobile */
+  overflow: visible !important;
+  text-overflow: unset !important;
+  white-space: normal !important;
+}
+
+.mobile-card-overview {
+  /* Ensure movie overview text is fully visible on mobile */
+  overflow: visible !important;
+  text-overflow: unset !important;
+  white-space: normal !important;
+  line-height: 1.5 !important;
 }
 
 /* Simple desktop hover effects */
