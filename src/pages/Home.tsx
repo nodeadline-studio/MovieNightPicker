@@ -1,11 +1,10 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { useMediaQuery } from 'react-responsive';
-import { Film, Zap, Shuffle, Sparkles, ChevronDown, X } from 'lucide-react'; 
+import { Film, ChevronDown, X } from 'lucide-react'; 
 import { useMovieContext } from '../context/MovieContext';
 import { usePickCounter } from '../hooks/usePickCounter';
 import { timers } from '../utils/timers';
-import { useVideoAd } from '../hooks/useVideoAd';
-import { useVideoPreload } from '../hooks/useVideoPreload';
+import { usePropellerAds } from '../hooks/usePropellerAds';
 import { useQuery } from '@tanstack/react-query';
 import { fetchGenres } from '../config/api';
 import MovieCard from '../components/MovieCard';
@@ -17,46 +16,13 @@ import CookieConsent from '../components/CookieConsent';
 import PrivacyPolicy from '../components/PrivacyPolicy';
 import TermsOfService from '../components/TermsOfService';
 import PlaceholderMovieCard from '../components/PlaceholderMovieCard';
-import VideoAd from '../components/VideoAd';
-import GoogleVideoAd from '../components/GoogleVideoAd';
-import Button from '../components/ui/Button';
-import Spinner from '../components/ui/Spinner';
+import PropellerBannerAd from '../components/PropellerBannerAd';
+import PropellerInterstitialAd from '../components/PropellerInterstitialAd';
 import LoadingOverlay from '../components/LoadingOverlay';
 import { LoadingState } from '../types';
 import { analytics } from '../utils/analytics';
 import * as gtag from '../utils/gtag';
 
-const Desktop = ({ children }: { children: React.ReactNode }) =>
-  useMediaQuery({ minWidth: 1200 }) ? children : null;
-const Mobile = ({ children }: { children: React.ReactNode }) =>
-  useMediaQuery({ maxWidth: 767 }) ? children : null;
-
-const generateMathProblem = (difficulty: number = 1) => {
-  const operations = ['+', '-', '*'];
-  const operation = operations[Math.floor(Math.random() * operations.length)];
-  let num1 = Math.floor(Math.random() * (10 * difficulty)) + 1;
-  let num2 = Math.floor(Math.random() * (10 * difficulty)) + 1;
-  
-  let answer;
-  switch (operation) {
-    case '+':
-      answer = num1 + num2;
-      break;
-    case '-':
-      if (num2 > num1) [num1, num2] = [num2, num1];
-      answer = num1 - num2;
-      break;
-    case '*':
-      num1 = Math.floor(Math.random() * (5 * difficulty)) + 1;
-      num2 = Math.floor(Math.random() * (5 * difficulty)) + 1;
-      answer = num1 * num2;
-      break;
-    default:
-      answer = num1 + num2;
-  }
-  
-  return { num1, num2, operation, answer };
-};
 
 const Home: React.FC = () => {
   const [isHeaderVisible, setIsHeaderVisible] = useState(true);
@@ -68,23 +34,16 @@ const Home: React.FC = () => {
   const [hasInitiallyLoaded, setHasInitiallyLoaded] = useState(false);
   const [hasUserInteracted, setHasUserInteracted] = useState(false);
   const [isManuallyOpened, setIsManuallyOpened] = useState(false);
-  const [isFirstPickAfterLoad, setIsFirstPickAfterLoad] = useState(true); // Track first pick after page load
   const bottomRef = useRef<HTMLDivElement>(null);
   const pickCounter = usePickCounter();
-  const isMobile = useMediaQuery({ maxWidth: 767 });
   const [filterPanelOpen, setFilterPanelOpen] = useState(false);
 
   const { 
     currentMovie, 
     loadingState, 
-    pickCount,
-    getRandomMovie, 
     getRandomMovieSafe,
     error, 
-    watchlist,
-    resetPickCount,
-    setPickCount,
-    filterOptions
+    watchlist
   } = useMovieContext();
   
   const { isLoading: isLoadingGenres } = useQuery({
@@ -92,7 +51,7 @@ const Home: React.FC = () => {
     queryFn: fetchGenres,
   });
 
-  const videoAd = useVideoAd({
+  const propellerAds = usePropellerAds({
     onClose: () => {
       pickCounter.reset();
       getRandomMovieSafe()
@@ -102,11 +61,9 @@ const Home: React.FC = () => {
       getRandomMovieSafe()
         .catch(console.error);
     },
-    enableTestAds: false
+    enableTestAds: false,
+    pickCounter
   });
-
-  // Preload video ad in background
-  useVideoPreload('/ad_preview.mp4');
 
   const handleInitialLoad = useCallback(async () => {
     setHasUserInteracted(true);
@@ -193,21 +150,6 @@ const Home: React.FC = () => {
   }, [isHeaderVisible, isManuallyOpened]);
 
   // All handlers defined before any conditional returns
-  const handleGetMovie = useCallback(() => {
-    setHasUserInteracted(true);
-    pickCounter.inc();
-    
-    if (!videoAd.visible) {
-      getRandomMovieSafe()
-        .then(() => {
-          if (currentMovie) {
-            analytics.setLastMovie(currentMovie.id);
-            gtag.trackMoviePick(currentMovie.id, currentMovie.title);
-          }
-        })
-        .catch(console.error);
-    }
-  }, [pickCounter, videoAd.visible, getRandomMovieSafe, currentMovie]);
 
   const handleShowDescription = useCallback(() => {
     setShowDescriptionButton(false);
@@ -286,60 +228,54 @@ const Home: React.FC = () => {
                     Filter by genre, year, rating and more to find the perfect movie for your mood.
             </p>
           </div>
+          
+          {/* PropellerAds Banner Ad under About text */}
+          <div className="mt-6">
+            <PropellerBannerAd 
+              placement="about" 
+              className="w-full"
+              onError={() => console.log('About section ad failed to load')}
+              onSuccess={() => console.log('About section ad loaded successfully')}
+            />
+          </div>
         </div>
             )}
           </div>
         </header>
 
-        {/* Fixed Description Button - Completely outside header structure */}
-        {showDescriptionButton && !isHeaderVisible && (
-          <div className="absolute top-0 left-0 right-0 z-20 pointer-events-none">
-            <div className="max-w-6xl mx-auto px-4 pointer-events-none">
-              <div className={`flex justify-center pt-[98px] md:pt-[76px] transition-all duration-300 ease-out pointer-events-none ${
-                isButtonFading ? 'animate-[slideUp_0.3s_ease-out_forwards]' : 'animate-[slideDown_0.3s_ease-out_forwards]'
-              }`}>
-                <div className="flex items-center gap-2 pointer-events-auto">
-                  <button
-                    onClick={handleShowDescription}
-                    className="group inline-flex items-center gap-2 px-3 py-1.5 
-                             bg-gradient-to-r from-slate-900/30 via-gray-900/20 to-slate-800/30
-                             hover:from-slate-800/40 hover:via-gray-800/30 hover:to-slate-700/40
-                             border border-white/5 hover:border-white/10 rounded-lg
-                             text-gray-600 hover:text-gray-400 text-xs font-medium
-                             transition-all duration-300 ease-out
-                             hover:scale-105 active:scale-95 backdrop-blur-sm whitespace-nowrap"
-                  >
-                    <span>What's all about?</span>
-                    <ChevronDown size={12} className="group-hover:translate-y-0.5 transition-transform duration-200" />
-                  </button>
-          <button 
-                    onClick={handleHideDescription}
-                    className="p-1.5 text-gray-700 hover:text-gray-500 hover:bg-white/3 rounded-md
-                             transition-all duration-200 ease-out"
-                    aria-label="Hide button"
-          >
-                    <X size={12} />
-          </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
 
         <main className="flex-1 px-4 py-0 md:py-2">
           <div className="max-w-6xl mx-auto h-full">
             <div className="flex flex-col items-center h-full">
               {/* Movie Card Section - Mobile optimized for single screen */}
-              <div className="w-full flex-1 flex items-center justify-center min-h-0">
+              <div className="w-full flex-1 flex items-center justify-center min-h-0 -mt-2 md:mt-0">
                 {loadingState === LoadingState.LOADING ? (
                   <MovieCardSkeleton />
                 ) : error ? (
                   <NoMoviesFound />
                 ) : currentMovie ? (
-                  <MovieCard movie={currentMovie} isInWatchlist={isInWatchlist} videoAd={videoAd} />
+                  <MovieCard 
+                    movie={currentMovie} 
+                    isInWatchlist={isInWatchlist} 
+                    propellerAds={propellerAds}
+                    showDescriptionButton={showDescriptionButton}
+                    isButtonFading={isButtonFading}
+                    onShowDescription={handleShowDescription}
+                    onHideDescription={handleHideDescription}
+                  />
                 ) : (
                   <PlaceholderMovieCard />
                 )}
+              </div>
+              
+              {/* PropellerAds Banner Ad below movie card */}
+              <div className="w-full mt-6">
+                <PropellerBannerAd 
+                  placement="movie-card" 
+                  className="w-full"
+                  onError={() => console.log('Movie card ad failed to load')}
+                  onSuccess={() => console.log('Movie card ad loaded successfully')}
+                />
               </div>
             </div>
           </div>
@@ -388,21 +324,13 @@ const Home: React.FC = () => {
         </footer>
       </div>
 
-      {/* Video Ad */}
-      {videoAd.visible && (
-        <>
-          {videoAd.adType === 'video' && (
-            <VideoAd
-              onClose={videoAd.close}
-            />
-          )}
-          {videoAd.adType === 'google' && (
-            <GoogleVideoAd
-              onClose={videoAd.close}
-              onError={videoAd.close}
-            />
-          )}
-        </>
+      {/* PropellerAds Interstitial Ad */}
+      {propellerAds.visible && propellerAds.adType === 'interstitial' && (
+        <PropellerInterstitialAd
+          onClose={propellerAds.close}
+          onError={propellerAds.close}
+          onSuccess={() => console.log('PropellerAds interstitial loaded successfully')}
+        />
       )}
 
       {/* Modals */}

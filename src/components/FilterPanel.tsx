@@ -29,7 +29,6 @@ const FilterPanel: React.FC<FilterPanelProps> = ({ isOpen, setIsOpen }) => {
   const [captchaVerified, setCaptchaVerified] = useState(false);
   const [captchaScore, setCaptchaScore] = useState<number | null>(null);
   const [mathProblem, setMathProblem] = useState<{ question: string; answer: number } | null>(null);
-  const [showVideoAd, setShowVideoAd] = useState(false);
 
   const currentYear = new Date().getFullYear();
   
@@ -153,10 +152,7 @@ const FilterPanel: React.FC<FilterPanelProps> = ({ isOpen, setIsOpen }) => {
       return;
     }
 
-    if (pickCount >= 9 && (pickCount + 1) % 10 === 0) {
-      setShowVideoAd(true);
-      return;
-    }
+    // Video ad logic removed - now handled by PropellerAds system
 
     try {
       setIsApplyingAndPicking(true);
@@ -404,7 +400,10 @@ const FilterPanel: React.FC<FilterPanelProps> = ({ isOpen, setIsOpen }) => {
                                     [@media(max-height:600px)]:grid-cols-3
                                     [@media(max-height:500px)]:grid-cols-4
                                     [@media(max-height:400px)]:grid-cols-5">
-                        {genres.map((genre, index) => (
+                        {genres
+                          .filter(genre => !['War', 'Politics', 'Documentary'].includes(genre.name)) // Remove problematic genres
+                          .sort((a, b) => a.name.localeCompare(b.name)) // Sort alphabetically
+                          .map((genre, index) => (
                       <button
                         key={genre.id}
                         onClick={(e) => handleGenreToggle(genre.id, e)}

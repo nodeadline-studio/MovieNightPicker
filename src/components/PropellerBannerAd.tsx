@@ -1,0 +1,248 @@
+import React, { useEffect, useRef, useState, useCallback } from 'react';
+import { PROPELLER_ADS_CONFIG, PropellerAdsLoader, AdPlacement, PropellerAdsAnalytics } from '../config/propellerAdsConfig';
+import { MockPropellerAds } from '../config/propellerAdsMock';
+
+interface PropellerBannerAdProps {
+  placement: 'about' | 'movie-card';
+  className?: string;
+  onError?: () => void;
+  onSuccess?: () => void;
+}
+
+// Extend Window interface for PropellerAds
+declare global {
+  interface Window {
+    propellerads: {
+      init: (config: PropellerAdsConfig) => void;
+    };
+  }
+}
+
+interface PropellerAdsConfig {
+  container: string;
+  adUnitId: string;
+  publisherId: string;
+  width: number;
+  height: number;
+  onLoad?: () => void;
+  onError?: (error: Error) => void;
+  onClick?: () => void;
+}
+
+const PropellerBannerAd: React.FC<PropellerBannerAdProps> = ({ 
+  placement, 
+  className = '', 
+  onError, 
+  onSuccess 
+}) => {
+  const [isLoading, setIsLoading] = useState(true);
+  const [hasError, setHasError] = useState(false);
+  const [isVisible, setIsVisible] = useState(false);
+  const adRef = useRef<HTMLDivElement>(null);
+  const observerRef = useRef<IntersectionObserver | null>(null);
+
+  // Get ad unit ID based on placement
+  const getAdUnitId = (): string => {
+    switch (placement) {
+      case 'about':
+        return PROPELLER_ADS_CONFIG.adUnits.banner.aboutSection;
+      case 'movie-card':
+        return PROPELLER_ADS_CONFIG.adUnits.banner.movieCard;
+      default:
+        return '';
+    }
+  };
+
+  // Load and display the ad
+  const loadAd = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      setHasError(false);
+
+      // Check if ads should be shown
+      if (!AdPlacement.shouldShowAds()) {
+        setIsLoading(false);
+        return;
+      }
+
+      // Check if we're in development mode
+      const isDevelopment = process.env.NODE_ENV === 'development' || 
+                           typeof window !== 'undefined' && window.location.hostname === 'localhost';
+
+      if (isDevelopment) {
+        // Use mock banner ad
+        const mockAds = MockPropellerAds.getInstance();
+        const containerId = AdPlacement.generateAdId(placement);
+        if (adRef.current) {
+          adRef.current.id = containerId;
+        }
+
+        const [width, height] = AdPlacement.getBannerSize();
+        mockAds.init({
+          container: containerId,
+          adUnitId: getAdUnitId(),
+          publisherId: PROPELLER_ADS_CONFIG.publisherId,
+          width: width,
+          height: height,
+          onLoad: () => {
+            setIsLoading(false);
+            setIsVisible(true);
+            PropellerAdsAnalytics.trackAdShown('banner', placement);
+            onSuccess?.();
+          },
+          onError: (error: Error) => {
+            console.error('Mock banner error:', error);
+            setHasError(true);
+            setIsLoading(false);
+            PropellerAdsAnalytics.trackAdError('banner', placement, error.message || 'Unknown error');
+            onError?.();
+          },
+          onClick: () => {
+            PropellerAdsAnalytics.trackAdClicked('banner', placement);
+          }
+        });
+        return;
+      }
+
+      // Load PropellerAds script if not already loaded
+      const loader = PropellerAdsLoader.getInstance();
+      await loader.loadScript();
+
+      // Wait for PropellerAds to be available
+      if (!(window as any).propellerads) {
+        throw new Error('PropellerAds not available');
+      }
+
+      // Generate unique container ID
+      const containerId = AdPlacement.generateAdId(placement);
+      if (adRef.current) {
+        adRef.current.id = containerId;
+      }
+
+      // Get appropriate banner size
+      const [width, height] = AdPlacement.getBannerSize();
+
+      // Initialize the ad
+      if ((window as any).propellerads && (window as any).propellerads.init) {
+        (window as any).propellerads.init({
+          container: containerId,
+          adUnitId: getAdUnitId(),
+          publisherId: PROPELLER_ADS_CONFIG.publisherId,
+          width: width,
+          height: height,
+          onLoad: () => {
+            setIsLoading(false);
+            setIsVisible(true);
+            PropellerAdsAnalytics.trackAdShown('banner', placement);
+            onSuccess?.();
+          },
+          onError: (error: Error) => {
+            console.error('PropellerAds banner error:', error);
+            setHasError(true);
+            setIsLoading(false);
+            PropellerAdsAnalytics.trackAdError('banner', placement, error.message || 'Unknown error');
+            onError?.();
+          },
+          onClick: () => {
+            PropellerAdsAnalytics.trackAdClicked('banner', placement);
+          }
+        });
+      } else {
+        throw new Error('PropellerAds initialization failed');
+      }
+
+    } catch (error) {
+      console.error('Error loading PropellerAds banner:', error);
+      setHasError(true);
+      setIsLoading(false);
+      PropellerAdsAnalytics.trackAdError('banner', placement, error instanceof Error ? error.message : 'Unknown error');
+      onError?.();
+    }
+  }, [placement, onError, onSuccess]);
+
+  // Intersection Observer for lazy loading
+  useEffect(() => {
+    if (!PROPELLER_ADS_CONFIG.performance.lazyLoading) {
+      loadAd();
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting && isLoading && !hasError) {
+            loadAd();
+            observer.disconnect();
+          }
+        });
+      },
+      { 
+        rootMargin: '50px',
+        threshold: 0.1 
+      }
+    );
+
+    if (adRef.current) {
+      observer.observe(adRef.current);
+      observerRef.current = observer;
+    }
+
+    return () => {
+      if (observerRef.current) {
+        observerRef.current.disconnect();
+      }
+    };
+  }, [placement, isLoading, hasError, loadAd]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (observerRef.current) {
+        observerRef.current.disconnect();
+      }
+    };
+  }, []);
+
+  // Don't render if ads shouldn't be shown
+  if (!AdPlacement.shouldShowAds()) {
+    return null;
+  }
+
+  return (
+    <div 
+      ref={adRef}
+      className={`propeller-banner-ad ${className}`}
+      style={{
+        minHeight: isLoading ? '50px' : 'auto',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: hasError ? 'transparent' : '#f8f9fa',
+        borderRadius: '8px',
+        margin: '16px 0',
+        overflow: 'hidden'
+      }}
+    >
+      {isLoading && (
+        <div className="flex items-center justify-center p-4">
+          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-gray-400"></div>
+          <span className="ml-2 text-sm text-gray-500">Loading ad...</span>
+        </div>
+      )}
+      
+      {hasError && (
+        <div className="text-center p-4 text-gray-500 text-sm">
+          Ad unavailable
+        </div>
+      )}
+      
+      {isVisible && (
+        <div className="w-full h-full">
+          {/* PropellerAds content will be injected here */}
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default PropellerBannerAd;

@@ -70,14 +70,14 @@ export async function fetchRandomMovie(options: FilterOptions): Promise<Movie | 
       maxRuntime: Math.min(240, options.maxRuntime + 60)
     },
     
-    // 4. Сильно смягченные фильтры (убираем жанры)
+    // 4. Смягченные фильтры (убираем жанры, расширяем диапазоны)
     {
       ...options,
-      genres: options.genres.length > 3 ? options.genres.slice(0, 2) : [], // Оставляем только 2 жанра или убираем совсем
-      ratingFrom: Math.max(0, options.ratingFrom - 1.5),
-      yearFrom: Math.max(1950, options.yearFrom - 20),
-      yearTo: Math.min(new Date().getFullYear(), options.yearTo + 20),
-      maxRuntime: 240
+      genres: options.genres.length > 2 ? options.genres.slice(0, 1) : [], // Оставляем только 1 жанр или убираем совсем
+      ratingFrom: Math.max(0, options.ratingFrom - 2),
+      yearFrom: Math.max(1950, options.yearFrom - 15),
+      yearTo: Math.min(new Date().getFullYear(), options.yearTo + 15),
+      maxRuntime: 300
     },
     
     // 5. Минимальные фильтры (гарантированный результат)
@@ -402,7 +402,7 @@ export async function fetchMovieDetails(movieId: number): Promise<Movie | null> 
 }
 
 export const getImageUrl = (path: string | null, size = POSTER_SIZE): string => {
-  if (!path) return '/placeholder-poster.jpg';
+  if (!path) return '';
   return `${IMAGE_BASE_URL}/${size}${path}`;
 }
 

@@ -1,27 +1,73 @@
 import React, { useState } from 'react';
 import { Movie } from '../types';
 import { getImageUrl, isInTheaters } from '../config/api';
-import { Heart, Star, Calendar, Clock, Clapperboard, ExternalLink, Sparkles, Shuffle } from 'lucide-react';
-import Button from './ui/Button';
+import { Heart, Star, Calendar, Clapperboard, ExternalLink, Sparkles, Shuffle, ChevronDown, X, Film, ChevronUp } from 'lucide-react';
 import { useMovieContext } from '../context/MovieContext';
 import { usePickCounter } from '../hooks/usePickCounter';
 import * as gtag from '../utils/gtag';
+import MobilePosterModal from './MobilePosterModal';
 
-interface VideoAdHook {
+interface PropellerAdsHook {
   visible: boolean;
-  maybeShow: (count: number) => void;
+  showInterstitial: (count: number) => void;
   close: () => void;
 }
 
 interface MovieCardProps {
   movie: Movie;
   isInWatchlist?: boolean;
-  videoAd: VideoAdHook;
+  propellerAds: PropellerAdsHook;
+  showDescriptionButton?: boolean;
+  isButtonFading?: boolean;
+  onShowDescription?: () => void;
+  onHideDescription?: () => void;
 }
 
-const MovieCard: React.FC<MovieCardProps> = ({ movie, isInWatchlist = false, videoAd }) => {
-  const { addToWatchlist, removeFromWatchlist, getRandomMovie, getRandomMovieSafe, filterOptions } = useMovieContext();
+const MovieCard: React.FC<MovieCardProps> = ({ 
+  movie, 
+  isInWatchlist = false, 
+  propellerAds, 
+  showDescriptionButton = false, 
+  isButtonFading = false, 
+  onShowDescription, 
+  onHideDescription 
+}) => {
+  const { addToWatchlist, removeFromWatchlist, getRandomMovie, filterOptions } = useMovieContext();
   const pickCounter = usePickCounter();
+  const [isPosterModalOpen, setIsPosterModalOpen] = useState(false);
+  const [isTextExpanded, setIsTextExpanded] = useState(false);
+  const [shouldShowTextExpansion, setShouldShowTextExpansion] = useState(false);
+
+
+  // Smart text expansion logic - only expand if text > 10% of screen height
+  React.useEffect(() => {
+    let timeoutId: NodeJS.Timeout;
+    
+    const checkTextExpansion = () => {
+      if (typeof window !== 'undefined' && movie.overview) {
+        // Use a more efficient approach - estimate based on text length
+        const textLength = movie.overview.length;
+        const screenHeight = window.innerHeight;
+        const estimatedLines = Math.ceil(textLength / 80); // ~80 chars per line
+        const estimatedHeight = estimatedLines * 21; // ~21px per line
+        const maxTextHeight = screenHeight * 0.1;
+        
+        setShouldShowTextExpansion(estimatedHeight > maxTextHeight);
+      }
+    };
+    
+    const debouncedCheck = () => {
+      clearTimeout(timeoutId);
+      timeoutId = setTimeout(checkTextExpansion, 100);
+    };
+    
+    checkTextExpansion();
+    window.addEventListener('resize', debouncedCheck);
+    return () => {
+      window.removeEventListener('resize', debouncedCheck);
+      clearTimeout(timeoutId);
+    };
+  }, [movie.overview]);
   
   const handleWatchlistToggle = () => {
     if (isInWatchlist) {
@@ -37,22 +83,20 @@ const MovieCard: React.FC<MovieCardProps> = ({ movie, isInWatchlist = false, vid
     try {
       const count = pickCounter.inc();
       
-      // Show video ad every 5 picks
+      // Show PropellerAds interstitial every 5 picks
       if (count >= 5 && count % 5 === 0) {
-        // Force show video ad
-        localStorage.setItem('force_video_ad', 'true');
-        videoAd.maybeShow(count);
+        propellerAds.showInterstitial(count);
         
         // Wait for ad to show
         await new Promise(resolve => setTimeout(resolve, 200));
         
-        if (videoAd.visible) {
+        if (propellerAds.visible) {
           return; // Don't get new movie if ad is showing
         }
       }
       
       // Get new movie if no ad is showing
-      if (!videoAd.visible) {
+      if (!propellerAds.visible) {
         await getRandomMovie();
       }
     } catch (error) {
@@ -81,11 +125,44 @@ const MovieCard: React.FC<MovieCardProps> = ({ movie, isInWatchlist = false, vid
         <div className="relative bg-gradient-to-br from-slate-900/95 via-gray-900/95 to-slate-800/95 
                        backdrop-blur-xl border border-white/10 rounded-3xl overflow-hidden 
                        shadow-2xl ring-1 ring-white/5 transform transition-transform duration-300 
-                       hover:scale-[1.01] max-h-[calc(100vh-10rem)] md:max-h-[calc(100vh-16rem)] lg:max-h-[calc(100vh-16rem)]">
+                       hover:scale-[1.01] max-h-[calc(100vh-10rem)] md:max-h-[calc(100vh-14rem)] lg:max-h-[calc(100vh-16rem)]">
+          
+          {/* About Button - Positioned relative to movie card */}
+          {showDescriptionButton && (
+            <div className="absolute top-2 md:-top-8 left-1/2 transform -translate-x-1/2 z-30 pointer-events-none">
+              <div className={`flex justify-center transition-all duration-300 ease-out pointer-events-none ${
+                isButtonFading ? 'animate-[slideUp_0.3s_ease-out_forwards]' : 'animate-[slideDown_0.3s_ease-out_forwards]'
+              }`}>
+                <div className="flex items-center gap-2 pointer-events-auto">
+                  <button
+                    onClick={onShowDescription}
+                    className="group inline-flex items-center gap-2 px-3 py-1.5 
+                             bg-gradient-to-r from-slate-900/30 via-gray-900/20 to-slate-800/30
+                             hover:from-slate-800/40 hover:via-gray-800/30 hover:to-slate-700/40
+                             border border-white/5 hover:border-white/10 rounded-lg
+                             text-gray-600 hover:text-gray-400 text-xs font-medium
+                             transition-all duration-300 ease-out
+                             hover:scale-105 active:scale-95 backdrop-blur-sm whitespace-nowrap"
+                  >
+                    <span>What's all about?</span>
+                    <ChevronDown size={12} className="group-hover:translate-y-0.5 transition-transform duration-200" />
+                  </button>
+                  <button 
+                    onClick={onHideDescription}
+                    className="p-1.5 text-gray-700 hover:text-gray-500 hover:bg-white/3 rounded-md
+                             transition-all duration-200 ease-out"
+                    aria-label="Hide button"
+                  >
+                    <X size={12} />
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
           
           <div className="flex flex-col md:flex-row h-full md:h-auto">
             {/* Movie Poster - More space allocated */}
-            <div className="w-full md:w-2/5 relative aspect-[3/4] md:aspect-auto max-h-[42vh] md:max-h-none">
+            <div className="w-full md:w-2/5 relative aspect-[3/4] md:aspect-auto max-h-[40vh] md:max-h-none">
               {/* Now Playing Badge */}
               {isInTheaters(movie.release_date) && (
                 <div className="absolute top-2 md:top-4 left-2 md:left-4 bg-gradient-to-r from-green-500 to-emerald-500 
@@ -99,21 +176,66 @@ const MovieCard: React.FC<MovieCardProps> = ({ movie, isInWatchlist = false, vid
               
               {/* Poster Image */}
               <div className="relative w-full h-full overflow-hidden">
-              <img
-                  className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                src={getImageUrl(movie.poster_path)}
-                alt={`Movie poster for ${movie.title}`}
-                loading="eager"
-                itemProp="image"
-                style={{
-                  objectPosition: 'center 20%' // Показываем верхнюю часть постера для лучшего отображения лиц и заголовков
-                }}
-              />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+                {/* Loading state with icon */}
+                <div className="absolute inset-0 bg-gradient-to-br from-gray-800 to-gray-900 flex items-center justify-center">
+                  <div className="flex flex-col items-center gap-3">
+                    <Film size={48} className="text-gray-500 animate-pulse" />
+                    <div className="text-gray-500 text-sm">Loading...</div>
+                  </div>
+                </div>
+                
+                <img
+                  className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105 relative z-10 cursor-pointer md:cursor-default"
+                  src={getImageUrl(movie.poster_path)}
+                  alt={`Movie poster for ${movie.title}`}
+                  loading="lazy"
+                  itemProp="image"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    // Use CSS media query approach for better mobile detection
+                    const isMobile = window.matchMedia('(max-width: 767px)').matches;
+                    if (isMobile) {
+                      setIsPosterModalOpen(true);
+                    }
+                  }}
+                  onLoad={(e) => {
+                    const target = e.target as HTMLImageElement;
+                    target.style.opacity = '1';
+                    // Hide loading state when image loads
+                    const loadingState = target.previousElementSibling as HTMLElement;
+                    if (loadingState) {
+                      loadingState.style.display = 'none';
+                    }
+                  }}
+                  onError={(e) => {
+                    const target = e.target as HTMLImageElement;
+                    // Hide the image and show error state
+                    target.style.display = 'none';
+                    const loadingState = target.previousElementSibling as HTMLElement;
+                    if (loadingState) {
+                      loadingState.innerHTML = `
+                        <div class="flex flex-col items-center justify-center text-gray-400">
+                          <div class="w-16 h-16 bg-gray-700 rounded-lg mb-2 flex items-center justify-center">
+                            <svg class="w-8 h-8" fill="currentColor" viewBox="0 0 20 20">
+                              <path fill-rule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clip-rule="evenodd" />
+                            </svg>
+                          </div>
+                          <span class="text-sm">No Image</span>
+                        </div>
+                      `;
+                    }
+                  }}
+                  style={{
+                    objectPosition: 'center 20%',
+                    opacity: '0',
+                    transition: 'opacity 0.3s ease-in-out'
+                  }}
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent z-20" />
               </div>
               
               {/* Rating Badge */}
-              <div className="absolute bottom-2 md:bottom-4 left-2 md:left-4 bg-black/80 backdrop-blur-sm p-2 md:p-3 rounded-xl md:rounded-2xl shadow-lg">
+              <div className="absolute bottom-2 md:bottom-3 left-2 md:left-3 bg-black/80 backdrop-blur-sm p-2 md:p-2.5 rounded-xl md:rounded-2xl shadow-lg z-10">
                 <div className="flex items-center gap-1 md:gap-2">
                   <img
                     src="https://upload.wikimedia.org/wikipedia/commons/6/69/IMDB_Logo_2016.svg"
@@ -145,7 +267,7 @@ const MovieCard: React.FC<MovieCardProps> = ({ movie, isInWatchlist = false, vid
             </div>
             
             {/* Movie Details */}
-            <div className="md:w-3/5 p-3 md:p-6 lg:p-8 flex flex-col flex-1 min-h-0 max-h-[calc(65vh-2rem)] md:max-h-[calc(100vh-16rem)] lg:max-h-[calc(100vh-16rem)] overflow-y-auto scrollbar-hide">
+            <div className="md:w-3/5 p-3 md:p-6 lg:p-8 flex flex-col flex-1 min-h-0 max-h-[calc(70vh-2rem)] md:max-h-[calc(100vh-12rem)] lg:max-h-[calc(100vh-14rem)] overflow-y-auto scrollbar-hide">
               {/* Header */}
               <div className="mb-3 md:mb-6">
                 <h2 className="text-lg md:text-2xl lg:text-4xl font-bold text-white leading-tight mb-2 md:mb-3 
@@ -202,12 +324,25 @@ const MovieCard: React.FC<MovieCardProps> = ({ movie, isInWatchlist = false, vid
                 </div>
               </div>
               
-              {/* Overview */}
-              <div className="mb-4 md:mb-8 flex-1 min-h-0 overflow-hidden">
-                <p className="text-gray-300 text-sm md:text-base lg:text-lg leading-relaxed line-clamp-4 md:line-clamp-none">
-                  {movie.overview}
-                </p>
-              </div>
+                {/* Overview */}
+                <div 
+                  className={`mb-2 md:mb-4 flex-1 min-h-0 overflow-hidden max-h-[120px] md:max-h-[150px] ${
+                    shouldShowTextExpansion ? 'cursor-pointer md:cursor-default' : ''
+                  }`}
+                  onClick={(e) => {
+                    // Only expand on mobile and if text needs expansion
+                    if (window.innerWidth < 768 && shouldShowTextExpansion) {
+                      e.stopPropagation();
+                      setIsTextExpanded(!isTextExpanded);
+                    }
+                  }}
+                >
+                  <p className={`text-gray-300 text-sm md:text-base lg:text-lg leading-relaxed transition-all duration-300 ${
+                    isTextExpanded || !shouldShowTextExpansion ? '' : 'line-clamp-4 md:line-clamp-none'
+                  }`}>
+                    {movie.overview}
+                  </p>
+                </div>
               
               {/* Action Buttons - Horizontal Layout */}
               <div className="flex flex-row gap-2 md:gap-3 mt-auto">
@@ -233,7 +368,10 @@ const MovieCard: React.FC<MovieCardProps> = ({ movie, isInWatchlist = false, vid
                 </button>
                 
                 <button
-                  onClick={handleWatchlistToggle}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleWatchlistToggle();
+                  }}
                   className={`flex-1 font-semibold py-3 md:py-4 px-4 md:px-6 rounded-xl md:rounded-2xl
                             shadow-lg hover:shadow-xl
                             transform hover:scale-[1.02] active:scale-[0.98]
@@ -282,6 +420,12 @@ const MovieCard: React.FC<MovieCardProps> = ({ movie, isInWatchlist = false, vid
       </div>
 
 
+      {/* Mobile Poster Modal */}
+      <MobilePosterModal 
+        movie={movie} 
+        isOpen={isPosterModalOpen} 
+        onClose={() => setIsPosterModalOpen(false)} 
+      />
     </div>
   );
 };

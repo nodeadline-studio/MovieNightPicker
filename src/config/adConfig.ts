@@ -1,38 +1,37 @@
-// Ad Configuration for MovieNightPicker
-// Easy control panel for all ad settings
+// Legacy Ad Configuration - DEPRECATED
+// This file is kept for backward compatibility but is no longer used
+// New ad system uses PropellerAds configuration in propellerAdsConfig.ts
 
 import { logger } from '../utils/logger';
 
+// DEPRECATED: Use PropellerAds configuration instead
 export interface AdConfig {
-  // Video Ad Settings
   videoAd: {
     enabled: boolean;
-    frequency: number; // Show every X picks
-    skipDelay: number; // Seconds before skip button appears
-    autoCloseAfter: number; // Auto-close after X seconds (0 = never)
+    frequency: number;
+    skipDelay: number;
+    autoCloseAfter: number;
     preloadEnabled: boolean;
   };
   
-  // Google Ads Settings  
   googleAds: {
     enabled: boolean;
-    frequency: number; // Show every X picks (alternates with video)
+    frequency: number;
     publisherId: string;
     videoAdUnitId: string;
     bannerAdUnitId: string;
     skipDelay: number;
   };
   
-  // General Ad Settings
   general: {
-    alternateAdTypes: boolean; // Alternate between video and Google ads
-    respectUserInteraction: boolean; // Only show after user interaction
-    offlineSkipEnabled: boolean; // Allow instant skip when offline
-    debugMode: boolean; // Enable console logging
+    alternateAdTypes: boolean;
+    respectUserInteraction: boolean;
+    offlineSkipEnabled: boolean;
+    debugMode: boolean;
   };
 }
 
-// 🎛️ EASY CONTROL PANEL - Modify these values to change ad behavior
+// DEPRECATED: Legacy configuration - use PropellerAds instead
 export const AD_CONFIG = {
   general: {
     debugMode: false,
@@ -40,14 +39,14 @@ export const AD_CONFIG = {
   },
   
   videoAd: {
-    frequency: 5,        // Show video ad every 5 picks
-    skipDelay: 10,       // Allow skip after 10 seconds
+    frequency: 5,
+    skipDelay: 10,
   },
   
   googleAds: {
-    frequency: 999999,   // Disabled - only show via command
-    skipDelay: 5,        // Allow skip after 5 seconds
-    videoAdUnitId: 'placeholder', // Placeholder until real Ad Manager setup
+    frequency: 999999,
+    skipDelay: 5,
+    videoAdUnitId: 'placeholder',
   },
 };
 

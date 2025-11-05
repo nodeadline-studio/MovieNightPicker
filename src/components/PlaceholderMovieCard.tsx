@@ -6,8 +6,11 @@ const PlaceholderMovieCard: React.FC = () => {
   return (
     <div className="w-full max-w-[95vw] md:max-w-4xl mx-auto bg-gray-900 rounded-xl overflow-hidden shadow-xl border border-gray-800">
       <div className="flex flex-col md:flex-row h-full">
-        <div className="w-full md:w-1/3 relative h-[400px] md:h-[600px] bg-gray-800 flex items-center justify-center">
-          <Film size={80} className="text-gray-700" />
+        <div className="w-full md:w-1/3 relative h-[40vh] md:h-[50vh] bg-gray-800 flex items-center justify-center">
+          <div className="flex flex-col items-center gap-4">
+            <Film size={80} className="text-gray-500" />
+            <span className="text-gray-500 text-sm font-medium">No Movie Selected</span>
+          </div>
         </div>
         <div className="md:w-2/3 p-5 md:p-8 flex flex-col">
           <div className="flex justify-between items-start mb-4">
