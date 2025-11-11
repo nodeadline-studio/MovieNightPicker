@@ -193,16 +193,20 @@ const FilterPanel: React.FC<FilterPanelProps> = ({ isOpen, setIsOpen }) => {
       <>
         {/* Overlay */}
         <div 
-          className={`fixed inset-0 bg-black/40 z-40 transition-opacity duration-300 ease-out pointer-events-none ${
-            isOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0'
+          className={`fixed inset-0 bg-black/40 z-40 transition-opacity duration-300 ease-out ${
+            isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'
           }`}
           onClick={closePanel}
+          style={{ pointerEvents: isOpen ? 'auto' : 'none' }}
         />
         
         {/* Panel */}
-        <div className={`fixed top-0 right-0 h-[100dvh] w-full md:w-[420px] z-50 transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] ${
-          isOpen ? 'translate-x-0 opacity-100' : 'translate-x-full opacity-0'
-      }`}>
+        <div 
+          className={`fixed top-0 right-0 h-[100dvh] w-full md:w-[420px] z-50 transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] ${
+            isOpen ? 'translate-x-0 opacity-100' : 'translate-x-full opacity-0 pointer-events-none'
+          }`}
+          onClick={(e) => e.stopPropagation()}
+        >
           <div className="h-full bg-gradient-to-br from-slate-900/95 via-gray-900/95 to-slate-800/95 
                          backdrop-blur-xl border-l border-white/10 shadow-2xl
                          ring-1 ring-white/5 flex flex-col

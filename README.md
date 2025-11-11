@@ -32,9 +32,18 @@ MovieNightPicker is a web application designed to help users quickly discover mo
 - **Data Fetching**: TanStack Query (React Query)
 - **Icons**: Lucide React
 
+## Documentation
+
+Comprehensive documentation is available in the [`docs/`](docs/) directory:
+
+- **Monetization**: See `docs/MONETIZATION_READY_SUMMARY.md` for monetization status
+- **PropellerAds**: See `docs/PROPELLER_ADS_SUMMARY.md` for ad integration details
+- **Testing**: See `docs/TESTING_GUIDELINES.md` for testing standards
+- **Service Worker**: See `docs/SERVICE_WORKER_EXPLANATION.md` for service worker info
+
 ## Known Issues
 
-- **Filter Selection on Desktop**: There are currently issues with clicking filter elements on desktop devices. This affects the user experience when trying to select genres, adjust ratings, or modify other filter settings.
+- **Filter Selection on Desktop**: ✅ **FIXED** - Filter panel click issue resolved. See `docs/MONETIZATION_READY_SUMMARY.md` for details.
 
 ## Roadmap
 

@@ -49,17 +49,54 @@ export interface PropellerAdsConfig {
 const isDevelopment = process.env.NODE_ENV === 'development' || 
                      typeof window !== 'undefined' && window.location.hostname === 'localhost';
 
+// Get publisher ID from environment variable or use default
+const getPublisherId = (): string => {
+  if (isDevelopment) {
+    return 'MOCK_PUBLISHER_ID';
+  }
+  // Check for environment variable first
+  const envPublisherId = typeof window !== 'undefined' 
+    ? (import.meta.env.VITE_PUBLISHER_ID as string | undefined)
+    : undefined;
+  return envPublisherId || 'YOUR_PUBLISHER_ID';
+};
+
+// Get ad unit IDs from environment variables or use defaults
+const getAdUnitId = (placement: 'about' | 'movie-card' | 'interstitial'): string => {
+  if (isDevelopment) {
+    return placement === 'interstitial' ? 'MOCK_INTERSTITIAL' : `MOCK_BANNER_${placement.toUpperCase()}`;
+  }
+  
+  const envKey = placement === 'interstitial' 
+    ? 'VITE_INTERSTITIAL_AD_UNIT_ID'
+    : `VITE_BANNER_${placement.toUpperCase().replace('-', '_')}_AD_UNIT_ID`;
+  
+  const envAdUnitId = typeof window !== 'undefined'
+    ? (import.meta.env[envKey] as string | undefined)
+    : undefined;
+  
+  if (envAdUnitId) {
+    return envAdUnitId;
+  }
+  
+  // Fallback to default placeholders
+  if (placement === 'interstitial') {
+    return 'YOUR_INTERSTITIAL_AD_UNIT_ID';
+  }
+  return placement === 'about' ? 'YOUR_BANNER_AD_UNIT_ID_1' : 'YOUR_BANNER_AD_UNIT_ID_2';
+};
+
 // Default configuration - uses mock data in development, real IDs in production
 export const PROPELLER_ADS_CONFIG: PropellerAdsConfig = {
-  publisherId: isDevelopment ? 'MOCK_PUBLISHER_ID' : 'YOUR_PUBLISHER_ID',
+  publisherId: getPublisherId(),
   
   adUnits: {
     banner: {
-      aboutSection: isDevelopment ? 'MOCK_BANNER_ABOUT' : 'YOUR_BANNER_AD_UNIT_ID_1',
-      movieCard: isDevelopment ? 'MOCK_BANNER_MOVIE' : 'YOUR_BANNER_AD_UNIT_ID_2',
+      aboutSection: getAdUnitId('about'),
+      movieCard: getAdUnitId('movie-card'),
     },
     interstitial: {
-      movieLoad: isDevelopment ? 'MOCK_INTERSTITIAL' : 'YOUR_INTERSTITIAL_AD_UNIT_ID',
+      movieLoad: getAdUnitId('interstitial'),
     },
   },
   

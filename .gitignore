@@ -63,3 +63,5 @@ pids
 # Node modules (added by cleanup script)
 node_modules/
 **/node_modules/
+
+docs/

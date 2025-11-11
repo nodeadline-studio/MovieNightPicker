@@ -32,12 +32,41 @@ export class MockPropellerAds {
     // Simulate ad loading with random delay
     const delay = Math.random() * 2000 + 500; // 500ms to 2.5s
     
-    setTimeout(() => {
+    const timeoutId = setTimeout(() => {
+      // Check if ad config still exists (component might have unmounted)
+      if (!this.ads.has(config.container)) {
+        return; // Component unmounted, don't proceed
+      }
+      
       const container = document.getElementById(config.container);
-      if (container) {
+      if (!container) {
+        config.onError?.(new Error('Container not found'));
+        this.ads.delete(config.container);
+        return;
+      }
+      
+      // Verify container is still in the DOM
+      if (!container.isConnected) {
+        config.onError?.(new Error('Container not connected to DOM'));
+        this.ads.delete(config.container);
+        return;
+      }
+      
+      try {
+        // Remove any existing mock ad element (if re-initializing)
+        // Find and remove only the mock ad element, not all children
+        const existingAd = container.querySelector('[data-mock-ad="true"]');
+        if (existingAd) {
+          container.removeChild(existingAd);
+        }
+        
         // Create mock ad content
         const mockAd = this.createMockAd(config);
-        container.innerHTML = '';
+        // Mark the ad element so we can identify it later
+        mockAd.setAttribute('data-mock-ad', 'true');
+        
+        // Append the mock ad to the dedicated container
+        // This container is not managed by React, so it's safe to append directly
         container.appendChild(mockAd);
         
         // Track click events
@@ -46,10 +75,15 @@ export class MockPropellerAds {
         });
         
         config.onLoad?.();
-      } else {
-        config.onError?.(new Error('Container not found'));
+      } catch (error) {
+        console.error('Error creating mock ad:', error);
+        config.onError?.(error instanceof Error ? error : new Error('Unknown error'));
+        this.ads.delete(config.container);
       }
     }, delay);
+    
+    // Store timeout ID for potential cleanup
+    (config as any)._timeoutId = timeoutId;
   }
 
   private createMockAd(config: MockAdConfig): HTMLElement {
@@ -134,10 +168,28 @@ export class MockPropellerAds {
   }
 
   public destroy(containerId: string): void {
+    const adConfig = this.ads.get(containerId);
+    if (adConfig) {
+      // Clear any pending timeout
+      if ((adConfig as any)._timeoutId) {
+        clearTimeout((adConfig as any)._timeoutId);
+      }
+    }
+    
     this.ads.delete(containerId);
     const container = document.getElementById(containerId);
-    if (container) {
-      container.innerHTML = '';
+    if (container && container.isConnected) {
+      // Remove only the mock ad element, not all content
+      // This prevents React removeChild errors
+      try {
+        const mockAdElement = container.querySelector('[data-mock-ad="true"]');
+        if (mockAdElement && mockAdElement.parentNode === container) {
+          container.removeChild(mockAdElement);
+        }
+      } catch (error) {
+        // Element might already be removed by React or doesn't exist
+        console.warn('Could not remove mock ad element:', error);
+      }
     }
   }
 }

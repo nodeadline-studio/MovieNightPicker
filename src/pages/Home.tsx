@@ -228,16 +228,6 @@ const Home: React.FC = () => {
                     Filter by genre, year, rating and more to find the perfect movie for your mood.
             </p>
           </div>
-          
-          {/* PropellerAds Banner Ad under About text */}
-          <div className="mt-6">
-            <PropellerBannerAd 
-              placement="about" 
-              className="w-full"
-              onError={() => console.log('About section ad failed to load')}
-              onSuccess={() => console.log('About section ad loaded successfully')}
-            />
-          </div>
         </div>
             )}
           </div>
