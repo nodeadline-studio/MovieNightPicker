@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import { useMediaQuery } from 'react-responsive';
 import { Movie } from '../types';
 import { getImageUrl, isInTheaters } from '../config/api';
 import { Heart, Star, Calendar, Clapperboard, ExternalLink, Sparkles, Shuffle, ChevronDown, X, Film, ChevronUp } from 'lucide-react';
@@ -21,6 +22,8 @@ interface MovieCardProps {
   isButtonFading?: boolean;
   onShowDescription?: () => void;
   onHideDescription?: () => void;
+  renderButtonOutside?: boolean;
+  onButtonRender?: (button: React.ReactNode) => void;
 }
 
 const MovieCard: React.FC<MovieCardProps> = ({ 
@@ -30,14 +33,19 @@ const MovieCard: React.FC<MovieCardProps> = ({
   showDescriptionButton = false, 
   isButtonFading = false, 
   onShowDescription, 
-  onHideDescription 
+  onHideDescription,
+  renderButtonOutside = false,
+  onButtonRender
 }) => {
   const { addToWatchlist, removeFromWatchlist, getRandomMovie, filterOptions } = useMovieContext();
   const pickCounter = usePickCounter();
+  const isMobile = useMediaQuery({ maxWidth: 767 });
   const [isPosterModalOpen, setIsPosterModalOpen] = useState(false);
   const [isTextExpanded, setIsTextExpanded] = useState(false);
   const [shouldShowTextExpansion, setShouldShowTextExpansion] = useState(false);
-
+  const buttonElementRef = useRef<React.ReactNode>(null);
+  const hasCalledCallbackRef = useRef(false);
+  const lastButtonRef = useRef<React.ReactNode>(null);
 
   // Smart text expansion logic - only expand if text > 10% of screen height
   React.useEffect(() => {
@@ -103,6 +111,21 @@ const MovieCard: React.FC<MovieCardProps> = ({
       console.error('Error getting random movie:', error);
     }
   };
+
+  // Handle button rendering outside component (for desktop layout)
+  useEffect(() => {
+    // Reset callback flag if button element changed
+    if (buttonElementRef.current !== lastButtonRef.current) {
+      hasCalledCallbackRef.current = false;
+      lastButtonRef.current = buttonElementRef.current;
+    }
+    
+    // Only call callback once per button element
+    if (renderButtonOutside && onButtonRender && buttonElementRef.current && !hasCalledCallbackRef.current) {
+      onButtonRender(buttonElementRef.current);
+      hasCalledCallbackRef.current = true;
+    }
+  }, [renderButtonOutside, onButtonRender]);
   
   const formatDate = (dateString: string) => {
     if (!dateString) return 'Unknown';
@@ -116,7 +139,7 @@ const MovieCard: React.FC<MovieCardProps> = ({
   };
 
   return (
-    <div className="w-full max-w-[95vw] md:max-w-5xl lg:max-w-6xl mx-auto space-y-4 md:space-y-4">
+    <div className="w-full max-w-[95vw] md:max-w-5xl lg:max-w-6xl mx-auto space-y-2 md:space-y-4">
       {/* Movie Card */}
       <div className="relative group">
         {/* Background glow effect */}
@@ -125,11 +148,11 @@ const MovieCard: React.FC<MovieCardProps> = ({
         <div className="relative bg-gradient-to-br from-slate-900/95 via-gray-900/95 to-slate-800/95 
                        backdrop-blur-xl border border-white/10 rounded-3xl overflow-hidden 
                        shadow-2xl ring-1 ring-white/5 transform transition-transform duration-300 
-                       hover:scale-[1.01] max-h-[calc(100vh-10rem)] md:max-h-[calc(100vh-14rem)] lg:max-h-[calc(100vh-16rem)]">
+                       hover:scale-[1.01] flex-1 min-h-0">
           
           {/* About Button - Positioned relative to movie card */}
           {showDescriptionButton && (
-            <div className="absolute top-2 md:-top-8 left-1/2 transform -translate-x-1/2 z-30 pointer-events-none">
+            <div className="absolute top-2 md:top-4 left-1/2 transform -translate-x-1/2 z-50 pointer-events-none">
               <div className={`flex justify-center transition-all duration-300 ease-out pointer-events-none ${
                 isButtonFading ? 'animate-[slideUp_0.3s_ease-out_forwards]' : 'animate-[slideDown_0.3s_ease-out_forwards]'
               }`}>
@@ -162,7 +185,7 @@ const MovieCard: React.FC<MovieCardProps> = ({
           
           <div className="flex flex-col md:flex-row h-full md:h-auto">
             {/* Movie Poster - More space allocated */}
-            <div className="w-full md:w-2/5 relative aspect-[3/4] md:aspect-auto max-h-[40vh] md:max-h-none">
+            <div className="w-full md:w-2/5 relative aspect-[3/4] md:aspect-auto max-h-[45vh] sm:max-h-[50vh] md:max-h-none">
               {/* Now Playing Badge */}
               {isInTheaters(movie.release_date) && (
                 <div className="absolute top-2 md:top-4 left-2 md:left-4 bg-gradient-to-r from-green-500 to-emerald-500 
@@ -175,9 +198,20 @@ const MovieCard: React.FC<MovieCardProps> = ({
               )}
               
               {/* Poster Image */}
-              <div className="relative w-full h-full overflow-hidden">
+              <div 
+                className="relative w-full h-full overflow-hidden cursor-pointer md:cursor-default"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  // Use CSS media query approach for better mobile detection
+                  const isMobile = window.matchMedia('(max-width: 767px)').matches;
+                  if (isMobile) {
+                    e.preventDefault();
+                    setIsPosterModalOpen(true);
+                  }
+                }}
+              >
                 {/* Loading state with icon */}
-                <div className="absolute inset-0 bg-gradient-to-br from-gray-800 to-gray-900 flex items-center justify-center">
+                <div className="absolute inset-0 bg-gradient-to-br from-gray-800 to-gray-900 flex items-center justify-center pointer-events-none z-0">
                   <div className="flex flex-col items-center gap-3">
                     <Film size={48} className="text-gray-500 animate-pulse" />
                     <div className="text-gray-500 text-sm">Loading...</div>
@@ -185,7 +219,7 @@ const MovieCard: React.FC<MovieCardProps> = ({
                 </div>
                 
                 <img
-                  className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105 relative z-10 cursor-pointer md:cursor-default"
+                  className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105 relative z-10 pointer-events-auto"
                   src={getImageUrl(movie.poster_path)}
                   alt={`Movie poster for ${movie.title}`}
                   loading="lazy"
@@ -195,6 +229,7 @@ const MovieCard: React.FC<MovieCardProps> = ({
                     // Use CSS media query approach for better mobile detection
                     const isMobile = window.matchMedia('(max-width: 767px)').matches;
                     if (isMobile) {
+                      e.preventDefault();
                       setIsPosterModalOpen(true);
                     }
                   }}
@@ -267,7 +302,7 @@ const MovieCard: React.FC<MovieCardProps> = ({
             </div>
             
             {/* Movie Details */}
-            <div className="md:w-3/5 p-3 md:p-6 lg:p-8 flex flex-col flex-1 min-h-0 max-h-[calc(70vh-2rem)] md:max-h-[calc(100vh-12rem)] lg:max-h-[calc(100vh-14rem)] overflow-y-auto scrollbar-hide">
+            <div className="md:w-3/5 p-3 md:p-6 lg:p-8 flex flex-col flex-1 min-h-0 overflow-y-auto scrollbar-hide">
               {/* Header */}
               <div className="mb-3 md:mb-6">
                 <h2 className="text-lg md:text-2xl lg:text-4xl font-bold text-white leading-tight mb-2 md:mb-3 
@@ -325,23 +360,42 @@ const MovieCard: React.FC<MovieCardProps> = ({
               </div>
               
                 {/* Overview */}
-                <div 
-                  className={`mb-2 md:mb-4 flex-1 min-h-0 overflow-hidden max-h-[120px] md:max-h-[150px] ${
-                    shouldShowTextExpansion ? 'cursor-pointer md:cursor-default' : ''
-                  }`}
-                  onClick={(e) => {
-                    // Only expand on mobile and if text needs expansion
-                    if (window.innerWidth < 768 && shouldShowTextExpansion) {
-                      e.stopPropagation();
-                      setIsTextExpanded(!isTextExpanded);
-                    }
-                  }}
-                >
-                  <p className={`text-gray-300 text-sm md:text-base lg:text-lg leading-relaxed transition-all duration-300 ${
-                    isTextExpanded || !shouldShowTextExpansion ? '' : 'line-clamp-4 md:line-clamp-none'
-                  }`}>
-                    {movie.overview}
-                  </p>
+                <div className="mb-2 md:mb-4 flex-1 min-h-0">
+                  <div 
+                    className={`overflow-hidden transition-all duration-300 ease-out ${
+                      isTextExpanded 
+                        ? 'max-h-[800px]' // Large enough for any text
+                        : 'max-h-[120px]' // Collapsed height
+                    }`}
+                    style={{
+                      transformOrigin: 'top center'
+                    }}
+                  >
+                    <p className="text-gray-300 text-sm md:text-base lg:text-lg leading-relaxed">
+                      {movie.overview}
+                    </p>
+                  </div>
+                  
+                  {/* Show More/Less button - mobile only */}
+                  {shouldShowTextExpansion && isMobile && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setIsTextExpanded(!isTextExpanded);
+                      }}
+                      className="text-indigo-400 hover:text-indigo-300 text-sm mt-2 flex items-center gap-1 transition-colors md:hidden"
+                    >
+                      {isTextExpanded ? (
+                        <>
+                          Show Less <ChevronUp size={16} />
+                        </>
+                      ) : (
+                        <>
+                          Show More <ChevronDown size={16} />
+                        </>
+                      )}
+                    </button>
+                  )}
                 </div>
               
               {/* Action Buttons - Horizontal Layout */}
@@ -393,15 +447,17 @@ const MovieCard: React.FC<MovieCardProps> = ({
       </div>
 
       {/* Random Movie/Show Button - Full width on mobile */}
+      {(() => {
+        const buttonElement = (
       <div className="flex justify-center">
         <button
           onClick={handleGetRandomMovie}
-          className="group relative text-white font-semibold py-3 md:py-4 px-6 md:px-8 rounded-2xl
+              className="group relative text-white font-semibold py-[22px] lg:py-5 px-9 lg:px-10 rounded-2xl
                    shadow-lg hover:shadow-xl hover:shadow-purple-500/25
                    transform hover:scale-[1.02] active:scale-[0.98]
                    transition-all duration-200 ease-out
                    flex items-center justify-center gap-3 text-sm md:text-base
-                   overflow-hidden w-full md:w-auto
+                       overflow-hidden w-auto min-w-[200px] md:min-w-[240px] lg:min-w-[280px]
                    bg-gradient-to-r from-violet-600 via-purple-600 to-fuchsia-600 
                    hover:from-violet-500 hover:via-purple-500 hover:to-fuchsia-500"
         >
@@ -418,6 +474,19 @@ const MovieCard: React.FC<MovieCardProps> = ({
           </div>
         </button>
       </div>
+        );
+        
+        // Store button element in ref for useEffect
+        buttonElementRef.current = buttonElement;
+        
+        // On mobile, render button inside component
+        // On desktop, button will be rendered outside via useEffect callback
+        if (renderButtonOutside) {
+          return null;
+        }
+        
+        return buttonElement;
+      })()}
 
 
       {/* Mobile Poster Modal */}

@@ -37,14 +37,38 @@ const MobilePosterModal: React.FC<MobilePosterModalProps> = ({ movie, isOpen, on
 
   if (!isOpen) return null;
 
+  const handleBackdropClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    // Close modal if clicking on backdrop (not on modal content)
+    if (e.target === e.currentTarget) {
+      onClose();
+    }
+  };
+
   return (
     <div 
-      className="fixed inset-0 bg-black/95 backdrop-blur-sm flex items-center justify-center p-4 z-[9999] md:hidden"
+      className="fixed bg-black/95 backdrop-blur-sm flex items-center justify-center p-4 z-[9999] md:hidden"
       role="dialog"
       aria-modal="true"
       aria-labelledby="modal-title"
+      onClick={handleBackdropClick}
+      style={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        width: '100vw',
+        height: '100vh',
+        paddingTop: 'max(1rem, env(safe-area-inset-top))',
+        paddingBottom: 'max(1rem, env(safe-area-inset-bottom))',
+        paddingLeft: 'max(1rem, env(safe-area-inset-left))',
+        paddingRight: 'max(1rem, env(safe-area-inset-right))'
+      }}
     >
-      <div className="relative w-full max-w-sm h-[80vh] overflow-hidden bg-gray-900 rounded-xl border border-gray-700">
+      <div 
+        className="relative w-full max-w-sm h-[80vh] overflow-hidden bg-gray-900 rounded-xl border border-gray-700"
+        onClick={(e) => e.stopPropagation()}
+      >
         {/* Close button */}
         <button
           onClick={onClose}
@@ -55,9 +79,9 @@ const MobilePosterModal: React.FC<MobilePosterModalProps> = ({ movie, isOpen, on
         </button>
         
         {/* Poster image */}
-        <div className="relative w-full h-full flex items-center justify-center p-4">
+        <div className="relative w-full h-full flex items-center justify-center overflow-hidden rounded-xl">
           <img
-            className="w-full h-full object-contain rounded-lg"
+            className="w-full h-full object-cover rounded-xl"
             src={getImageUrl(movie.poster_path, 'original')}
             alt={`${movie.title} poster`}
           />

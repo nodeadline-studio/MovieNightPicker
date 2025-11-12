@@ -76,29 +76,52 @@ const PropellerBannerAd: React.FC<PropellerBannerAdProps> = ({
       if (isDevelopment) {
         // Use mock banner ad
         const mockAds = MockPropellerAds.getInstance();
-        const containerId = AdPlacement.generateAdId(placement);
-        containerIdRef.current = containerId;
         
-        // Ensure dedicated ad container exists before initializing
+        // Ensure dedicated ad container exists and has ID set
         if (!adContainerRef.current) {
           throw new Error('Ad container ref not available');
         }
         
-        // Set container ID on the dedicated ad container (not the main container)
-        adContainerRef.current.id = containerId;
-        
-        // Wait for next tick to ensure DOM is ready
-        await new Promise(resolve => setTimeout(resolve, 0));
-        
-        // Check if component is still mounted
-        if (!isMountedRef.current || !adContainerRef.current) {
-          return; // Component unmounted, don't proceed
+        // Wait for container ID to be set (by useEffect)
+        let retries = 0;
+        const maxRetries = 10;
+        while (retries < maxRetries && !containerIdRef.current) {
+          await new Promise(resolve => setTimeout(resolve, 50));
+          retries++;
         }
         
-        // Double-check dedicated container exists in DOM and is connected
+        if (!containerIdRef.current) {
+          throw new Error('Container ID not set after waiting');
+        }
+        
+        const containerId = containerIdRef.current;
+        
+        // Wait for DOM to be ready - use multiple checks
+        retries = 0;
+        while (retries < maxRetries) {
+          await new Promise(resolve => setTimeout(resolve, 50));
+          
+          // Check if component is still mounted
+          if (!isMountedRef.current || !adContainerRef.current) {
+            return; // Component unmounted, don't proceed
+          }
+          
+          // Verify container exists and is connected
+          const container = document.getElementById(containerId);
+          if (container && container.isConnected) {
+            break; // Container is ready
+          }
+          
+          retries++;
+          if (retries >= maxRetries) {
+            throw new Error(`Container not found in DOM after ${maxRetries} checks: ${containerId}`);
+          }
+        }
+        
+        // Final verification
         const container = document.getElementById(containerId);
         if (!container || !container.isConnected) {
-          throw new Error('Container not found in DOM or not connected');
+          throw new Error('Container not found in DOM or not connected after retries');
         }
 
         const [width, height] = AdPlacement.getBannerSize();
@@ -141,12 +164,11 @@ const PropellerBannerAd: React.FC<PropellerBannerAdProps> = ({
         throw new Error('PropellerAds not available');
       }
 
-      // Generate unique container ID
-      const containerId = AdPlacement.generateAdId(placement);
-      containerIdRef.current = containerId;
-      if (adContainerRef.current) {
-        adContainerRef.current.id = containerId;
+      // Use container ID that was set by useEffect
+      if (!containerIdRef.current) {
+        throw new Error('Container ID not set');
       }
+      const containerId = containerIdRef.current;
 
       // Get appropriate banner size
       const [width, height] = AdPlacement.getBannerSize();
@@ -227,6 +249,15 @@ const PropellerBannerAd: React.FC<PropellerBannerAdProps> = ({
     };
   }, [placement, isLoading, hasError, loadAd]);
 
+  // Set container ID after ref is attached to DOM
+  useEffect(() => {
+    if (adContainerRef.current && !containerIdRef.current) {
+      const containerId = AdPlacement.generateAdId(placement);
+      containerIdRef.current = containerId;
+      adContainerRef.current.id = containerId;
+    }
+  }, [placement]);
+
   // Mark component as mounted
   useEffect(() => {
     isMountedRef.current = true;
@@ -274,10 +305,10 @@ const PropellerBannerAd: React.FC<PropellerBannerAdProps> = ({
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        backgroundColor: hasError ? 'transparent' : '#f8f9fa',
+        backgroundColor: hasError ? 'transparent' : (isVisible ? 'transparent' : '#f8f9fa'),
         borderRadius: '8px',
-        margin: '16px 0',
-        overflow: 'hidden'
+        margin: '8px 0',
+        overflow: 'visible'
       }}
     >
       {isLoading && (
@@ -296,16 +327,19 @@ const PropellerBannerAd: React.FC<PropellerBannerAdProps> = ({
       {/* Dedicated ad container - React doesn't render children here, only ad content */}
       <div 
         ref={adContainerRef}
-        className="w-full h-full"
+        className="w-full"
         style={{ 
           display: isVisible ? 'flex' : 'none',
           alignItems: 'center',
           justifyContent: 'center',
-          width: '100%'
+          width: '100%',
+          minHeight: '50px',
+          height: 'auto',
+          overflow: 'visible'
         }}
       >
-        {/* PropellerAds content will be injected here */}
-      </div>
+          {/* PropellerAds content will be injected here */}
+        </div>
     </div>
   );
 };

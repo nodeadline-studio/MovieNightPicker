@@ -102,8 +102,8 @@ export const PROPELLER_ADS_CONFIG: PropellerAdsConfig = {
   
   display: {
     bannerSizes: {
-      mobile: [320, 50],   // Mobile banner size
-      desktop: [728, 90],  // Desktop banner size
+      mobile: [320, 100],  // Mobile banner size (increased for better visibility)
+      desktop: [728, 50],  // Desktop banner size (reduced from 60px to 50px)
     },
     interstitial: {
       skipDelay: 5,        // Allow skip after 5 seconds

@@ -175,6 +175,52 @@ const PropellerInterstitialAd: React.FC<PropellerInterstitialAdProps> = ({
     loadAd();
   }, [loadAd]);
 
+  // Inject mock ad content when visible (development mode only)
+  useEffect(() => {
+    if (isVisible && !hasError) {
+      const isDevelopment = process.env.NODE_ENV === 'development' || 
+                           typeof window !== 'undefined' && window.location.hostname === 'localhost';
+      
+      if (isDevelopment && adRef.current) {
+        const mockInterstitial = MockInterstitialAd.getInstance();
+        
+        // Use requestAnimationFrame for reliable DOM timing
+        const injectAd = () => {
+          if (adRef.current && mockInterstitial.currentAd) {
+            // Clear container first
+            adRef.current.innerHTML = '';
+            // Clone the mock ad element to avoid issues if it's already in DOM
+            const clonedAd = mockInterstitial.currentAd.cloneNode(true) as HTMLElement;
+            adRef.current.appendChild(clonedAd);
+            
+            // Re-attach event listeners to cloned element
+            const closeBtn = clonedAd.querySelector('#mock-ad-close');
+            const actionBtn = clonedAd.querySelector('#mock-ad-action');
+            
+            if (closeBtn) {
+              closeBtn.addEventListener('click', () => {
+                onClose();
+              });
+            }
+            
+            if (actionBtn) {
+              actionBtn.addEventListener('click', () => {
+                console.log('Mock ad action clicked - would navigate to advertiser in production');
+              });
+            }
+          }
+        };
+        
+        // Try immediate injection, fallback to requestAnimationFrame
+        if (adRef.current) {
+          injectAd();
+        } else {
+          requestAnimationFrame(injectAd);
+        }
+      }
+    }
+  }, [isVisible, hasError, onClose]);
+
   // Handle skip button click
   const handleSkip = () => {
     if (canSkip) {
@@ -194,74 +240,72 @@ const PropellerInterstitialAd: React.FC<PropellerInterstitialAdProps> = ({
 
   return (
     <div 
-      className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 safe-area-insets z-[9999]"
+      className="fixed inset-0 flex items-center justify-center p-4 z-[9999]"
       style={{
         position: 'fixed',
         top: 0,
         left: 0,
+        right: 0,
+        bottom: 0,
         width: '100vw',
         height: '100vh',
         zIndex: 9999,
-        display: 'flex',
-        backgroundColor: 'rgba(0, 0, 0, 0.8)',
+        backgroundColor: 'rgba(0, 0, 0, 0.95)',
         paddingTop: 'env(safe-area-inset-top)',
         paddingBottom: 'env(safe-area-inset-bottom)',
         paddingLeft: 'env(safe-area-inset-left)',
         paddingRight: 'env(safe-area-inset-right)'
       }}
     >
-      <div className="bg-gradient-to-br from-white to-gray-50 rounded-xl max-w-[95vw] md:max-w-5xl lg:max-w-6xl w-full max-h-[90vh] overflow-hidden shadow-2xl">
+      {/* Close button and countdown - ABOVE ad content */}
+      <div className="absolute top-4 right-4 z-50 flex flex-col sm:flex-row items-end sm:items-center gap-2 sm:gap-3">
+        {/* Countdown */}
+        {!canSkip && remainingTime > 0 && (
+          <div className="bg-black bg-opacity-70 text-white px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium order-2 sm:order-1">
+            Skip in {remainingTime}s
+          </div>
+        )}
         
-        {/* Close button and countdown */}
-        <div className="absolute top-4 right-4 z-50 flex flex-col sm:flex-row items-end sm:items-center gap-2 sm:gap-3">
-          {/* Countdown */}
-          {!canSkip && remainingTime > 0 && (
-            <div className="bg-black bg-opacity-70 text-white px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium order-2 sm:order-1">
-              Skip in {remainingTime}s
-            </div>
-          )}
-          
-          {/* Close button */}
-          <button
-            onClick={canSkip ? handleSkip : handleClose}
-            className="bg-black bg-opacity-50 hover:bg-opacity-70 text-white rounded-full p-3 sm:p-2 transition-all duration-200 order-1 sm:order-2 min-w-[44px] min-h-[44px] flex items-center justify-center"
-            aria-label={canSkip ? "Skip ad" : "Close ad"}
-          >
-            <X size={20} />
-          </button>
-        </div>
+        {/* Close button */}
+        <button
+          onClick={canSkip ? handleSkip : handleClose}
+          className="bg-black bg-opacity-50 hover:bg-opacity-70 text-white rounded-full p-3 sm:p-2 transition-all duration-200 order-1 sm:order-2 min-w-[44px] min-h-[44px] flex items-center justify-center"
+          aria-label={canSkip ? "Skip ad" : "Close ad"}
+        >
+          <X size={20} />
+        </button>
+      </div>
 
-        {/* Ad content */}
-        <div className="relative w-full h-[70vh] max-h-[500px] flex items-center justify-center">
-          {isLoading && (
-            <div className="flex flex-col items-center justify-center text-center">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mb-4"></div>
-              <p className="text-gray-600 text-lg">Loading advertisement...</p>
-            </div>
-          )}
-          
-          {hasError && (
-            <div className="flex flex-col items-center justify-center text-center p-8">
-              <div className="text-gray-500 text-lg mb-4">Advertisement unavailable</div>
-              <button
-                onClick={onClose}
-                className="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2 rounded-lg transition-colors"
-              >
-                Continue
-              </button>
-            </div>
-          )}
-          
-          {isVisible && (
-            <div 
-              ref={adRef}
-              className="w-full h-full"
-              style={{ minHeight: '300px' }}
+      {/* Ad content container - NO white background wrapper */}
+      <div className="relative w-full max-w-[95vw] md:max-w-5xl lg:max-w-6xl h-[70vh] max-h-[600px] flex items-center justify-center">
+        {isLoading && (
+          <div className="flex flex-col items-center justify-center text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-400 mb-4"></div>
+            <p className="text-gray-300 text-lg">Loading advertisement...</p>
+          </div>
+        )}
+        
+        {hasError && (
+          <div className="flex flex-col items-center justify-center text-center p-8 bg-gray-900 rounded-xl">
+            <div className="text-gray-300 text-lg mb-4">Advertisement unavailable</div>
+            <button
+              onClick={onClose}
+              className="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2 rounded-lg transition-colors"
             >
-              {/* PropellerAds content will be injected here */}
-            </div>
-          )}
-        </div>
+              Continue
+            </button>
+          </div>
+        )}
+        
+        {isVisible && (
+          <div 
+            ref={adRef}
+            className="w-full h-full flex items-center justify-center"
+            style={{ minHeight: '300px' }}
+          >
+            {/* PropellerAds OR Mock content will render here directly */}
+          </div>
+        )}
       </div>
     </div>
   );

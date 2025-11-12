@@ -30,7 +30,8 @@ export class MockPropellerAds {
     this.ads.set(config.container, config);
     
     // Simulate ad loading with random delay
-    const delay = Math.random() * 2000 + 500; // 500ms to 2.5s
+    const baseDelay = Math.random() * 2000 + 500; // 500ms to 2.5s
+    const delay = baseDelay + 100; // Add extra 100ms to ensure DOM is ready
     
     const timeoutId = setTimeout(() => {
       // Check if ad config still exists (component might have unmounted)
@@ -38,35 +39,53 @@ export class MockPropellerAds {
         return; // Component unmounted, don't proceed
       }
       
+      // Retry mechanism with exponential backoff
+      const maxRetries = 3;
+      let retryCount = 0;
+      
+      const tryInit = (): void => {
       const container = document.getElementById(config.container);
-      if (!container) {
-        config.onError?.(new Error('Container not found'));
-        this.ads.delete(config.container);
-        return;
-      }
-      
-      // Verify container is still in the DOM
-      if (!container.isConnected) {
-        config.onError?.(new Error('Container not connected to DOM'));
-        this.ads.delete(config.container);
-        return;
-      }
-      
-      try {
-        // Remove any existing mock ad element (if re-initializing)
-        // Find and remove only the mock ad element, not all children
-        const existingAd = container.querySelector('[data-mock-ad="true"]');
-        if (existingAd) {
-          container.removeChild(existingAd);
+        
+        if (!container) {
+          retryCount++;
+          if (retryCount < maxRetries) {
+            // Retry with exponential backoff: 50ms, 100ms, 200ms
+            setTimeout(tryInit, 50 * Math.pow(2, retryCount - 1));
+            return;
+          }
+          // Max retries reached
+          config.onError?.(new Error(`Container not found after ${maxRetries} retries: ${config.container}`));
+          this.ads.delete(config.container);
+          return;
         }
         
+        // Verify container is still in the DOM
+        if (!container.isConnected) {
+          retryCount++;
+          if (retryCount < maxRetries) {
+            setTimeout(tryInit, 50 * Math.pow(2, retryCount - 1));
+            return;
+          }
+          config.onError?.(new Error(`Container not connected to DOM after ${maxRetries} retries: ${config.container}`));
+          this.ads.delete(config.container);
+          return;
+        }
+      
+        try {
+          // Remove any existing mock ad element (if re-initializing)
+          // Find and remove only the mock ad element, not all children
+          const existingAd = container.querySelector('[data-mock-ad="true"]');
+          if (existingAd) {
+            container.removeChild(existingAd);
+          }
+          
         // Create mock ad content
         const mockAd = this.createMockAd(config);
-        // Mark the ad element so we can identify it later
-        mockAd.setAttribute('data-mock-ad', 'true');
-        
-        // Append the mock ad to the dedicated container
-        // This container is not managed by React, so it's safe to append directly
+          // Mark the ad element so we can identify it later
+          mockAd.setAttribute('data-mock-ad', 'true');
+          
+          // Append the mock ad to the dedicated container
+          // This container is not managed by React, so it's safe to append directly
         container.appendChild(mockAd);
         
         // Track click events
@@ -75,11 +94,15 @@ export class MockPropellerAds {
         });
         
         config.onLoad?.();
-      } catch (error) {
-        console.error('Error creating mock ad:', error);
-        config.onError?.(error instanceof Error ? error : new Error('Unknown error'));
-        this.ads.delete(config.container);
+        } catch (error) {
+          console.error('Error creating mock ad:', error);
+          config.onError?.(error instanceof Error ? error : new Error('Unknown error'));
+          this.ads.delete(config.container);
       }
+      };
+      
+      // Start retry mechanism
+      tryInit();
     }, delay);
     
     // Store timeout ID for potential cleanup
@@ -88,9 +111,14 @@ export class MockPropellerAds {
 
   private createMockAd(config: MockAdConfig): HTMLElement {
     const adContainer = document.createElement('div');
+    // Use max-width instead of fixed width to prevent letterboxing
+    // On desktop, ensure ad displays at full size (728x50)
+    // On mobile, scale down proportionally
+    const isDesktop = config.width >= 728;
     adContainer.style.cssText = `
-      width: ${config.width}px;
+      ${isDesktop ? `width: ${config.width}px;` : 'width: 100%; max-width: ${config.width}px;'}
       height: ${config.height}px;
+      margin: 0 auto;
       background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
       border-radius: 8px;
       display: flex;
@@ -103,7 +131,7 @@ export class MockPropellerAds {
       transition: transform 0.2s ease;
       box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
       position: relative;
-      overflow: hidden;
+      overflow: visible;
     `;
 
     // Add hover effect
@@ -117,31 +145,31 @@ export class MockPropellerAds {
 
     // Create ad content based on size
     if (config.width >= 728) {
-      // Desktop banner
+      // Desktop banner (50px height - reduced padding to fit)
       adContainer.innerHTML = `
-        <div style="text-align: center; padding: 20px;">
-          <div style="font-size: 18px; font-weight: 600; margin-bottom: 8px;">
+        <div style="text-align: center; padding: 8px 20px; height: 100%; display: flex; flex-direction: column; justify-content: center;">
+          <div style="font-size: 14px; font-weight: 600; margin-bottom: 2px; line-height: 1.2;">
             🎬 Discover Amazing Movies
           </div>
-          <div style="font-size: 14px; opacity: 0.9;">
+          <div style="font-size: 11px; opacity: 0.9; line-height: 1.2;">
             Find your next favorite film with our AI-powered recommendations
           </div>
-          <div style="margin-top: 12px; font-size: 12px; opacity: 0.7;">
+          <div style="margin-top: 3px; font-size: 9px; opacity: 0.7; line-height: 1.1;">
             Mock Ad - ${config.adUnitId}
           </div>
         </div>
       `;
     } else if (config.width >= 320) {
-      // Mobile banner
+      // Mobile banner (100px height - increased padding and font sizes)
       adContainer.innerHTML = `
-        <div style="text-align: center; padding: 12px;">
-          <div style="font-size: 14px; font-weight: 600; margin-bottom: 4px;">
+        <div style="text-align: center; padding: 20px 12px;">
+          <div style="font-size: 16px; font-weight: 600; margin-bottom: 6px;">
             🎬 Movie Picker
           </div>
-          <div style="font-size: 11px; opacity: 0.9;">
+          <div style="font-size: 13px; opacity: 0.9; margin-bottom: 4px;">
             Find your next movie
           </div>
-          <div style="margin-top: 8px; font-size: 10px; opacity: 0.7;">
+          <div style="margin-top: 8px; font-size: 11px; opacity: 0.7;">
             Mock Ad
           </div>
         </div>
@@ -198,6 +226,7 @@ export class MockPropellerAds {
 export class MockInterstitialAd {
   private static instance: MockInterstitialAd;
   private isShowing = false;
+  public currentAd: HTMLElement | null = null;
 
   private constructor() {}
 
@@ -219,31 +248,18 @@ export class MockInterstitialAd {
 
     this.isShowing = true;
     
-    // Create modal overlay
-    const overlay = document.createElement('div');
-    overlay.style.cssText = `
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: rgba(0, 0, 0, 0.9);
-      z-index: 9999;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    `;
+    // Note: PropellerInterstitialAd component already creates the overlay
+    // We just need to render content - the component will handle showing/hiding
 
-    // Create ad content
+    // Create ad content directly (no extra overlay needed)
     const adContent = document.createElement('div');
+    adContent.id = 'mock-interstitial-content';
     adContent.style.cssText = `
-      width: 90%;
-      max-width: 400px;
-      height: 80%;
-      max-height: 600px;
+      width: 100%;
+      max-width: 600px;
+      height: 100%;
       background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      border-radius: 16px;
+      border-radius: 20px;
       display: flex;
       flex-direction: column;
       align-items: center;
@@ -253,6 +269,7 @@ export class MockInterstitialAd {
       padding: 40px 20px;
       position: relative;
       box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     `;
 
     adContent.innerHTML = `
@@ -264,7 +281,7 @@ export class MockInterstitialAd {
         Get personalized movie recommendations powered by AI. 
         Find hidden gems and blockbuster hits tailored to your taste.
       </p>
-      <div style="display: flex; gap: 12px; margin-top: 24px;">
+      <div style="display: flex; gap: 12px; margin-top: 24px; flex-wrap: wrap; justify-content: center;">
         <button id="mock-ad-close" style="
           background: rgba(255, 255, 255, 0.2);
           border: 2px solid rgba(255, 255, 255, 0.3);
@@ -275,6 +292,7 @@ export class MockInterstitialAd {
           font-weight: 600;
           cursor: pointer;
           transition: all 0.2s ease;
+          min-width: 120px;
         ">Skip Ad</button>
         <button id="mock-ad-action" style="
           background: white;
@@ -286,6 +304,7 @@ export class MockInterstitialAd {
           font-weight: 600;
           cursor: pointer;
           transition: all 0.2s ease;
+          min-width: 120px;
         ">Learn More</button>
       </div>
       <div style="
@@ -299,28 +318,34 @@ export class MockInterstitialAd {
         font-size: 12px;
         opacity: 0.7;
       ">
-        Mock Interstitial Ad
+        Mock Ad
       </div>
     `;
 
-    overlay.appendChild(adContent);
-    document.body.appendChild(overlay);
+    // IMPORTANT: Don't append to body - this creates double overlay
+    // Instead, wait for the PropellerInterstitialAd component's container
+    // and inject content there
+    this.currentAd = adContent;
 
     // Add button interactions
     const closeBtn = adContent.querySelector('#mock-ad-close');
     const actionBtn = adContent.querySelector('#mock-ad-action');
 
     const closeAd = () => {
-      document.body.removeChild(overlay);
+      if (adContent && adContent.parentNode) {
+        adContent.parentNode.removeChild(adContent);
+      }
       this.isShowing = false;
+      this.currentAd = null;
       config.onClose?.();
     };
 
     closeBtn?.addEventListener('click', closeAd);
     actionBtn?.addEventListener('click', () => {
-      // Simulate action
-      console.log('Mock ad action clicked');
-      closeAd();
+      // Simulate ad click - should track but not close (real ads navigate to advertiser)
+      console.log('Mock ad action clicked - would navigate to advertiser in production');
+      // Don't close the ad - clicking ad content should not skip it
+      // Only the skip button should close it
     });
 
     // Auto-close after delay

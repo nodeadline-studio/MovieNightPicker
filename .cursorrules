@@ -1,0 +1,43 @@
+{
+  "projectContext": {
+    "name": "MovieNightPicker",
+    "type": "B2C Ad-Based Movie Recommendation App",
+    "techStack": ["React", "TypeScript", "Vite", "Tailwind CSS"],
+    "status": "Complete, add ads then sell",
+    "priority": "MEDIUM - Tier 3 project",
+    "keyFiles": [
+      "src/ - React application",
+      "vite.config.ts - Build configuration",
+      "tailwind.config.js - Tailwind config"
+    ]
+  },
+  "rules": {
+    "references": {
+      "masterRules": "../../.cursorrules - See root .cursorrules for all agent rules",
+      "projectPlan": "Docs/plans/movienightpicker/PLAN.md",
+      "statusDoc": "README.md"
+    },
+    "projectSpecific": {
+      "documentationProtocol": {
+        "primaryStatusFile": "README.md",
+        "archiveLocation": "docs/archive/ if exists"
+      },
+      "apiConnectivity": {
+        "frontendPort": "Check vite.config.ts or package.json scripts",
+        "corsCheck": "Verify CORS if backend exists"
+      },
+      "validationGates": {
+        "build": "npm run build",
+        "lint": "npm run lint",
+        "type": "npm run type-check || tsc --noEmit",
+        "visual": "Browser tools mandatory, test at 375/768/1024/1440px"
+      }
+    },
+    "criticalReminders": [
+      "Add ads before selling on code marketplaces",
+      "Update existing docs, don't create new analysis files",
+      "Test ad integration thoroughly"
+    ]
+  }
+}
+

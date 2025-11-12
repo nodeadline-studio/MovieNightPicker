@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { useMediaQuery } from 'react-responsive';
-import { Film, ChevronDown, X } from 'lucide-react'; 
+import { Film } from 'lucide-react'; 
 import { useMovieContext } from '../context/MovieContext';
 import { usePickCounter } from '../hooks/usePickCounter';
 import { timers } from '../utils/timers';
@@ -37,6 +37,13 @@ const Home: React.FC = () => {
   const bottomRef = useRef<HTMLDivElement>(null);
   const pickCounter = usePickCounter();
   const [filterPanelOpen, setFilterPanelOpen] = useState(false);
+  const [externalButton, setExternalButton] = useState<React.ReactNode>(null);
+  const isDesktop = useMediaQuery({ minWidth: 768 });
+
+  // Memoize button render callback to prevent infinite loop
+  const handleButtonRender = useCallback((button: React.ReactNode) => {
+    setExternalButton(button);
+  }, []);
 
   const { 
     currentMovie, 
@@ -223,7 +230,7 @@ const Home: React.FC = () => {
                   <h2 className="text-xl md:text-2xl font-semibold mb-4 bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">
                     Can't decide what to watch?
             </h2>
-                  <p className="text-gray-300 text-base md:text-lg leading-relaxed" itemProp="description">
+                  <p className="text-gray-300 text-[0.875rem] md:text-lg leading-relaxed" itemProp="description">
                     Let our smart movie picker help you discover your next favorite film. 
                     Filter by genre, year, rating and more to find the perfect movie for your mood.
             </p>
@@ -234,9 +241,9 @@ const Home: React.FC = () => {
         </header>
 
 
-        <main className="flex-1 px-4 py-0 md:py-2">
+        <main className="flex-1 px-4 py-0 md:py-1" style={{ minHeight: 0 }}>
           <div className="max-w-6xl mx-auto h-full">
-            <div className="flex flex-col items-center h-full">
+            <div className="flex flex-col items-center h-full" style={{ minHeight: 0 }}>
               {/* Movie Card Section - Mobile optimized for single screen */}
               <div className="w-full flex-1 flex items-center justify-center min-h-0 -mt-2 md:mt-0">
                 {loadingState === LoadingState.LOADING ? (
@@ -244,6 +251,9 @@ const Home: React.FC = () => {
                 ) : error ? (
                   <NoMoviesFound />
                 ) : currentMovie ? (
+                  <div className="w-full flex flex-col" style={{ maxHeight: '100%', minHeight: 0 }}>
+                    {/* Mobile: Ensure content fits above footer - adjust maxHeight to account for footer */}
+                    <div className="flex-1 min-h-0" style={{ maxHeight: 'calc(100% - 10rem)' }}>
                   <MovieCard 
                     movie={currentMovie} 
                     isInWatchlist={isInWatchlist} 
@@ -252,20 +262,48 @@ const Home: React.FC = () => {
                     isButtonFading={isButtonFading}
                     onShowDescription={handleShowDescription}
                     onHideDescription={handleHideDescription}
-                  />
-                ) : (
-                  <PlaceholderMovieCard />
-                )}
+                        renderButtonOutside={true}
+                        onButtonRender={handleButtonRender}
+                      />
+                    </div>
+                    
+                    {/* Desktop: Ad above button - consistent spacing */}
+                    <div className="w-full mt-3 hidden md:block flex-shrink-0">
+                      <PropellerBannerAd 
+                        placement="movie-card" 
+                        className="w-full"
+                        onError={() => console.log('Movie card ad failed to load')}
+                        onSuccess={() => console.log('Movie card ad loaded successfully')}
+                      />
               </div>
               
-              {/* PropellerAds Banner Ad below movie card */}
-              <div className="w-full mt-6">
+                    {/* Desktop: Button below ad - closer spacing (ad is shorter than card) */}
+                    {externalButton && (
+                      <div className="hidden md:block mt-2 flex-shrink-0">
+                        {externalButton}
+                      </div>
+                    )}
+                    
+                    {/* Mobile: Button below movie card - consistent spacing */}
+                    {externalButton && (
+                      <div className="block md:hidden mt-3 flex-shrink-0">
+                        {externalButton}
+                      </div>
+                    )}
+                    
+                    {/* Mobile: Ad below button - consistent spacing */}
+                    <div className="w-full mt-3 block md:hidden flex-shrink-0">
                 <PropellerBannerAd 
                   placement="movie-card" 
                   className="w-full"
                   onError={() => console.log('Movie card ad failed to load')}
                   onSuccess={() => console.log('Movie card ad loaded successfully')}
                 />
+                    </div>
+                  </div>
+                ) : (
+                  <PlaceholderMovieCard />
+                )}
               </div>
             </div>
           </div>
