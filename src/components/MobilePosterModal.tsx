@@ -59,7 +59,6 @@ const MobilePosterModal: React.FC<MobilePosterModalProps> = ({ movie, isOpen, on
         bottom: 0,
         width: '100vw',
         height: '100vh',
-        paddingTop: 'max(1rem, env(safe-area-inset-top))',
         paddingBottom: 'max(1rem, env(safe-area-inset-bottom))',
         paddingLeft: 'max(1rem, env(safe-area-inset-left))',
         paddingRight: 'max(1rem, env(safe-area-inset-right))'
@@ -68,6 +67,9 @@ const MobilePosterModal: React.FC<MobilePosterModalProps> = ({ movie, isOpen, on
       <div 
         className="relative w-full max-w-sm h-[80vh] overflow-hidden bg-gray-900 rounded-xl border border-gray-700"
         onClick={(e) => e.stopPropagation()}
+        style={{
+          marginTop: 'max(1rem, env(safe-area-inset-top))'
+        }}
       >
         {/* Close button */}
         <button

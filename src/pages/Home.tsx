@@ -253,7 +253,7 @@ const Home: React.FC = () => {
                 ) : currentMovie ? (
                   <div className="w-full flex flex-col" style={{ maxHeight: '100%', minHeight: 0 }}>
                     {/* Mobile: Ensure content fits above footer - adjust maxHeight to account for footer */}
-                    <div className="flex-1 min-h-0" style={{ maxHeight: 'calc(100% - 10rem)' }}>
+                    <div className="flex-1 min-h-0" style={{ maxHeight: 'calc(100% - 9rem)' }}>
                   <MovieCard 
                     movie={currentMovie} 
                     isInWatchlist={isInWatchlist} 

@@ -39,6 +39,7 @@ const PropellerInterstitialAd: React.FC<PropellerInterstitialAdProps> = ({
   const [isLoading, setIsLoading] = useState(true);
   const [hasError, setHasError] = useState(false);
   const [isVisible, setIsVisible] = useState(false);
+  const [isUsingMockAd, setIsUsingMockAd] = useState(false);
   const adRef = useRef<HTMLDivElement>(null);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -73,7 +74,7 @@ const PropellerInterstitialAd: React.FC<PropellerInterstitialAdProps> = ({
     }
   }, [onClose]);
 
-  // Load and display the interstitial ad
+  // Load and display the interstitial ad - try real ad first, fallback to mock
   const loadAd = useCallback(async () => {
     try {
       setIsLoading(true);
@@ -85,105 +86,122 @@ const PropellerInterstitialAd: React.FC<PropellerInterstitialAdProps> = ({
         return;
       }
 
-      // Check if we're in development mode
-      const isDevelopment = process.env.NODE_ENV === 'development' || 
-                           typeof window !== 'undefined' && window.location.hostname === 'localhost';
+      let realAdLoaded = false;
 
-      if (isDevelopment) {
-        // Use mock interstitial ad
-        const mockInterstitial = MockInterstitialAd.getInstance();
-        mockInterstitial.show({
-          onLoad: () => {
-            setIsLoading(false);
-            setIsVisible(true);
-            PropellerAdsAnalytics.trackAdShown('interstitial', 'movie-load');
-            onSuccess?.();
-          },
-          onClose: () => {
-            onClose();
-          },
-          onError: (error: Error) => {
-            console.error('Mock interstitial error:', error);
-            setHasError(true);
-            setIsLoading(false);
-            PropellerAdsAnalytics.trackAdError('interstitial', 'movie-load', error.message || 'Unknown error');
-            onError?.();
-          },
-          skipDelay: PROPELLER_ADS_CONFIG.display.interstitial.skipDelay,
-          autoCloseAfter: PROPELLER_ADS_CONFIG.display.interstitial.autoCloseAfter
+      // Always try real ad first (even in development)
+      try {
+        // Load PropellerAds script if not already loaded
+        const loader = PropellerAdsLoader.getInstance();
+        await loader.loadScript();
+
+        // Wait for PropellerAds to be available (with timeout)
+        await new Promise((resolve, reject) => {
+          const timeout = setTimeout(() => {
+            clearInterval(checkInterval);
+            reject(new Error('PropellerAds timeout'));
+          }, 3000);
+          
+          const checkInterval = setInterval(() => {
+            if ((window as any).propellerads) {
+              clearInterval(checkInterval);
+              clearTimeout(timeout);
+              resolve(true);
+            }
+          }, 100);
         });
-        return;
-      }
 
-      // Load PropellerAds script if not already loaded
-      const loader = PropellerAdsLoader.getInstance();
-      await loader.loadScript();
+        // Generate unique container ID
+        const containerId = AdPlacement.generateAdId('interstitial');
+        if (adRef.current) {
+          adRef.current.id = containerId;
+        }
 
-      // Wait for PropellerAds to be available
-      if (!(window as any).propellerads) {
-        throw new Error('PropellerAds not available');
-      }
-
-      // Generate unique container ID
-      const containerId = AdPlacement.generateAdId('interstitial');
-      if (adRef.current) {
-        adRef.current.id = containerId;
-      }
-
-      // Initialize the interstitial ad
-      if ((window as any).propellerads && (window as any).propellerads.init) {
-        (window as any).propellerads.init({
-          container: containerId,
-          adUnitId: PROPELLER_ADS_CONFIG.adUnits.interstitial.movieLoad,
-          publisherId: PROPELLER_ADS_CONFIG.publisherId,
-          type: 'interstitial',
-          onLoad: () => {
-            setIsLoading(false);
-            setIsVisible(true);
-            PropellerAdsAnalytics.trackAdShown('interstitial', 'movie-load');
-            onSuccess?.();
-          },
-          onError: (error: Error) => {
-            console.error('PropellerAds interstitial error:', error);
-            setHasError(true);
-            setIsLoading(false);
-            PropellerAdsAnalytics.trackAdError('interstitial', 'movie-load', error.message || 'Unknown error');
-            onError?.();
-          },
-          onClick: () => {
-            PropellerAdsAnalytics.trackAdClicked('interstitial', 'movie-load');
-          },
-          onClose: () => {
-            onClose();
+        // Initialize the interstitial ad
+        if ((window as any).propellerads && (window as any).propellerads.init) {
+          (window as any).propellerads.init({
+            container: containerId,
+            adUnitId: PROPELLER_ADS_CONFIG.adUnits.interstitial.movieLoad,
+            publisherId: PROPELLER_ADS_CONFIG.publisherId,
+            type: 'interstitial',
+            onLoad: () => {
+              setIsLoading(false);
+              setIsVisible(true);
+              setIsUsingMockAd(false); // Real ad loaded, not using mock
+              realAdLoaded = true;
+              PropellerAdsAnalytics.trackAdShown('interstitial', 'movie-load');
+              onSuccess?.();
+            },
+            onError: (error: Error) => {
+              console.error('PropellerAds interstitial error:', error);
+              // Don't set error state yet - will fallback to mock
+              throw error;
+            },
+            onClick: () => {
+              PropellerAdsAnalytics.trackAdClicked('interstitial', 'movie-load');
+            },
+            onClose: () => {
+              onClose();
+            }
+          });
+          
+          // Wait a bit to see if real ad loads
+          await new Promise(resolve => setTimeout(resolve, 2000));
+          
+          if (realAdLoaded) {
+            return; // Real ad loaded successfully
           }
-        });
-      } else {
-        throw new Error('PropellerAds initialization failed');
+        } else {
+          throw new Error('PropellerAds initialization failed');
+        }
+      } catch (realAdError) {
+        console.log('Real ad failed, falling back to mock:', realAdError);
+        // Fall through to mock fallback
       }
+
+      // Fallback to mock only if real ad failed
+      setIsLoading(false); // Hide loading spinner before showing mock
+      setIsUsingMockAd(true); // Mark that we're using mock ad
+      const mockInterstitial = MockInterstitialAd.getInstance();
+      mockInterstitial.show({
+        onLoad: () => {
+          setIsVisible(true);
+          PropellerAdsAnalytics.trackAdShown('interstitial', 'movie-load');
+          onSuccess?.();
+        },
+        onClose: () => {
+          onClose();
+        },
+        onError: (error: Error) => {
+          console.error('Mock interstitial error:', error);
+          setHasError(true);
+          PropellerAdsAnalytics.trackAdError('interstitial', 'movie-load', error.message || 'Unknown error');
+          onError?.();
+        },
+        skipDelay: PROPELLER_ADS_CONFIG.display.interstitial.skipDelay,
+        autoCloseAfter: PROPELLER_ADS_CONFIG.display.interstitial.autoCloseAfter
+      });
 
     } catch (error) {
-      console.error('Error loading PropellerAds interstitial:', error);
+      console.error('Error loading interstitial ad:', error);
       setHasError(true);
       setIsLoading(false);
       PropellerAdsAnalytics.trackAdError('interstitial', 'movie-load', error instanceof Error ? error.message : 'Unknown error');
       onError?.();
     }
-  }, [onError, onSuccess]);
+  }, [onError, onSuccess, onClose]);
 
   // Load ad on mount
   useEffect(() => {
     loadAd();
   }, [loadAd]);
 
-  // Inject mock ad content when visible (development mode only)
+  // Inject mock ad content when visible (only if using mock, not real ad)
   useEffect(() => {
-    if (isVisible && !hasError) {
-      const isDevelopment = process.env.NODE_ENV === 'development' || 
-                           typeof window !== 'undefined' && window.location.hostname === 'localhost';
+    if (isVisible && !hasError && isUsingMockAd && adRef.current) {
+      const mockInterstitial = MockInterstitialAd.getInstance();
       
-      if (isDevelopment && adRef.current) {
-        const mockInterstitial = MockInterstitialAd.getInstance();
-        
+      // Only inject if mock ad exists and we're using mock (not real ad)
+      if (mockInterstitial.currentAd) {
         // Use requestAnimationFrame for reliable DOM timing
         const injectAd = () => {
           if (adRef.current && mockInterstitial.currentAd) {
@@ -219,7 +237,7 @@ const PropellerInterstitialAd: React.FC<PropellerInterstitialAdProps> = ({
         }
       }
     }
-  }, [isVisible, hasError, onClose]);
+  }, [isVisible, hasError, isUsingMockAd, onClose]);
 
   // Handle skip button click
   const handleSkip = () => {
@@ -258,18 +276,21 @@ const PropellerInterstitialAd: React.FC<PropellerInterstitialAdProps> = ({
       }}
     >
       {/* Close button and countdown - ABOVE ad content */}
-      <div className="absolute top-4 right-4 z-50 flex flex-col sm:flex-row items-end sm:items-center gap-2 sm:gap-3">
-        {/* Countdown */}
+      <div className="absolute top-4 right-4 z-50 flex flex-row items-center gap-2">
+        {/* Countdown - LEFT of X button */}
         {!canSkip && remainingTime > 0 && (
-          <div className="bg-black bg-opacity-70 text-white px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium order-2 sm:order-1">
+          <div className="bg-black bg-opacity-70 text-white px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium">
             Skip in {remainingTime}s
           </div>
         )}
         
-        {/* Close button */}
+        {/* Close button - RIGHT, grayed when disabled */}
         <button
           onClick={canSkip ? handleSkip : handleClose}
-          className="bg-black bg-opacity-50 hover:bg-opacity-70 text-white rounded-full p-3 sm:p-2 transition-all duration-200 order-1 sm:order-2 min-w-[44px] min-h-[44px] flex items-center justify-center"
+          disabled={!canSkip}
+          className={`bg-black bg-opacity-50 hover:bg-opacity-70 text-white rounded-full p-3 sm:p-2 transition-all duration-200 min-w-[44px] min-h-[44px] flex items-center justify-center ${
+            !canSkip ? 'opacity-50 cursor-not-allowed' : ''
+          }`}
           aria-label={canSkip ? "Skip ad" : "Close ad"}
         >
           <X size={20} />

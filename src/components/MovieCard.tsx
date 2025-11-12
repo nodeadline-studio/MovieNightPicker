@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useMediaQuery } from 'react-responsive';
 import { Movie } from '../types';
 import { getImageUrl, isInTheaters } from '../config/api';
@@ -127,6 +127,31 @@ const MovieCard: React.FC<MovieCardProps> = ({
     }
   }, [renderButtonOutside, onButtonRender]);
   
+  // Dynamic text container height calculation for desktop
+  const textContainerHeight = useMemo(() => {
+    if (typeof window === 'undefined' || isMobile || isTextExpanded) return 'auto';
+    const viewportHeight = window.innerHeight;
+    const reserved = 400; // header + poster + buttons + ad + padding
+    const available = viewportHeight - reserved;
+    return available > 200 ? `${available * 0.6}px` : '200px';
+  }, [isMobile, isTextExpanded]);
+
+  // Dynamic font sizing based on text length and available space
+  const textSizeClasses = useMemo(() => {
+    if (typeof window === 'undefined') {
+      return 'text-sm md:text-base lg:text-lg';
+    }
+    const textLength = movie.overview?.length || 0;
+    const viewportHeight = window.innerHeight;
+    const availableHeight = viewportHeight - 400; // Reserve space for header, poster, buttons, ad, padding
+    
+    // For long text (> 500 chars) and limited height (< 600px), use smaller font
+    if (textLength > 500 && availableHeight < 600) {
+      return 'text-xs md:text-sm lg:text-base';
+    }
+    return 'text-sm md:text-base lg:text-lg';
+  }, [movie.overview]);
+
   const formatDate = (dateString: string) => {
     if (!dateString) return 'Unknown';
     const date = new Date(dateString);
@@ -138,6 +163,17 @@ const MovieCard: React.FC<MovieCardProps> = ({
     return new Date(dateString).getFullYear().toString();
   };
 
+  // Calculate max height for desktop movie card (10% reduction)
+  const desktopCardMaxHeight = useMemo(() => {
+    if (typeof window === 'undefined' || isMobile) return 'none';
+    const viewportHeight = window.innerHeight;
+    // Reserve: header (~80px) + ad (50px) + button (~60px) + footer (~60px) + spacing (~40px) = ~290px
+    // Reduce by 10%: use 90% of available space
+    const reserved = 290;
+    const available = viewportHeight - reserved;
+    return available > 400 ? `${available * 0.9}px` : 'none';
+  }, [isMobile]);
+
   return (
     <div className="w-full max-w-[95vw] md:max-w-5xl lg:max-w-6xl mx-auto space-y-2 md:space-y-4">
       {/* Movie Card */}
@@ -148,7 +184,9 @@ const MovieCard: React.FC<MovieCardProps> = ({
         <div className="relative bg-gradient-to-br from-slate-900/95 via-gray-900/95 to-slate-800/95 
                        backdrop-blur-xl border border-white/10 rounded-3xl overflow-hidden 
                        shadow-2xl ring-1 ring-white/5 transform transition-transform duration-300 
-                       hover:scale-[1.01] flex-1 min-h-0">
+                       hover:scale-[1.01] flex flex-col md:flex-row"
+                       style={!isMobile ? { maxHeight: desktopCardMaxHeight, overflowY: 'auto' } : {}}
+        >
           
           {/* About Button - Positioned relative to movie card */}
           {showDescriptionButton && (
@@ -362,40 +400,38 @@ const MovieCard: React.FC<MovieCardProps> = ({
                 {/* Overview */}
                 <div className="mb-2 md:mb-4 flex-1 min-h-0">
                   <div 
-                    className={`overflow-hidden transition-all duration-300 ease-out ${
+                    className={`relative transition-all duration-300 ease-out ${
                       isTextExpanded 
                         ? 'max-h-[800px]' // Large enough for any text
-                        : 'max-h-[120px]' // Collapsed height
-                    }`}
+                        : isMobile 
+                          ? 'max-h-[120px]' // Collapsed height on mobile only
+                          : '' // No max-height on desktop when collapsed
+                    } ${isMobile && shouldShowTextExpansion ? 'cursor-pointer overflow-hidden' : isMobile ? 'overflow-hidden' : 'overflow-y-auto'}`}
                     style={{
-                      transformOrigin: 'top center'
+                      transformOrigin: 'top center',
+                      ...(isMobile ? {} : { 
+                        maxHeight: isTextExpanded ? 'none' : textContainerHeight,
+                      })
                     }}
+                    onClick={isMobile && shouldShowTextExpansion ? (e) => {
+                      e.stopPropagation();
+                      setIsTextExpanded(!isTextExpanded);
+                    } : undefined}
                   >
-                    <p className="text-gray-300 text-sm md:text-base lg:text-lg leading-relaxed">
+                    <p className={`text-gray-300 ${textSizeClasses} leading-relaxed`}>
                       {movie.overview}
-                    </p>
-                  </div>
-                  
-                  {/* Show More/Less button - mobile only */}
-                  {shouldShowTextExpansion && isMobile && (
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setIsTextExpanded(!isTextExpanded);
-                      }}
-                      className="text-indigo-400 hover:text-indigo-300 text-sm mt-2 flex items-center gap-1 transition-colors md:hidden"
-                    >
-                      {isTextExpanded ? (
-                        <>
-                          Show Less <ChevronUp size={16} />
-                        </>
-                      ) : (
-                        <>
-                          Show More <ChevronDown size={16} />
-                        </>
+                      {!isTextExpanded && shouldShowTextExpansion && isMobile && (
+                        <span className="text-gray-400 ml-2">...</span>
                       )}
-                    </button>
-                  )}
+                    </p>
+                    
+                    {/* Label in bottom-right (mobile only) */}
+                    {shouldShowTextExpansion && isMobile && (
+                      <div className="absolute bottom-2 right-2 text-xs text-indigo-400/80 pointer-events-none">
+                        {isTextExpanded ? 'Show less' : 'Show more'}
+                      </div>
+                    )}
+                  </div>
                 </div>
               
               {/* Action Buttons - Horizontal Layout */}
