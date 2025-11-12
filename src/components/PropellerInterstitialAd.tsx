@@ -42,6 +42,7 @@ const PropellerInterstitialAd: React.FC<PropellerInterstitialAdProps> = ({
   const [isUsingMockAd, setIsUsingMockAd] = useState(false);
   const adRef = useRef<HTMLDivElement>(null);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const containerIdRef = useRef<string | null>(null);
 
   // Skip countdown timer - starts when ad loads (isVisible becomes true)
   useEffect(() => {
@@ -94,6 +95,22 @@ const PropellerInterstitialAd: React.FC<PropellerInterstitialAdProps> = ({
         return;
       }
 
+      // CRITICAL: Clean up previous container before creating new one
+      if (adRef.current) {
+        // Remove any existing content
+        adRef.current.innerHTML = '';
+        // Remove any existing ID to prevent conflicts
+        adRef.current.removeAttribute('id');
+        
+        // Wait for DOM to be ready
+        await new Promise(resolve => requestAnimationFrame(resolve));
+      }
+
+      // Ensure container exists and is in DOM
+      if (!adRef.current || !adRef.current.isConnected) {
+        throw new Error('Ad container not ready');
+      }
+
       let realAdLoaded = false;
 
       // Always try real ad first (even in development)
@@ -120,8 +137,26 @@ const PropellerInterstitialAd: React.FC<PropellerInterstitialAdProps> = ({
 
       // Generate unique container ID
       const containerId = AdPlacement.generateAdId('interstitial');
-      if (adRef.current) {
-        adRef.current.id = containerId;
+      containerIdRef.current = containerId;
+
+      // Wait for container to be ready
+      let retries = 0;
+      const maxRetries = 10;
+      while (retries < maxRetries) {
+        if (adRef.current && adRef.current.isConnected) {
+          adRef.current.id = containerId;
+          // Verify container exists in DOM
+          const containerInDOM = document.getElementById(containerId);
+          if (containerInDOM) {
+            break;
+          }
+        }
+        await new Promise(resolve => setTimeout(resolve, 100));
+        retries++;
+      }
+
+      if (retries >= maxRetries || !adRef.current) {
+        throw new Error('Container not ready after retries');
       }
 
       // Initialize the interstitial ad
@@ -271,6 +306,26 @@ const PropellerInterstitialAd: React.FC<PropellerInterstitialAdProps> = ({
       }
     }
   }, [isVisible, hasError, isUsingMockAd, canSkip, remainingTime]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      // Clean up container
+      if (adRef.current) {
+        adRef.current.innerHTML = '';
+        adRef.current.removeAttribute('id');
+      }
+      
+      // Clear container ID reference
+      containerIdRef.current = null;
+      
+      // Clear interval if exists
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
+    };
+  }, []);
 
   // Handle skip button click
   const handleSkip = () => {

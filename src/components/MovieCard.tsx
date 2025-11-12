@@ -223,8 +223,8 @@ const MovieCard: React.FC<MovieCardProps> = ({
           )}
           
           <div className="flex flex-col md:flex-row h-full md:h-auto">
-            {/* Movie Poster - Maintain 3:4 ratio on desktop */}
-            <div className="w-full md:w-2/5 relative aspect-[3/4] max-h-[38vh] sm:max-h-[42vh] md:max-h-none md:flex-shrink-0">
+            {/* Movie Poster - Maintain 2:3 ratio on desktop (original poster ratio) */}
+            <div className="w-full md:w-1/3 relative aspect-[2/3] max-h-[38vh] sm:max-h-[42vh] md:max-h-none md:flex-shrink-0">
               {/* Now Playing Badge */}
               {isInTheaters(movie.release_date) && (
                 <div className="absolute top-2 md:top-4 left-2 md:left-4 bg-gradient-to-r from-green-500 to-emerald-500 
@@ -251,81 +251,81 @@ const MovieCard: React.FC<MovieCardProps> = ({
               >
                 {/* Image wrapper - matches image bounds on desktop with object-contain */}
                 <div className="relative h-full w-full md:h-auto md:flex-shrink-0 overflow-hidden">
-                  {/* Loading state with icon */}
+                {/* Loading state with icon */}
                   <div className="absolute inset-0 bg-gradient-to-br from-gray-800 to-gray-900 flex items-center justify-center pointer-events-none z-0">
-                    <div className="flex flex-col items-center gap-3">
-                      <Film size={48} className="text-gray-500 animate-pulse" />
-                      <div className="text-gray-500 text-sm">Loading...</div>
-                    </div>
+                  <div className="flex flex-col items-center gap-3">
+                    <Film size={48} className="text-gray-500 animate-pulse" />
+                    <div className="text-gray-500 text-sm">Loading...</div>
                   </div>
-                  
-                  <img
+                </div>
+                
+                <img
                     className="w-full h-full object-cover md:object-contain transition-transform duration-500 group-hover:scale-105 relative z-10 pointer-events-auto"
-                    src={getImageUrl(movie.poster_path)}
-                    alt={`Movie poster for ${movie.title}`}
-                    loading="lazy"
+                  src={getImageUrl(movie.poster_path)}
+                  alt={`Movie poster for ${movie.title}`}
+                  loading="lazy"
                     decoding="async"
-                    itemProp="image"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      // Use CSS media query approach for better mobile detection
-                      const isMobile = window.matchMedia('(max-width: 767px)').matches;
-                      if (isMobile) {
+                  itemProp="image"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    // Use CSS media query approach for better mobile detection
+                    const isMobile = window.matchMedia('(max-width: 767px)').matches;
+                    if (isMobile) {
                         e.preventDefault();
-                        setIsPosterModalOpen(true);
-                      }
-                    }}
-                    onLoad={(e) => {
-                      const target = e.target as HTMLImageElement;
-                      target.style.opacity = '1';
-                      // Hide loading state when image loads
-                      const loadingState = target.previousElementSibling as HTMLElement;
-                      if (loadingState) {
-                        loadingState.style.display = 'none';
-                      }
-                    }}
-                    onError={(e) => {
-                      const target = e.target as HTMLImageElement;
-                      // Hide the image and show error state
-                      target.style.display = 'none';
-                      const loadingState = target.previousElementSibling as HTMLElement;
-                      if (loadingState) {
-                        loadingState.innerHTML = `
-                          <div class="flex flex-col items-center justify-center text-gray-400">
-                            <div class="w-16 h-16 bg-gray-700 rounded-lg mb-2 flex items-center justify-center">
-                              <svg class="w-8 h-8" fill="currentColor" viewBox="0 0 20 20">
-                                <path fill-rule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clip-rule="evenodd" />
-                              </svg>
-                            </div>
-                            <span class="text-sm">No Image</span>
+                      setIsPosterModalOpen(true);
+                    }
+                  }}
+                  onLoad={(e) => {
+                    const target = e.target as HTMLImageElement;
+                    target.style.opacity = '1';
+                    // Hide loading state when image loads
+                    const loadingState = target.previousElementSibling as HTMLElement;
+                    if (loadingState) {
+                      loadingState.style.display = 'none';
+                    }
+                  }}
+                  onError={(e) => {
+                    const target = e.target as HTMLImageElement;
+                    // Hide the image and show error state
+                    target.style.display = 'none';
+                    const loadingState = target.previousElementSibling as HTMLElement;
+                    if (loadingState) {
+                      loadingState.innerHTML = `
+                        <div class="flex flex-col items-center justify-center text-gray-400">
+                          <div class="w-16 h-16 bg-gray-700 rounded-lg mb-2 flex items-center justify-center">
+                            <svg class="w-8 h-8" fill="currentColor" viewBox="0 0 20 20">
+                              <path fill-rule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clip-rule="evenodd" />
+                            </svg>
                           </div>
-                        `;
-                      }
-                    }}
-                    style={{
+                          <span class="text-sm">No Image</span>
+                        </div>
+                      `;
+                    }
+                  }}
+                  style={{
                       objectPosition: isMobile ? 'center 20%' : 'left center',
-                      opacity: '0',
-                      transition: 'opacity 0.3s ease-in-out'
-                    }}
-                  />
+                    opacity: '0',
+                    transition: 'opacity 0.3s ease-in-out'
+                  }}
+                />
                   {/* Overlay - matches poster image bounds (only covers image, not empty space) */}
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent z-20" />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent z-20" />
                   
                   {/* Watchlist Button - positioned inside image wrapper on desktop */}
                   {!isMobile && (
                     <div className="absolute top-2 md:top-4 right-2 md:right-2 z-30">
-                      <button
-                        onClick={handleWatchlistToggle}
-                        className={`p-2 md:p-3 rounded-xl md:rounded-2xl backdrop-blur-sm transition-all duration-300 shadow-lg ${
-                          isInWatchlist 
-                            ? 'bg-gradient-to-r from-pink-500 to-rose-500 text-white' 
-                            : 'bg-black/60 text-white hover:bg-black/80'
-                        }`}
-                        aria-label={isInWatchlist ? 'Remove from watchlist' : 'Add to watchlist'}
-                      >
-                        <Heart className={`${isInWatchlist ? 'fill-current' : ''} transition-transform duration-300 hover:scale-110`} size={16} />
-                      </button>
-                    </div>
+                <button
+                  onClick={handleWatchlistToggle}
+                  className={`p-2 md:p-3 rounded-xl md:rounded-2xl backdrop-blur-sm transition-all duration-300 shadow-lg ${
+                    isInWatchlist 
+                      ? 'bg-gradient-to-r from-pink-500 to-rose-500 text-white' 
+                      : 'bg-black/60 text-white hover:bg-black/80'
+                  }`}
+                  aria-label={isInWatchlist ? 'Remove from watchlist' : 'Add to watchlist'}
+                >
+                  <Heart className={`${isInWatchlist ? 'fill-current' : ''} transition-transform duration-300 hover:scale-110`} size={16} />
+                </button>
+              </div>
                   )}
                 </div>
                 
@@ -370,7 +370,7 @@ const MovieCard: React.FC<MovieCardProps> = ({
             </div>
             
             {/* Movie Details - aligned relative to poster on desktop */}
-            <div className="md:w-3/5 md:ml-0 p-3 md:p-6 lg:p-8 flex flex-col flex-1 min-h-0 overflow-y-auto scrollbar-hide">
+            <div className="md:w-2/3 md:ml-0 p-3 md:p-6 lg:p-8 flex flex-col flex-1 min-h-0 overflow-y-auto scrollbar-hide">
               {/* Header */}
               <div className="mb-3 md:mb-6">
                 <h2 className="text-lg md:text-2xl lg:text-4xl font-bold text-white leading-tight mb-2 md:mb-3 

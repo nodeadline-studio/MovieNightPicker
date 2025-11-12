@@ -46,6 +46,7 @@ export const MovieProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [loadingState, setLoadingState] = useState<LoadingState>(LoadingState.IDLE);
   const [filterOptions, setFilterOptions] = useState<FilterOptions>(DEFAULT_FILTER_OPTIONS);
   const [error, setError] = useState<string | null>(null);
+  const [sessionMovies, setSessionMovies] = useState<Set<number>>(new Set());
 
   // Fetch genres
   const { data: genres = [] } = useQuery({
@@ -187,12 +188,9 @@ export const MovieProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setLoadingState(LoadingState.LOADING);
     setError(null);
     
-    // Log cache state before clearing
-    const cacheSize = movieCache.getCacheSize?.() || 0;
-    console.log(`[Cache] getRandomMovie called - Cache size before clear: ${cacheSize}`);
-    
-    movieCache.clear();
-    movieCache.removeSuspiciousMovies(); // Clear any cached movies with suspicious ratings
+    // DON'T clear usedMovies - keep duplicate prevention active
+    // Only remove suspicious movies, but preserve usedMovies tracking
+    movieCache.removeSuspiciousMovies(); // Keep this
     
     // Apply random filters if randomizer is enabled BEFORE making the API call
     // if (isRandomizerEnabled) {
@@ -202,7 +200,10 @@ export const MovieProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     
     try {
       // Use current filters (they were updated by applyRandomFilters if needed)
-      const movie = await fetchRandomMovie(filterOptions);
+      // Limit sessionMovies to last 20 for better variety
+      const recentSessionMovies = Array.from(sessionMovies).slice(-20);
+      // Pass current movie ID and recent session movies to exclude from results
+      const movie = await fetchRandomMovie(filterOptions, currentMovie?.id, recentSessionMovies);
       
       // Log to check for duplicates
       if (currentMovie && currentMovie.id === movie.id) {
@@ -212,13 +213,24 @@ export const MovieProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       setCurrentMovie(movie);
       setLoadingState(LoadingState.SUCCESS);
       setPickCount(prev => prev + 1);
+      
+      // Track movie in session to prevent duplicates
+      setSessionMovies(prev => {
+        const newSet = new Set([...prev, movie.id]);
+        // Keep only last 20 movies in session
+        if (newSet.size > 20) {
+          const arr = Array.from(newSet);
+          return new Set(arr.slice(-20));
+        }
+        return newSet;
+      });
     } catch (e) {
       const errorMessage = (e as Error).message;
       setError(errorMessage);
       setLoadingState(LoadingState.ERROR);
       throw e; // Let the component handle the error
     }
-  }, [filterOptions, applyRandomFilters, currentMovie]);
+  }, [filterOptions, applyRandomFilters, currentMovie, sessionMovies]);
 
   const getRandomMovieSafe = useCallback(async () => {
     setLoadingState(LoadingState.LOADING);
@@ -232,17 +244,31 @@ export const MovieProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     
     try {
       // Use current filters (they were updated by applyRandomFilters if needed)
-      const movie = await fetchRandomMovie(filterOptions);
+      // Limit sessionMovies to last 20 for better variety
+      const recentSessionMovies = Array.from(sessionMovies).slice(-20);
+      // Pass current movie ID and recent session movies to exclude from results
+      const movie = await fetchRandomMovie(filterOptions, currentMovie?.id, recentSessionMovies);
       setCurrentMovie(movie);
       setLoadingState(LoadingState.SUCCESS);
       setPickCount(prev => prev + 1);
+      
+      // Track movie in session to prevent duplicates
+      setSessionMovies(prev => {
+        const newSet = new Set([...prev, movie.id]);
+        // Keep only last 20 movies in session
+        if (newSet.size > 20) {
+          const arr = Array.from(newSet);
+          return new Set(arr.slice(-20));
+        }
+        return newSet;
+      });
     } catch (e) {
       const errorMessage = (e as Error).message;
       setError(errorMessage);
       setLoadingState(LoadingState.ERROR);
       console.error('Error getting random movie:', errorMessage);
     }
-  }, [filterOptions, applyRandomFilters]);
+  }, [filterOptions, applyRandomFilters, currentMovie, sessionMovies]);
 
   const addToWatchlist = useCallback((movie: Movie) => {
     setWatchlist((prev) => {

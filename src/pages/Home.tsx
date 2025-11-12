@@ -318,12 +318,12 @@ const Home: React.FC = () => {
                         
                         {/* Mobile: Ad below button - consistent spacing */}
                         <div className="w-full mt-3 block md:hidden flex-shrink-0">
-                          <PropellerBannerAd 
-                            placement="movie-card" 
-                            className="w-full"
-                            onError={() => console.log('Movie card ad failed to load')}
-                            onSuccess={() => console.log('Movie card ad loaded successfully')}
-                          />
+                <PropellerBannerAd 
+                  placement="movie-card" 
+                  className="w-full"
+                  onError={() => console.log('Movie card ad failed to load')}
+                  onSuccess={() => console.log('Movie card ad loaded successfully')}
+                />
                         </div>
                       </>
                     )}

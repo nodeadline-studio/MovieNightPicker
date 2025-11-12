@@ -37,12 +37,42 @@ const ENDPOINTS = {
 
 const MAX_RETRIES = 3; // Maximum number of API retries
 
+// Track last 10 pages used to avoid repeats
+const recentPages: number[] = [];
+
+function getRandomPage(): number {
+  let attempts = 0;
+  let page: number;
+  
+  do {
+    page = Math.floor(Math.random() * 20) + 1;
+    attempts++;
+    // If we've tried all pages, clear recent pages and start over
+    if (attempts > 30) {
+      recentPages.length = 0;
+      break;
+    }
+  } while (recentPages.includes(page));
+  
+  // Keep only last 10 pages
+  recentPages.push(page);
+  if (recentPages.length > 10) {
+    recentPages.shift();
+  }
+  
+  return page;
+}
+
 const headers = {
   Authorization: `Bearer ${API_KEY}`,
   'Content-Type': 'application/json',
 };
 
-export async function fetchRandomMovie(options: FilterOptions): Promise<Movie | null> {
+export async function fetchRandomMovie(
+  options: FilterOptions,
+  excludeMovieId?: number,
+  excludeMovieIds?: number[]
+): Promise<Movie | null> {
   logger.debug('Fetching random movie with options:', options, { prefix: 'API' });
 
   const watchlist = getWatchlist();
@@ -98,7 +128,7 @@ export async function fetchRandomMovie(options: FilterOptions): Promise<Movie | 
     logger.debug(`Trying filter variation ${i + 1}:`, currentFilters, { prefix: 'API' });
     
     try {
-      const movie = await attemptFetch(currentFilters, watchlist);
+      const movie = await attemptFetch(currentFilters, watchlist, excludeMovieId, excludeMovieIds);
       if (movie) {
         if (i > 0) {
           logger.debug(`Found movie with relaxed filters (variation ${i + 1})`, undefined, { prefix: 'API' });
@@ -123,13 +153,18 @@ export async function fetchRandomMovie(options: FilterOptions): Promise<Movie | 
       inTheatersOnly: false,
       includeAdult: true,
       tvShowsOnly: false
-    });
+    }, [], excludeMovieId, excludeMovieIds);
         } catch (finalError) {
     throw new Error('Unable to find any movies. Please check your internet connection.');
   }
 }
 
-async function attemptFetch(options: FilterOptions, watchlist: WatchlistMovie[] = []): Promise<Movie | null> {
+async function attemptFetch(
+  options: FilterOptions, 
+  watchlist: WatchlistMovie[] = [],
+  excludeMovieId?: number,
+  excludeMovieIds?: number[]
+): Promise<Movie | null> {
   // Normalize filter values to reasonable ranges
   const normalizedOptions = {
     ...options,
@@ -139,7 +174,7 @@ async function attemptFetch(options: FilterOptions, watchlist: WatchlistMovie[] 
     maxRuntime: Math.max(options.maxRuntime, 60) // Ensure minimum runtime
   };
 
-  const randomPage = Math.floor(Math.random() * 20) + 1;
+  const randomPage = getRandomPage();
   logger.debug('Fetching new batch from API, page:', randomPage, { prefix: 'API' });
   
   const startTime = performance.now();
@@ -237,7 +272,9 @@ async function attemptFetch(options: FilterOptions, watchlist: WatchlistMovie[] 
       movie.vote_average >= normalizedOptions.ratingFrom && 
       movie.vote_average < 10.0 && // Exclude movies with perfect 10.0 rating (usually fake/removed)
       movie.vote_count >= (isTV ? 25 : 100) && // Lower threshold for TV shows
-      !watchlist.some(w => w.id === movie.id); // Exclude watchlist movies
+      !watchlist.some(w => w.id === movie.id) && // Exclude watchlist movies
+      movie.id !== excludeMovieId && // Exclude current movie
+      !(excludeMovieIds || []).includes(movie.id); // Exclude recent session movies
   });
 
   if (validInitialMovies.length === 0) {
@@ -246,7 +283,11 @@ async function attemptFetch(options: FilterOptions, watchlist: WatchlistMovie[] 
   }
 
   // Fetch full details for pre-filtered movies in parallel
-  const moviePromises = validInitialMovies.map(async (item: any) => {
+  // Limit to 15 movies for better diversity while keeping performance reasonable
+  const moviesToFetch = Math.min(15, validInitialMovies.length);
+  const moviesToProcess = validInitialMovies.slice(0, moviesToFetch);
+  
+  const moviePromises = moviesToProcess.map(async (item: any) => {
     try {
       const isTV = options.tvShowsOnly;
       const endpoint = isTV ? `${ENDPOINTS.TV}/${item.id}` : `${ENDPOINTS.MOVIE}/${item.id}`;

@@ -20,7 +20,7 @@ class MovieCache {
   private usedMovies = new Map<number, number>(); // movieId -> timestamp
   private loadingTimes: number[] = [];
   private readonly maxLoadingTimes = 50;
-  private readonly cacheLifetime = 24 * 60 * 60 * 1000; // 24 hours
+  private readonly cacheLifetime = 2 * 60 * 60 * 1000; // 2 hours instead of 24 for better variety
 
   constructor() {
     this.debugId = Math.random().toString(36).substr(2, 5);
