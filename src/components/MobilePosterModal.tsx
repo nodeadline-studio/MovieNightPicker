@@ -59,7 +59,7 @@ const MobilePosterModal: React.FC<MobilePosterModalProps> = ({ movie, isOpen, on
         bottom: 0,
         width: '100vw',
         height: '100vh',
-        paddingTop: 0,
+        paddingTop: 'env(safe-area-inset-top)',
         paddingLeft: 'max(1rem, env(safe-area-inset-left))',
         paddingRight: 'max(1rem, env(safe-area-inset-right))',
         paddingBottom: 'max(1rem, env(safe-area-inset-bottom))'

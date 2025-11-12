@@ -285,9 +285,24 @@ export class MockInterstitialAd {
         Discover Your Next Movie
       </h2>
       <p style="font-size: 16px; opacity: 0.9; margin-bottom: 24px; line-height: 1.4;">
-        Find your next favorite film with our smart recommendations
+        Get personalized movie recommendations powered by AI. 
+        Find hidden gems and blockbuster hits tailored to your taste.
       </p>
       <div style="display: flex; gap: 12px; margin-top: 24px; flex-wrap: wrap; justify-content: center;">
+        <button id="mock-ad-skip" style="
+          background: rgba(255, 255, 255, 0.2);
+          border: 2px solid rgba(255, 255, 255, 0.3);
+          color: white;
+          padding: 12px 24px;
+          border-radius: 8px;
+          font-size: 14px;
+          font-weight: 600;
+          cursor: not-allowed;
+          transition: all 0.2s ease;
+          min-width: 120px;
+          opacity: 0.5;
+          pointer-events: none;
+        ">Skip Ad</button>
         <button id="mock-ad-action" style="
           background: white;
           color: #667eea;
@@ -322,7 +337,6 @@ export class MockInterstitialAd {
     this.currentAd = adContent;
 
     // Add button interactions
-    // Note: Skip button is handled by PropellerInterstitialAd component, not here
     const actionBtn = adContent.querySelector('#mock-ad-action');
 
     const closeAd = () => {
@@ -338,7 +352,7 @@ export class MockInterstitialAd {
       // Simulate ad click - should track but not close (real ads navigate to advertiser)
       console.log('Mock ad action clicked - would navigate to advertiser in production');
       // Don't close the ad - clicking ad content should not skip it
-      // Only the component's skip button should close it
+      // Only the skip button (handled by component) should close it
     });
 
     // Auto-close after delay

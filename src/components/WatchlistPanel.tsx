@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { 
   BookMarked, X, Share2, 
   Film, Tv, Star, Clock, Calendar, ExternalLink, Trash2, Eye, EyeOff 
@@ -22,6 +22,32 @@ const WatchlistPanel: React.FC = () => {
 
   // Debug mode check
   const isDebugMode = import.meta.env.DEV;
+
+  // Calculate scrollable area max-height based on viewport
+  const scrollableMaxHeight = useMemo(() => {
+    if (typeof window === 'undefined') return '100%';
+    const viewportHeight = window.innerHeight;
+    const viewportWidth = window.innerWidth;
+    
+    // Header: ~80px, padding: ~48px (p-6), footer space: ~20px
+    const reserved = 148;
+    const available = viewportHeight - reserved;
+    
+    // Calculate items per screen based on viewport
+    let itemsPerScreen = 5; // Desktop default
+    if (viewportWidth <= 375) {
+      itemsPerScreen = 3; // iPhone SE
+    } else if (viewportWidth <= 412) {
+      itemsPerScreen = 4; // Pixel 7
+    }
+    
+    // Each item is approximately 100px tall (p-4 + content)
+    const itemHeight = 100;
+    const maxVisibleHeight = itemsPerScreen * itemHeight;
+    
+    // Return calculated height, but ensure it doesn't exceed available space
+    return `${Math.min(maxVisibleHeight, available)}px`;
+  }, []);
 
   // Separate movies and TV shows
   const movies = watchlist.filter(item => item.contentType === 'movie');
@@ -348,11 +374,11 @@ const WatchlistPanel: React.FC = () => {
           <h4 className="text-sm font-semibold text-white">{title}</h4>
           <span className="text-xs text-gray-400">({items.length})</span>
         </div>
-        <div className="flex flex-col gap-3">
+        <div>
           {items.map((movie, index) => (
             <div 
               key={movie.id} 
-              className={`group relative bg-white/5 hover:bg-white/10 rounded-2xl p-4 
+              className={`group relative bg-white/5 hover:bg-white/10 rounded-2xl p-4 mb-3
                          border border-white/5 hover:border-white/20
                          transition-all duration-200 ease-out
                          hover:shadow-lg hover:shadow-purple-500/10
@@ -686,7 +712,7 @@ const WatchlistPanel: React.FC = () => {
                     </div>
                   </div>
                 ) : (
-                  <div className="h-full overflow-y-auto custom-scrollbar p-6">
+                  <div className="overflow-y-auto custom-scrollbar p-6" style={{ maxHeight: scrollableMaxHeight }}>
                     <div className="space-y-4">
                       {allMovies.length > 0 && (
                         <WatchlistSection

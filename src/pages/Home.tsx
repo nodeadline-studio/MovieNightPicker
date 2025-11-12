@@ -39,6 +39,9 @@ const Home: React.FC = () => {
   const [filterPanelOpen, setFilterPanelOpen] = useState(false);
   const [externalButton, setExternalButton] = useState<React.ReactNode>(null);
   const isDesktop = useMediaQuery({ minWidth: 768 });
+  
+  // Toggle for mobile ad/button order: true = ad above button (desktop-like), false = button above ad
+  const MOBILE_AD_ABOVE_BUTTON = true;
 
   // Memoize button render callback to prevent infinite loop
   const handleButtonRender = useCallback((button: React.ReactNode) => {
@@ -284,22 +287,46 @@ const Home: React.FC = () => {
                       </div>
                     )}
                     
-                    {/* Mobile: Button below movie card - consistent spacing */}
-                    {externalButton && (
-                      <div className="block md:hidden mt-3 flex-shrink-0">
-                        {externalButton}
-                      </div>
+                    {/* Mobile: Conditional order based on MOBILE_AD_ABOVE_BUTTON */}
+                    {MOBILE_AD_ABOVE_BUTTON ? (
+                      <>
+                        {/* Mobile: Ad above button - consistent spacing */}
+                        <div className="w-full mt-3 block md:hidden flex-shrink-0">
+                          <PropellerBannerAd 
+                            placement="movie-card" 
+                            className="w-full"
+                            onError={() => console.log('Movie card ad failed to load')}
+                            onSuccess={() => console.log('Movie card ad loaded successfully')}
+                          />
+                        </div>
+                        
+                        {/* Mobile: Button below ad - consistent spacing */}
+                        {externalButton && (
+                          <div className="block md:hidden mt-3 flex-shrink-0">
+                            {externalButton}
+                          </div>
+                        )}
+                      </>
+                    ) : (
+                      <>
+                        {/* Mobile: Button below movie card - consistent spacing */}
+                        {externalButton && (
+                          <div className="block md:hidden mt-3 flex-shrink-0">
+                            {externalButton}
+                          </div>
+                        )}
+                        
+                        {/* Mobile: Ad below button - consistent spacing */}
+                        <div className="w-full mt-3 block md:hidden flex-shrink-0">
+                          <PropellerBannerAd 
+                            placement="movie-card" 
+                            className="w-full"
+                            onError={() => console.log('Movie card ad failed to load')}
+                            onSuccess={() => console.log('Movie card ad loaded successfully')}
+                          />
+                        </div>
+                      </>
                     )}
-                    
-                    {/* Mobile: Ad below button - consistent spacing */}
-                    <div className="w-full mt-3 block md:hidden flex-shrink-0">
-                <PropellerBannerAd 
-                  placement="movie-card" 
-                  className="w-full"
-                  onError={() => console.log('Movie card ad failed to load')}
-                  onSuccess={() => console.log('Movie card ad loaded successfully')}
-                />
-                    </div>
                   </div>
                 ) : (
                   <PlaceholderMovieCard />

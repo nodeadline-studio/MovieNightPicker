@@ -201,7 +201,8 @@ const PropellerInterstitialAd: React.FC<PropellerInterstitialAdProps> = ({
   // Load ad on mount
   useEffect(() => {
     loadAd();
-  }, [loadAd]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Only load once on mount
 
   // Inject mock ad content when visible (only if using mock, not real ad)
   useEffect(() => {
@@ -220,8 +221,16 @@ const PropellerInterstitialAd: React.FC<PropellerInterstitialAdProps> = ({
             adRef.current.appendChild(clonedAd);
             
             // Re-attach event listeners to cloned element
-            // Note: Skip button is handled by component's controls, not mock ad
+            const skipBtn = clonedAd.querySelector('#mock-ad-skip') as HTMLButtonElement;
             const actionBtn = clonedAd.querySelector('#mock-ad-action');
+            
+            if (skipBtn) {
+              skipBtn.addEventListener('click', () => {
+                if (canSkip) {
+                  onClose();
+                }
+              });
+            }
             
             if (actionBtn) {
               actionBtn.addEventListener('click', () => {
@@ -239,7 +248,29 @@ const PropellerInterstitialAd: React.FC<PropellerInterstitialAdProps> = ({
         }
       }
     }
-  }, [isVisible, hasError, isUsingMockAd, onClose]);
+  }, [isVisible, hasError, isUsingMockAd, canSkip, onClose]);
+
+  // Update mock ad skip button state when canSkip or remainingTime changes
+  useEffect(() => {
+    if (isVisible && !hasError && isUsingMockAd && adRef.current) {
+      const skipBtn = adRef.current.querySelector('#mock-ad-skip') as HTMLButtonElement;
+      if (skipBtn) {
+        if (canSkip) {
+          skipBtn.style.opacity = '1';
+          skipBtn.style.cursor = 'pointer';
+          skipBtn.style.pointerEvents = 'auto';
+          skipBtn.disabled = false;
+          skipBtn.textContent = 'Skip Ad';
+        } else {
+          skipBtn.style.opacity = '0.5';
+          skipBtn.style.cursor = 'not-allowed';
+          skipBtn.style.pointerEvents = 'none';
+          skipBtn.disabled = true;
+          skipBtn.textContent = remainingTime > 0 ? `Skip in ${remainingTime}s` : 'Skip Ad';
+        }
+      }
+    }
+  }, [isVisible, hasError, isUsingMockAd, canSkip, remainingTime]);
 
   // Handle skip button click
   const handleSkip = () => {

@@ -58,8 +58,8 @@ const MovieCard: React.FC<MovieCardProps> = ({
         const screenHeight = window.innerHeight;
         const estimatedLines = Math.ceil(textLength / 80); // ~80 chars per line
         const estimatedHeight = estimatedLines * 21; // ~21px per line
-        const mobileCollapsedHeight = 120; // Current max-h-[120px]
-        const expansionThreshold = mobileCollapsedHeight + 42; // ~2 rows more (21px * 2)
+        const mobileCollapsedHeight = 100; // Reduced from 120px to show more before expansion
+        const expansionThreshold = mobileCollapsedHeight + 20; // ~1 row more (100px total)
         
         setShouldShowTextExpansion(estimatedHeight > expansionThreshold);
       }
@@ -224,7 +224,7 @@ const MovieCard: React.FC<MovieCardProps> = ({
           
           <div className="flex flex-col md:flex-row h-full md:h-auto">
             {/* Movie Poster - Maintain 3:4 ratio on desktop */}
-            <div className="w-full md:w-2/5 relative aspect-[3/4] max-h-[45vh] sm:max-h-[50vh] md:max-h-none md:flex-shrink-0">
+            <div className="w-full md:w-2/5 relative aspect-[3/4] max-h-[38vh] sm:max-h-[42vh] md:max-h-none md:flex-shrink-0">
               {/* Now Playing Badge */}
               {isInTheaters(movie.release_date) && (
                 <div className="absolute top-2 md:top-4 left-2 md:left-4 bg-gradient-to-r from-green-500 to-emerald-500 
@@ -238,7 +238,7 @@ const MovieCard: React.FC<MovieCardProps> = ({
               
               {/* Poster Image - wrapper to match image bounds on desktop */}
               <div 
-                className="relative w-full h-full flex md:block items-start cursor-pointer md:cursor-default"
+                className="relative w-full h-full flex items-start cursor-pointer md:cursor-default md:block"
                 onClick={(e) => {
                   e.stopPropagation();
                   // Use CSS media query approach for better mobile detection
@@ -250,7 +250,7 @@ const MovieCard: React.FC<MovieCardProps> = ({
                 }}
               >
                 {/* Image wrapper - matches image bounds on desktop with object-contain */}
-                <div className="relative h-full w-full md:w-auto md:block md:flex-shrink-0 overflow-hidden">
+                <div className="relative h-full w-full md:h-auto md:flex-shrink-0 overflow-hidden">
                   {/* Loading state with icon */}
                   <div className="absolute inset-0 bg-gradient-to-br from-gray-800 to-gray-900 flex items-center justify-center pointer-events-none z-0">
                     <div className="flex flex-col items-center gap-3">
@@ -370,7 +370,7 @@ const MovieCard: React.FC<MovieCardProps> = ({
             </div>
             
             {/* Movie Details - aligned relative to poster on desktop */}
-            <div className="md:w-3/5 md:ml-0 p-3 md:p-6 lg:p-8 flex flex-col flex-1 overflow-visible">
+            <div className="md:w-3/5 md:ml-0 p-3 md:p-6 lg:p-8 flex flex-col flex-1 min-h-0 overflow-y-auto scrollbar-hide">
               {/* Header */}
               <div className="mb-3 md:mb-6">
                 <h2 className="text-lg md:text-2xl lg:text-4xl font-bold text-white leading-tight mb-2 md:mb-3 
@@ -434,7 +434,7 @@ const MovieCard: React.FC<MovieCardProps> = ({
                       isTextExpanded 
                         ? 'max-h-[800px]' // Large enough for any text
                         : isMobile 
-                          ? 'max-h-[120px]' // Collapsed height on mobile only
+                          ? 'max-h-[100px]' // Reduced from 120px to show more before expansion
                           : '' // No max-height on desktop when collapsed
                     } ${isMobile && shouldShowTextExpansion ? 'cursor-pointer overflow-hidden' : isMobile ? 'overflow-hidden' : 'overflow-y-auto'}`}
                     style={{
@@ -465,7 +465,7 @@ const MovieCard: React.FC<MovieCardProps> = ({
                 </div>
               
               {/* Action Buttons - Horizontal Layout */}
-              <div className="flex flex-row gap-2 md:gap-3 mt-auto">
+              <div className="flex flex-row gap-2 md:gap-3 mt-auto flex-shrink-0">
                 <button
                   onClick={() => window.open(`https://www.imdb.com/title/${movie.imdb_id}`, '_blank')}
                   className="flex-1 bg-gradient-to-r from-yellow-500 to-orange-500 
