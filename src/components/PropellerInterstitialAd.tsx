@@ -43,8 +43,16 @@ const PropellerInterstitialAd: React.FC<PropellerInterstitialAdProps> = ({
   const adRef = useRef<HTMLDivElement>(null);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Skip countdown timer
+  // Skip countdown timer - starts when ad loads (isVisible becomes true)
   useEffect(() => {
+    if (!isVisible) {
+      // Reset counter when ad is not visible
+      setRemainingTime(PROPELLER_ADS_CONFIG.display.interstitial.skipDelay);
+      setCanSkip(false);
+      return;
+    }
+
+    // Start countdown when ad becomes visible
     intervalRef.current = setInterval(() => {
       setRemainingTime((prev) => {
         const newTime = prev - 1;
@@ -61,7 +69,7 @@ const PropellerInterstitialAd: React.FC<PropellerInterstitialAdProps> = ({
         clearInterval(intervalRef.current);
       }
     };
-  }, []);
+  }, [isVisible]);
 
   // Auto-close timer
   useEffect(() => {
@@ -90,9 +98,9 @@ const PropellerInterstitialAd: React.FC<PropellerInterstitialAdProps> = ({
 
       // Always try real ad first (even in development)
       try {
-        // Load PropellerAds script if not already loaded
-        const loader = PropellerAdsLoader.getInstance();
-        await loader.loadScript();
+      // Load PropellerAds script if not already loaded
+      const loader = PropellerAdsLoader.getInstance();
+      await loader.loadScript();
 
         // Wait for PropellerAds to be available (with timeout)
         await new Promise((resolve, reject) => {
@@ -106,43 +114,43 @@ const PropellerInterstitialAd: React.FC<PropellerInterstitialAdProps> = ({
               clearInterval(checkInterval);
               clearTimeout(timeout);
               resolve(true);
-            }
+      }
           }, 100);
         });
 
-        // Generate unique container ID
-        const containerId = AdPlacement.generateAdId('interstitial');
-        if (adRef.current) {
-          adRef.current.id = containerId;
-        }
+      // Generate unique container ID
+      const containerId = AdPlacement.generateAdId('interstitial');
+      if (adRef.current) {
+        adRef.current.id = containerId;
+      }
 
-        // Initialize the interstitial ad
-        if ((window as any).propellerads && (window as any).propellerads.init) {
-          (window as any).propellerads.init({
-            container: containerId,
-            adUnitId: PROPELLER_ADS_CONFIG.adUnits.interstitial.movieLoad,
-            publisherId: PROPELLER_ADS_CONFIG.publisherId,
-            type: 'interstitial',
-            onLoad: () => {
-              setIsLoading(false);
-              setIsVisible(true);
+      // Initialize the interstitial ad
+      if ((window as any).propellerads && (window as any).propellerads.init) {
+        (window as any).propellerads.init({
+          container: containerId,
+          adUnitId: PROPELLER_ADS_CONFIG.adUnits.interstitial.movieLoad,
+          publisherId: PROPELLER_ADS_CONFIG.publisherId,
+          type: 'interstitial',
+          onLoad: () => {
+            setIsLoading(false);
+            setIsVisible(true);
               setIsUsingMockAd(false); // Real ad loaded, not using mock
               realAdLoaded = true;
-              PropellerAdsAnalytics.trackAdShown('interstitial', 'movie-load');
-              onSuccess?.();
-            },
-            onError: (error: Error) => {
-              console.error('PropellerAds interstitial error:', error);
+            PropellerAdsAnalytics.trackAdShown('interstitial', 'movie-load');
+            onSuccess?.();
+          },
+          onError: (error: Error) => {
+            console.error('PropellerAds interstitial error:', error);
               // Don't set error state yet - will fallback to mock
               throw error;
-            },
-            onClick: () => {
-              PropellerAdsAnalytics.trackAdClicked('interstitial', 'movie-load');
-            },
-            onClose: () => {
-              onClose();
-            }
-          });
+          },
+          onClick: () => {
+            PropellerAdsAnalytics.trackAdClicked('interstitial', 'movie-load');
+          },
+          onClose: () => {
+            onClose();
+          }
+        });
           
           // Wait a bit to see if real ad loads
           await new Promise(resolve => setTimeout(resolve, 2000));
@@ -150,9 +158,9 @@ const PropellerInterstitialAd: React.FC<PropellerInterstitialAdProps> = ({
           if (realAdLoaded) {
             return; // Real ad loaded successfully
           }
-        } else {
-          throw new Error('PropellerAds initialization failed');
-        }
+      } else {
+        throw new Error('PropellerAds initialization failed');
+      }
       } catch (realAdError) {
         console.log('Real ad failed, falling back to mock:', realAdError);
         // Fall through to mock fallback
@@ -212,14 +220,8 @@ const PropellerInterstitialAd: React.FC<PropellerInterstitialAdProps> = ({
             adRef.current.appendChild(clonedAd);
             
             // Re-attach event listeners to cloned element
-            const closeBtn = clonedAd.querySelector('#mock-ad-close');
+            // Note: Skip button is handled by component's controls, not mock ad
             const actionBtn = clonedAd.querySelector('#mock-ad-action');
-            
-            if (closeBtn) {
-              closeBtn.addEventListener('click', () => {
-                onClose();
-              });
-            }
             
             if (actionBtn) {
               actionBtn.addEventListener('click', () => {
@@ -277,56 +279,64 @@ const PropellerInterstitialAd: React.FC<PropellerInterstitialAdProps> = ({
     >
       {/* Close button and countdown - ABOVE ad content */}
       <div className="absolute top-4 right-4 z-50 flex flex-row items-center gap-2">
-        {/* Countdown - LEFT of X button */}
-        {!canSkip && remainingTime > 0 && (
+        {/* Countdown or Skip Ad text - LEFT of X button */}
+          {!canSkip && remainingTime > 0 && (
           <div className="bg-black bg-opacity-70 text-white px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium">
-            Skip in {remainingTime}s
-          </div>
+              Skip in {remainingTime}s
+            </div>
+          )}
+        {canSkip && (
+          <button
+            onClick={handleSkip}
+            className="bg-black bg-opacity-70 hover:bg-opacity-90 text-white px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium cursor-pointer transition-all"
+          >
+            Skip Ad
+          </button>
         )}
-        
+          
         {/* Close button - RIGHT, grayed when disabled */}
-        <button
-          onClick={canSkip ? handleSkip : handleClose}
+          <button
+            onClick={canSkip ? handleSkip : handleClose}
           disabled={!canSkip}
           className={`bg-black bg-opacity-50 hover:bg-opacity-70 text-white rounded-full p-3 sm:p-2 transition-all duration-200 min-w-[44px] min-h-[44px] flex items-center justify-center ${
             !canSkip ? 'opacity-50 cursor-not-allowed' : ''
           }`}
-          aria-label={canSkip ? "Skip ad" : "Close ad"}
-        >
-          <X size={20} />
-        </button>
-      </div>
+            aria-label={canSkip ? "Skip ad" : "Close ad"}
+          >
+            <X size={20} />
+          </button>
+        </div>
 
       {/* Ad content container - NO white background wrapper */}
       <div className="relative w-full max-w-[95vw] md:max-w-5xl lg:max-w-6xl h-[70vh] max-h-[600px] flex items-center justify-center">
-        {isLoading && (
-          <div className="flex flex-col items-center justify-center text-center">
+          {isLoading && (
+            <div className="flex flex-col items-center justify-center text-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-400 mb-4"></div>
             <p className="text-gray-300 text-lg">Loading advertisement...</p>
-          </div>
-        )}
-        
-        {hasError && (
+            </div>
+          )}
+          
+          {hasError && (
           <div className="flex flex-col items-center justify-center text-center p-8 bg-gray-900 rounded-xl">
             <div className="text-gray-300 text-lg mb-4">Advertisement unavailable</div>
-            <button
-              onClick={onClose}
-              className="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2 rounded-lg transition-colors"
-            >
-              Continue
-            </button>
-          </div>
-        )}
-        
-        {isVisible && (
-          <div 
-            ref={adRef}
+              <button
+                onClick={onClose}
+                className="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2 rounded-lg transition-colors"
+              >
+                Continue
+              </button>
+            </div>
+          )}
+          
+          {isVisible && (
+            <div 
+              ref={adRef}
             className="w-full h-full flex items-center justify-center"
-            style={{ minHeight: '300px' }}
-          >
+              style={{ minHeight: '300px' }}
+            >
             {/* PropellerAds OR Mock content will render here directly */}
-          </div>
-        )}
+            </div>
+          )}
       </div>
     </div>
   );

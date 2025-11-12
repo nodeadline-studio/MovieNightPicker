@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState, useCallback } from 'react';
+import React, { useEffect, useRef, useState, useCallback, memo } from 'react';
 import { PROPELLER_ADS_CONFIG, PropellerAdsLoader, AdPlacement, PropellerAdsAnalytics } from '../config/propellerAdsConfig';
 import { MockPropellerAds } from '../config/propellerAdsMock';
 
@@ -344,4 +344,8 @@ const PropellerBannerAd: React.FC<PropellerBannerAdProps> = ({
   );
 };
 
-export default PropellerBannerAd;
+// Memoize PropellerBannerAd to prevent unnecessary re-renders
+export default memo(PropellerBannerAd, (prevProps, nextProps) => {
+  return prevProps.placement === nextProps.placement &&
+         prevProps.className === nextProps.className;
+});

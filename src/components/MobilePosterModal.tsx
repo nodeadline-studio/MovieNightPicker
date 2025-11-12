@@ -46,7 +46,7 @@ const MobilePosterModal: React.FC<MobilePosterModalProps> = ({ movie, isOpen, on
 
   return (
     <div 
-      className="fixed bg-black/95 backdrop-blur-sm flex items-center justify-center p-4 z-[9999] md:hidden"
+      className="fixed bg-black/95 backdrop-blur-sm flex items-center justify-center z-[9999] md:hidden"
       role="dialog"
       aria-modal="true"
       aria-labelledby="modal-title"
@@ -59,16 +59,19 @@ const MobilePosterModal: React.FC<MobilePosterModalProps> = ({ movie, isOpen, on
         bottom: 0,
         width: '100vw',
         height: '100vh',
-        paddingBottom: 'max(1rem, env(safe-area-inset-bottom))',
+        paddingTop: 0,
         paddingLeft: 'max(1rem, env(safe-area-inset-left))',
-        paddingRight: 'max(1rem, env(safe-area-inset-right))'
+        paddingRight: 'max(1rem, env(safe-area-inset-right))',
+        paddingBottom: 'max(1rem, env(safe-area-inset-bottom))'
       }}
     >
       <div 
         className="relative w-full max-w-sm h-[80vh] overflow-hidden bg-gray-900 rounded-xl border border-gray-700"
         onClick={(e) => e.stopPropagation()}
         style={{
-          marginTop: 'max(1rem, env(safe-area-inset-top))'
+          marginTop: 'max(1rem, env(safe-area-inset-top))',
+          marginLeft: 'auto',
+          marginRight: 'auto'
         }}
       >
         {/* Close button */}

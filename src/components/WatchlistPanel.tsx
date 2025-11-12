@@ -348,7 +348,7 @@ const WatchlistPanel: React.FC = () => {
           <h4 className="text-sm font-semibold text-white">{title}</h4>
           <span className="text-xs text-gray-400">({items.length})</span>
         </div>
-        <div className="space-y-3">
+        <div className="flex flex-col gap-3">
           {items.map((movie, index) => (
             <div 
               key={movie.id} 
@@ -686,7 +686,7 @@ const WatchlistPanel: React.FC = () => {
                     </div>
                   </div>
                 ) : (
-                  <div className="h-full overflow-y-auto scrollbar-hide p-6">
+                  <div className="h-full overflow-y-auto custom-scrollbar p-6">
                     <div className="space-y-4">
                       {allMovies.length > 0 && (
                         <WatchlistSection

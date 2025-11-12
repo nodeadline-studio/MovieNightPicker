@@ -205,7 +205,7 @@ const Home: React.FC = () => {
           <div className="max-w-6xl mx-auto relative">
             <div className="flex items-center justify-between mb-6 md:mb-8">
               <div className="flex items-center gap-3">
-                <div className="p-3 bg-gradient-to-r from-indigo-600 to-purple-600 rounded-2xl shadow-lg">
+                <div className="w-10 h-10 flex items-center justify-center bg-gradient-to-r from-indigo-600 to-purple-600 rounded-2xl shadow-lg">
                   <Film size={32} className="text-white" aria-hidden="true" />
                 </div>
                 <div>
@@ -245,7 +245,7 @@ const Home: React.FC = () => {
           <div className="max-w-6xl mx-auto h-full">
             <div className="flex flex-col items-center h-full" style={{ minHeight: 0 }}>
               {/* Movie Card Section - Mobile optimized for single screen */}
-              <div className="w-full flex-1 flex items-center justify-center min-h-0 -mt-2 md:mt-0">
+              <div className="w-full flex-1 flex items-center justify-center min-h-0 -mt-[10px] md:mt-0">
                 {loadingState === LoadingState.LOADING ? (
                   <MovieCardSkeleton />
                 ) : error ? (

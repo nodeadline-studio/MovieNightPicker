@@ -186,6 +186,11 @@ export const MovieProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const getRandomMovie = useCallback(async () => {
     setLoadingState(LoadingState.LOADING);
     setError(null);
+    
+    // Log cache state before clearing
+    const cacheSize = movieCache.getCacheSize?.() || 0;
+    console.log(`[Cache] getRandomMovie called - Cache size before clear: ${cacheSize}`);
+    
     movieCache.clear();
     movieCache.removeSuspiciousMovies(); // Clear any cached movies with suspicious ratings
     
@@ -198,6 +203,12 @@ export const MovieProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     try {
       // Use current filters (they were updated by applyRandomFilters if needed)
       const movie = await fetchRandomMovie(filterOptions);
+      
+      // Log to check for duplicates
+      if (currentMovie && currentMovie.id === movie.id) {
+        console.warn(`[Cache] Duplicate movie detected: ${movie.id} - ${movie.title}`);
+      }
+      
       setCurrentMovie(movie);
       setLoadingState(LoadingState.SUCCESS);
       setPickCount(prev => prev + 1);
@@ -207,7 +218,7 @@ export const MovieProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       setLoadingState(LoadingState.ERROR);
       throw e; // Let the component handle the error
     }
-  }, [filterOptions, applyRandomFilters]);
+  }, [filterOptions, applyRandomFilters, currentMovie]);
 
   const getRandomMovieSafe = useCallback(async () => {
     setLoadingState(LoadingState.LOADING);

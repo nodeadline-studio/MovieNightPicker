@@ -152,7 +152,7 @@ export class MockPropellerAds {
             🎬 Discover Amazing Movies
           </div>
           <div style="font-size: 11px; opacity: 0.9; line-height: 1.2;">
-            Find your next favorite film with our AI-powered recommendations
+            Find your next favorite film with our smart recommendations
           </div>
           <div style="margin-top: 3px; font-size: 9px; opacity: 0.7; line-height: 1.1;">
             Mock Ad - ${config.adUnitId}
@@ -252,12 +252,19 @@ export class MockInterstitialAd {
     // We just need to render content - the component will handle showing/hiding
 
     // Create ad content directly (no extra overlay needed)
+    // Match real ad container size: max-w-[95vw] md:max-w-5xl lg:max-w-6xl h-[70vh] max-h-[600px]
     const adContent = document.createElement('div');
     adContent.id = 'mock-interstitial-content';
+    
+    // Calculate responsive max-width
+    const maxWidth = window.innerWidth >= 1024 ? '1152px' : window.innerWidth >= 768 ? '1024px' : '95vw';
+    const maxHeight = Math.min(window.innerHeight * 0.7, 600);
+    
     adContent.style.cssText = `
       width: 100%;
-      max-width: 600px;
-      height: 100%;
+      max-width: ${maxWidth};
+      height: ${maxHeight}px;
+      max-height: ${maxHeight}px;
       background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
       border-radius: 20px;
       display: flex;
@@ -278,22 +285,9 @@ export class MockInterstitialAd {
         Discover Your Next Movie
       </h2>
       <p style="font-size: 16px; opacity: 0.9; margin-bottom: 24px; line-height: 1.4;">
-        Get personalized movie recommendations powered by AI. 
-        Find hidden gems and blockbuster hits tailored to your taste.
+        Find your next favorite film with our smart recommendations
       </p>
       <div style="display: flex; gap: 12px; margin-top: 24px; flex-wrap: wrap; justify-content: center;">
-        <button id="mock-ad-close" style="
-          background: rgba(255, 255, 255, 0.2);
-          border: 2px solid rgba(255, 255, 255, 0.3);
-          color: white;
-          padding: 12px 24px;
-          border-radius: 8px;
-          font-size: 14px;
-          font-weight: 600;
-          cursor: pointer;
-          transition: all 0.2s ease;
-          min-width: 120px;
-        ">Skip Ad</button>
         <button id="mock-ad-action" style="
           background: white;
           color: #667eea;
@@ -328,7 +322,7 @@ export class MockInterstitialAd {
     this.currentAd = adContent;
 
     // Add button interactions
-    const closeBtn = adContent.querySelector('#mock-ad-close');
+    // Note: Skip button is handled by PropellerInterstitialAd component, not here
     const actionBtn = adContent.querySelector('#mock-ad-action');
 
     const closeAd = () => {
@@ -340,25 +334,16 @@ export class MockInterstitialAd {
       config.onClose?.();
     };
 
-    closeBtn?.addEventListener('click', closeAd);
     actionBtn?.addEventListener('click', () => {
       // Simulate ad click - should track but not close (real ads navigate to advertiser)
       console.log('Mock ad action clicked - would navigate to advertiser in production');
       // Don't close the ad - clicking ad content should not skip it
-      // Only the skip button should close it
+      // Only the component's skip button should close it
     });
 
     // Auto-close after delay
     if (config.autoCloseAfter && config.autoCloseAfter > 0) {
       setTimeout(closeAd, config.autoCloseAfter * 1000);
-    }
-
-    // Skip button delay
-    if (config.skipDelay && config.skipDelay > 0) {
-      closeBtn!.style.display = 'none';
-      setTimeout(() => {
-        closeBtn!.style.display = 'block';
-      }, config.skipDelay * 1000);
     }
 
     config.onLoad?.();

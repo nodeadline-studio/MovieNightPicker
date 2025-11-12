@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { SlidersHorizontal, X, Clapperboard, Star, Calendar, Trash2, ChevronRight, AlertTriangle, StarHalf, Shuffle, Sparkles, CheckSquare } from 'lucide-react';
 import { useMovieContext } from '../context/MovieContext';
 import Button from './ui/Button';
@@ -29,6 +29,18 @@ const FilterPanel: React.FC<FilterPanelProps> = ({ isOpen, setIsOpen }) => {
   const [captchaVerified, setCaptchaVerified] = useState(false);
   const [captchaScore, setCaptchaScore] = useState<number | null>(null);
   const [mathProblem, setMathProblem] = useState<{ question: string; answer: number } | null>(null);
+
+  // Calculate filter content height for iPhone SE (375x667)
+  const filterContentHeight = useMemo(() => {
+    if (typeof window === 'undefined') return 'auto';
+    const viewportHeight = window.innerHeight;
+    const headerHeight = 64; // h-16
+    const tabsHeight = 48; // h-12
+    const footerHeight = 120; // buttons + padding
+    const safetyMargin = 20;
+    const calculated = viewportHeight - headerHeight - tabsHeight - footerHeight - safetyMargin;
+    return calculated > 200 ? `${calculated}px` : 'auto';
+  }, []);
 
   const currentYear = new Date().getFullYear();
   
@@ -193,7 +205,7 @@ const FilterPanel: React.FC<FilterPanelProps> = ({ isOpen, setIsOpen }) => {
       <>
         {/* Overlay */}
         <div 
-          className={`fixed inset-0 bg-black/40 z-40 transition-opacity duration-300 ease-out ${
+          className={`fixed inset-0 bg-black/40 z-[49] transition-opacity duration-300 ease-out ${
             isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'
           }`}
           onClick={closePanel}
@@ -259,7 +271,7 @@ const FilterPanel: React.FC<FilterPanelProps> = ({ isOpen, setIsOpen }) => {
           </div>
 
             {/* Content - Flexible Height */}
-            <div className="flex-1 overflow-y-auto custom-scrollbar p-3 md:p-4 min-h-0">
+            <div className="flex-1 overflow-y-auto custom-scrollbar p-3 md:p-4 min-h-0" style={{ maxHeight: filterContentHeight }}>
             {activeTab === 'basic' ? (
                 <div className="h-full flex flex-col gap-6">
                   {/* Time & Rating Filters */}
@@ -496,4 +508,7 @@ const FilterPanel: React.FC<FilterPanelProps> = ({ isOpen, setIsOpen }) => {
   );
 };
 
-export default FilterPanel;
+// Memoize FilterPanel to prevent unnecessary re-renders
+export default React.memo(FilterPanel, (prevProps, nextProps) => {
+  return prevProps.isOpen === nextProps.isOpen;
+});

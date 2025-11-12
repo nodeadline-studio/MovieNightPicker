@@ -139,10 +139,15 @@ class MovieCache {
   async getMovie(): Promise<Movie | null> {
     // Clean up old used movies
     const now = Date.now();
+    let cleanedCount = 0;
     for (const [id, timestamp] of this.usedMovies.entries()) {
       if (now - timestamp > this.cacheLifetime) {
         this.usedMovies.delete(id);
+        cleanedCount++;
       }
+    }
+    if (cleanedCount > 0) {
+      logger.debug(`Cleaned ${cleanedCount} expired used movies`, undefined, { prefix: `Cache ${this.debugId}` });
     }
 
     // Get all available movies from all cache sets
@@ -156,7 +161,12 @@ class MovieCache {
       !this.usedMovies.has(movie.id)
     );
     
-    if (availableMovies.length === 0) return null;
+    logger.debug(`Cache check: ${allMovies.length} total, ${this.usedMovies.size} used, ${availableMovies.length} available`, undefined, { prefix: `Cache ${this.debugId}` });
+    
+    if (availableMovies.length === 0) {
+      logger.debug('No available movies in cache', undefined, { prefix: `Cache ${this.debugId}` });
+      return null;
+    }
     
     // Simulate loading time
     await this.simulateLoadTime();
@@ -168,16 +178,31 @@ class MovieCache {
     // Mark as used
     this.usedMovies.set(movie.id, Date.now());
     
+    logger.debug(`Selected movie from cache: ${movie.id} - ${movie.title}`, undefined, { prefix: `Cache ${this.debugId}` });
+    
     return movie;
   }
 
   clear(): void {
     const size = this.cache.size;
+    const usedCount = this.usedMovies.size;
     this.cache.clear();
     this.usedMovies.clear();
     if (size > 0) {
-      logger.debug(`Cache cleared`, undefined, { prefix: `Cache ${this.debugId}` });
+      logger.debug(`Cache cleared: ${size} sets, ${usedCount} used movies`, undefined, { prefix: `Cache ${this.debugId}` });
     }
+  }
+
+  getCacheSize(): number {
+    let totalMovies = 0;
+    for (const cachedSet of this.cache.values()) {
+      totalMovies += cachedSet.movies.length;
+    }
+    return totalMovies;
+  }
+
+  getUsedMoviesCount(): number {
+    return this.usedMovies.size;
   }
 
   removeSuspiciousMovies(): void {
