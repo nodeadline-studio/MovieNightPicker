@@ -175,8 +175,46 @@ const MovieCard: React.FC<MovieCardProps> = ({
     return available > 400 ? `${available * 0.9}px` : 'none';
   }, [isMobile]);
 
+  // Button component to avoid duplication
+  const AboutButton = () => (
+    <div className={`flex justify-center transition-all duration-300 ease-out pointer-events-none ${
+      isButtonFading ? 'animate-[slideUp_0.3s_ease-out_forwards]' : 'animate-[slideDown_0.3s_ease-out_forwards]'
+    }`}>
+      <div className="flex items-center gap-2 pointer-events-auto">
+        <button
+          onClick={onShowDescription}
+          className="group inline-flex items-center gap-2 px-3 py-1.5 
+                   bg-gradient-to-r from-slate-900/30 via-gray-900/20 to-slate-800/30
+                   hover:from-slate-800/40 hover:via-gray-800/30 hover:to-slate-700/40
+                   border border-white/5 hover:border-white/10 rounded-lg
+                   text-gray-600 hover:text-gray-400 text-xs font-medium
+                   transition-all duration-300 ease-out
+                   hover:scale-105 active:scale-95 backdrop-blur-sm whitespace-nowrap"
+        >
+          <span>What's all about?</span>
+          <ChevronDown size={12} className="group-hover:translate-y-0.5 transition-transform duration-200" />
+        </button>
+        <button 
+          onClick={onHideDescription}
+          className="p-1.5 text-gray-700 hover:text-gray-500 hover:bg-white/3 rounded-md
+                   transition-all duration-200 ease-out"
+          aria-label="Hide button"
+        >
+          <X size={12} />
+        </button>
+      </div>
+    </div>
+  );
+
   return (
-    <div className="w-full max-w-[95vw] md:max-w-5xl lg:max-w-6xl mx-auto space-y-2 md:space-y-4">
+    <div className="w-full max-w-[95vw] md:max-w-5xl lg:max-w-6xl mx-auto space-y-2 md:space-y-4 relative">
+      {/* About Button - Desktop: Positioned outside card, above header */}
+      {showDescriptionButton && !isMobile && (
+        <div className="absolute md:-top-[55px] left-1/2 transform -translate-x-1/2 z-[100] pointer-events-none">
+          <AboutButton />
+        </div>
+      )}
+      
       {/* Movie Card */}
       <div className="relative group">
         {/* Background glow effect */}
@@ -189,36 +227,10 @@ const MovieCard: React.FC<MovieCardProps> = ({
                        style={!isMobile ? { maxHeight: desktopCardMaxHeight, overflowY: 'auto' } : {}}
         >
           
-          {/* About Button - Positioned relative to movie card */}
-          {showDescriptionButton && (
-            <div className="absolute top-2 md:top-4 left-1/2 transform -translate-x-1/2 z-50 pointer-events-none">
-              <div className={`flex justify-center transition-all duration-300 ease-out pointer-events-none ${
-                isButtonFading ? 'animate-[slideUp_0.3s_ease-out_forwards]' : 'animate-[slideDown_0.3s_ease-out_forwards]'
-              }`}>
-                <div className="flex items-center gap-2 pointer-events-auto">
-                  <button
-                    onClick={onShowDescription}
-                    className="group inline-flex items-center gap-2 px-3 py-1.5 
-                             bg-gradient-to-r from-slate-900/30 via-gray-900/20 to-slate-800/30
-                             hover:from-slate-800/40 hover:via-gray-800/30 hover:to-slate-700/40
-                             border border-white/5 hover:border-white/10 rounded-lg
-                             text-gray-600 hover:text-gray-400 text-xs font-medium
-                             transition-all duration-300 ease-out
-                             hover:scale-105 active:scale-95 backdrop-blur-sm whitespace-nowrap"
-                  >
-                    <span>What's all about?</span>
-                    <ChevronDown size={12} className="group-hover:translate-y-0.5 transition-transform duration-200" />
-                  </button>
-                  <button 
-                    onClick={onHideDescription}
-                    className="p-1.5 text-gray-700 hover:text-gray-500 hover:bg-white/3 rounded-md
-                             transition-all duration-200 ease-out"
-                    aria-label="Hide button"
-                  >
-                    <X size={12} />
-                  </button>
-                </div>
-              </div>
+          {/* About Button - Mobile: Positioned inside card */}
+          {showDescriptionButton && isMobile && (
+            <div className="absolute top-2 left-1/2 transform -translate-x-1/2 z-50 pointer-events-none">
+              <AboutButton />
             </div>
           )}
           
@@ -430,34 +442,47 @@ const MovieCard: React.FC<MovieCardProps> = ({
                 {/* Overview */}
                 <div className="mb-2 md:-mb-5 flex-1 min-h-0">
                   <div 
-                    className={`relative transition-all duration-300 ease-out ${
+                    className={`flex flex-col transition-all duration-300 ease-out ${
                       isTextExpanded 
-                        ? 'max-h-[800px]' // Large enough for any text
+                        ? '' // No constraints when expanded
                         : isMobile 
-                          ? 'max-h-[100px]' // Reduced from 120px to show more before expansion
+                          ? '' // Use line-clamp instead of max-height
                           : '' // No max-height on desktop when collapsed
-                    } ${isMobile && shouldShowTextExpansion ? 'cursor-pointer overflow-hidden' : isMobile ? 'overflow-hidden' : 'overflow-y-auto'}`}
+                    }`}
                     style={{
                       transformOrigin: 'top center',
                       ...(isMobile ? {} : { 
                         maxHeight: isTextExpanded ? 'none' : textContainerHeight,
                       })
                     }}
-                    onClick={isMobile && shouldShowTextExpansion ? (e) => {
+                  >
+                    <p 
+                      className={`text-gray-300 ${textSizeClasses} leading-relaxed ${
+                        isTextExpanded 
+                          ? '' 
+                          : isMobile && shouldShowTextExpansion
+                            ? 'line-clamp-4' // Use line-clamp for reliable truncation
+                            : ''
+                      }`}
+                      onClick={isMobile && shouldShowTextExpansion ? (e) => {
                       e.stopPropagation();
                       setIsTextExpanded(!isTextExpanded);
-                    } : undefined}
+                      } : undefined}
+                      style={isMobile && shouldShowTextExpansion ? { cursor: 'pointer' } : {}}
                 >
-                    <p className={`text-gray-300 ${textSizeClasses} leading-relaxed`}>
                     {movie.overview}
-                      {!isTextExpanded && shouldShowTextExpansion && isMobile && (
-                        <span className="text-gray-400 ml-2">...</span>
-                      )}
-                    </p>
+                  </p>
                     
-                    {/* Label in bottom-right (mobile only) */}
+                    {/* Label inline after text (mobile only) - positioned below text, not overlapping */}
                     {shouldShowTextExpansion && isMobile && (
-                      <div className="absolute bottom-2 right-2 text-xs text-indigo-400/80 pointer-events-none">
+                      <div 
+                        className="text-right mt-2 text-xs text-indigo-400/80 pointer-events-none"
+                        onClick={isMobile && shouldShowTextExpansion ? (e) => {
+                          e.stopPropagation();
+                          setIsTextExpanded(!isTextExpanded);
+                        } : undefined}
+                        style={isMobile && shouldShowTextExpansion ? { cursor: 'pointer', pointerEvents: 'auto' } : {}}
+                      >
                         {isTextExpanded ? 'Show less' : 'Show more'}
                       </div>
                     )}

@@ -56,22 +56,29 @@ export function usePropellerAds({ onClose, pickCounter }: UsePropellerAdsOptions
       setAdType('interstitial');
       setVisible(true);
       setLastShownAt(count);
+      // Store in localStorage for persistence across remounts
+      localStorage.setItem('propeller_last_shown_at', count.toString());
       logger.debug('🎯 Forced PropellerAds interstitial shown', undefined, { prefix: 'PropellerAds' });
       return;
     }
 
-    // Prevent double showing
-    if (count === lastShownAt) {
+    // Prevent double showing - check both state and localStorage
+    const storedLastShown = parseInt(localStorage.getItem('propeller_last_shown_at') || '0', 10);
+    if (count === lastShownAt || count === storedLastShown) {
       logger.debug('PropellerAds interstitial already shown for this count:', count, { prefix: 'PropellerAds' });
       return;
     }
 
     // Check if it's time to show an ad (every 5 picks)
     if (count > 0 && count % 5 === 0) {
-      logger.debug(`🎯 Showing PropellerAds interstitial for pick count:`, count, { prefix: 'PropellerAds' });
-      setLastShownAt(count);
-      setAdType('interstitial');
-      setVisible(true);
+      // Additional check: ensure we haven't shown an ad for this exact count
+      if (count !== lastShownAt && count !== storedLastShown) {
+        logger.debug(`🎯 Showing PropellerAds interstitial for pick count:`, count, { prefix: 'PropellerAds' });
+        setLastShownAt(count);
+        localStorage.setItem('propeller_last_shown_at', count.toString());
+        setAdType('interstitial');
+        setVisible(true);
+      }
     }
   }, [lastShownAt]);
 
@@ -91,7 +98,19 @@ export function usePropellerAds({ onClose, pickCounter }: UsePropellerAdsOptions
     setVisible(false);
     setLastShownAt(0);
     localStorage.removeItem('force_propeller_interstitial');
+    localStorage.removeItem('propeller_last_shown_at');
     logger.debug('PropellerAds state reset', undefined, { prefix: 'PropellerAds' });
+  }, []);
+  
+  // Initialize lastShownAt from localStorage on mount
+  useEffect(() => {
+    const stored = localStorage.getItem('propeller_last_shown_at');
+    if (stored) {
+      const storedCount = parseInt(stored, 10);
+      if (storedCount > 0) {
+        setLastShownAt(storedCount);
+      }
+    }
   }, []);
 
   // Force show interstitial (for testing)

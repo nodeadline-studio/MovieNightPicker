@@ -29,6 +29,8 @@ interface PropellerInterstitialConfig {
   onClose?: () => void;
 }
 
+type AdLoadingState = 'loading' | 'attempting' | 'placeholder' | 'showing' | 'error';
+
 const PropellerInterstitialAd: React.FC<PropellerInterstitialAdProps> = ({ 
   onClose, 
   onError, 
@@ -36,24 +38,30 @@ const PropellerInterstitialAd: React.FC<PropellerInterstitialAdProps> = ({
 }) => {
   const [canSkip, setCanSkip] = useState(false);
   const [remainingTime, setRemainingTime] = useState(PROPELLER_ADS_CONFIG.display.interstitial.skipDelay);
-  const [isLoading, setIsLoading] = useState(true);
+  const [loadingState, setLoadingState] = useState<AdLoadingState>('loading');
   const [hasError, setHasError] = useState(false);
   const [isVisible, setIsVisible] = useState(false);
   const [isUsingMockAd, setIsUsingMockAd] = useState(false);
+  const [adContentRendered, setAdContentRendered] = useState(false);
   const adRef = useRef<HTMLDivElement>(null);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const containerIdRef = useRef<string | null>(null);
+  const realAdTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Skip countdown timer - starts when ad loads (isVisible becomes true)
+  // Skip countdown timer - starts ONLY when ad is visible AND content is rendered
   useEffect(() => {
-    if (!isVisible) {
-      // Reset counter when ad is not visible
+    if (!isVisible || !adContentRendered) {
+      // Reset counter when ad is not visible or content not rendered
       setRemainingTime(PROPELLER_ADS_CONFIG.display.interstitial.skipDelay);
       setCanSkip(false);
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
       return;
     }
 
-    // Start countdown when ad becomes visible
+    // Start countdown when ad is visible AND content is rendered
     intervalRef.current = setInterval(() => {
       setRemainingTime((prev) => {
         const newTime = prev - 1;
@@ -68,9 +76,10 @@ const PropellerInterstitialAd: React.FC<PropellerInterstitialAdProps> = ({
     return () => {
       if (intervalRef.current) {
         clearInterval(intervalRef.current);
+        intervalRef.current = null;
       }
     };
-  }, [isVisible]);
+  }, [isVisible, adContentRendered]);
 
   // Auto-close timer
   useEffect(() => {
@@ -86,8 +95,10 @@ const PropellerInterstitialAd: React.FC<PropellerInterstitialAdProps> = ({
   // Load and display the interstitial ad - try real ad first, fallback to mock
   const loadAd = useCallback(async () => {
     try {
-      setIsLoading(true);
+      // State 1: Loading - show spinner immediately
+      setLoadingState('loading');
       setHasError(false);
+      setAdContentRendered(false);
 
       // Check if ads should be shown
       if (!AdPlacement.shouldShowAds()) {
@@ -95,23 +106,32 @@ const PropellerInterstitialAd: React.FC<PropellerInterstitialAdProps> = ({
         return;
       }
 
-      // CRITICAL: Clean up previous container before creating new one
-      if (adRef.current) {
-        // Remove any existing content
-        adRef.current.innerHTML = '';
-        // Remove any existing ID to prevent conflicts
-        adRef.current.removeAttribute('id');
-        
-        // Wait for DOM to be ready
-        await new Promise(resolve => requestAnimationFrame(resolve));
+      // CRITICAL: Wait for container to be attached to DOM with retry mechanism
+      let retries = 0;
+      const maxRetries = 20; // Increased retries for slower DOM attachment
+      while (retries < maxRetries) {
+        if (adRef.current && adRef.current.isConnected) {
+          // Container is ready, clean up previous content
+          adRef.current.innerHTML = '';
+          adRef.current.removeAttribute('id');
+          await new Promise(resolve => requestAnimationFrame(resolve));
+          break;
+        }
+        // Wait for DOM to attach ref
+        await new Promise(resolve => setTimeout(resolve, 50));
+        retries++;
       }
 
-      // Ensure container exists and is in DOM
+      // Ensure container exists and is in DOM after retries
       if (!adRef.current || !adRef.current.isConnected) {
-        throw new Error('Ad container not ready');
+        throw new Error('Ad container not ready after retries');
       }
 
       let realAdLoaded = false;
+      let realAdLoadPromise: Promise<void> | null = null;
+
+      // State 2: Attempting - try to load real ad
+      setLoadingState('attempting');
 
       // Always try real ad first (even in development)
       try {
@@ -137,47 +157,49 @@ const PropellerInterstitialAd: React.FC<PropellerInterstitialAdProps> = ({
 
       // Generate unique container ID
       const containerId = AdPlacement.generateAdId('interstitial');
-      containerIdRef.current = containerId;
+        containerIdRef.current = containerId;
 
-      // Wait for container to be ready
-      let retries = 0;
-      const maxRetries = 10;
-      while (retries < maxRetries) {
-        if (adRef.current && adRef.current.isConnected) {
-          adRef.current.id = containerId;
-          // Verify container exists in DOM
-          const containerInDOM = document.getElementById(containerId);
-          if (containerInDOM) {
-            break;
+        // Wait for container to be ready
+        let retries = 0;
+        const maxRetries = 10;
+        while (retries < maxRetries) {
+          if (adRef.current && adRef.current.isConnected) {
+        adRef.current.id = containerId;
+            const containerInDOM = document.getElementById(containerId);
+            if (containerInDOM) {
+              break;
+            }
           }
+          await new Promise(resolve => setTimeout(resolve, 100));
+          retries++;
         }
-        await new Promise(resolve => setTimeout(resolve, 100));
-        retries++;
-      }
 
-      if (retries >= maxRetries || !adRef.current) {
-        throw new Error('Container not ready after retries');
+        if (retries >= maxRetries || !adRef.current) {
+          throw new Error('Container not ready after retries');
       }
 
       // Initialize the interstitial ad
       if ((window as any).propellerads && (window as any).propellerads.init) {
+          // Create promise for real ad loading
+          realAdLoadPromise = new Promise<void>((resolve, reject) => {
         (window as any).propellerads.init({
           container: containerId,
           adUnitId: PROPELLER_ADS_CONFIG.adUnits.interstitial.movieLoad,
           publisherId: PROPELLER_ADS_CONFIG.publisherId,
           type: 'interstitial',
           onLoad: () => {
-            setIsLoading(false);
+                setIsUsingMockAd(false);
+                realAdLoaded = true;
+                setAdContentRendered(true);
             setIsVisible(true);
-              setIsUsingMockAd(false); // Real ad loaded, not using mock
-              realAdLoaded = true;
+                setLoadingState('showing');
             PropellerAdsAnalytics.trackAdShown('interstitial', 'movie-load');
             onSuccess?.();
+                resolve();
           },
           onError: (error: Error) => {
             console.error('PropellerAds interstitial error:', error);
-              // Don't set error state yet - will fallback to mock
-              throw error;
+                reject(error);
           },
           onClick: () => {
             PropellerAdsAnalytics.trackAdClicked('interstitial', 'movie-load');
@@ -186,28 +208,64 @@ const PropellerInterstitialAd: React.FC<PropellerInterstitialAdProps> = ({
             onClose();
           }
         });
-          
-          // Wait a bit to see if real ad loads
-          await new Promise(resolve => setTimeout(resolve, 2000));
-          
-          if (realAdLoaded) {
-            return; // Real ad loaded successfully
+          });
+
+          // Race: real ad load vs timeout (5 seconds)
+          const timeoutPromise = new Promise<void>((_, reject) => {
+            realAdTimeoutRef.current = setTimeout(() => {
+              reject(new Error('Real ad timeout'));
+            }, 5000);
+          });
+
+          try {
+            await Promise.race([
+              realAdLoadPromise,
+              timeoutPromise
+            ]);
+            
+            // Clear timeout if ad loaded successfully
+            if (realAdTimeoutRef.current) {
+              clearTimeout(realAdTimeoutRef.current);
+              realAdTimeoutRef.current = null;
+            }
+            
+            if (realAdLoaded) {
+              return; // Real ad loaded successfully
+            }
+          } catch (timeoutError) {
+            // Real ad timed out or failed - clear timeout and fall through to mock
+            if (realAdTimeoutRef.current) {
+              clearTimeout(realAdTimeoutRef.current);
+              realAdTimeoutRef.current = null;
+            }
+            // Don't throw - fall through to mock ad fallback
+            console.log('Real ad timeout, falling back to mock');
           }
       } else {
         throw new Error('PropellerAds initialization failed');
       }
       } catch (realAdError) {
         console.log('Real ad failed, falling back to mock:', realAdError);
+        // Clear timeout if exists
+        if (realAdTimeoutRef.current) {
+          clearTimeout(realAdTimeoutRef.current);
+          realAdTimeoutRef.current = null;
+        }
         // Fall through to mock fallback
       }
 
-      // Fallback to mock only if real ad failed
-      setIsLoading(false); // Hide loading spinner before showing mock
-      setIsUsingMockAd(true); // Mark that we're using mock ad
+      // State 3: Placeholder - show placeholder during transition
+      setLoadingState('placeholder');
+      await new Promise(resolve => setTimeout(resolve, 300)); // Brief placeholder display
+
+      // State 4: Showing - fallback to mock ad
+      setIsUsingMockAd(true);
       const mockInterstitial = MockInterstitialAd.getInstance();
       mockInterstitial.show({
         onLoad: () => {
+          setAdContentRendered(true);
           setIsVisible(true);
+          setLoadingState('showing');
           PropellerAdsAnalytics.trackAdShown('interstitial', 'movie-load');
           onSuccess?.();
         },
@@ -217,6 +275,7 @@ const PropellerInterstitialAd: React.FC<PropellerInterstitialAdProps> = ({
         onError: (error: Error) => {
           console.error('Mock interstitial error:', error);
           setHasError(true);
+          setLoadingState('error');
           PropellerAdsAnalytics.trackAdError('interstitial', 'movie-load', error.message || 'Unknown error');
           onError?.();
         },
@@ -227,7 +286,7 @@ const PropellerInterstitialAd: React.FC<PropellerInterstitialAdProps> = ({
     } catch (error) {
       console.error('Error loading interstitial ad:', error);
       setHasError(true);
-      setIsLoading(false);
+      setLoadingState('error');
       PropellerAdsAnalytics.trackAdError('interstitial', 'movie-load', error instanceof Error ? error.message : 'Unknown error');
       onError?.();
     }
@@ -239,9 +298,15 @@ const PropellerInterstitialAd: React.FC<PropellerInterstitialAdProps> = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Only load once on mount
 
-  // Inject mock ad content when visible (only if using mock, not real ad)
+  // Inject mock ad content when visible (only if using mock, not real ad, and in showing state)
   useEffect(() => {
-    if (isVisible && !hasError && isUsingMockAd && adRef.current) {
+    // Only inject mock ad when:
+    // 1. Ad is visible
+    // 2. No error occurred
+    // 3. We're using mock ad (real ad definitively failed)
+    // 4. Loading state is 'showing' (ad is ready to display)
+    // 5. Ad content container exists
+    if (isVisible && !hasError && isUsingMockAd && loadingState === 'showing' && adRef.current) {
       const mockInterstitial = MockInterstitialAd.getInstance();
       
       // Only inject if mock ad exists and we're using mock (not real ad)
@@ -283,7 +348,7 @@ const PropellerInterstitialAd: React.FC<PropellerInterstitialAdProps> = ({
         }
       }
     }
-  }, [isVisible, hasError, isUsingMockAd, canSkip, onClose]);
+  }, [isVisible, hasError, isUsingMockAd, loadingState, canSkip, onClose]);
 
   // Update mock ad skip button state when canSkip or remainingTime changes
   useEffect(() => {
@@ -324,6 +389,12 @@ const PropellerInterstitialAd: React.FC<PropellerInterstitialAdProps> = ({
         clearInterval(intervalRef.current);
         intervalRef.current = null;
       }
+      
+      // Clear real ad timeout if exists
+      if (realAdTimeoutRef.current) {
+        clearTimeout(realAdTimeoutRef.current);
+        realAdTimeoutRef.current = null;
+      }
     };
   }, []);
 
@@ -336,6 +407,38 @@ const PropellerInterstitialAd: React.FC<PropellerInterstitialAdProps> = ({
 
   // Handle close button click
   const handleClose = () => {
+    // Clean up state on close
+    setIsVisible(false);
+    setAdContentRendered(false);
+    setLoadingState('loading');
+    setIsUsingMockAd(false);
+    setCanSkip(false);
+    setRemainingTime(PROPELLER_ADS_CONFIG.display.interstitial.skipDelay);
+    
+    // Clear container
+    if (adRef.current) {
+      adRef.current.innerHTML = '';
+      adRef.current.removeAttribute('id');
+    }
+    
+    // Clear timeouts
+    if (realAdTimeoutRef.current) {
+      clearTimeout(realAdTimeoutRef.current);
+      realAdTimeoutRef.current = null;
+    }
+    
+    // Clear interval
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
+    }
+    
+    // Reset mock ad state
+    const mockInterstitial = MockInterstitialAd.getInstance();
+    if (mockInterstitial.currentAd) {
+      mockInterstitial.currentAd = null;
+    }
+    
     onClose();
   };
 
@@ -395,32 +498,47 @@ const PropellerInterstitialAd: React.FC<PropellerInterstitialAdProps> = ({
 
       {/* Ad content container - NO white background wrapper */}
       <div className="relative w-full max-w-[95vw] md:max-w-5xl lg:max-w-6xl h-[70vh] max-h-[600px] flex items-center justify-center">
-          {isLoading && (
-            <div className="flex flex-col items-center justify-center text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-400 mb-4"></div>
-            <p className="text-gray-300 text-lg">Loading advertisement...</p>
+          {/* Ad container - ALWAYS rendered for ref attachment, conditionally visible */}
+          <div 
+            ref={adRef}
+            className={`w-full h-full flex items-center justify-center ${
+              loadingState === 'showing' && isVisible ? 'visible' : 'hidden'
+            }`}
+            style={{ 
+              minHeight: '300px',
+              visibility: loadingState === 'showing' && isVisible ? 'visible' : 'hidden'
+            }}
+          >
+            {/* PropellerAds OR Mock content will render here directly */}
+          </div>
+          
+          {/* Loading state - show spinner */}
+          {(loadingState === 'loading' || loadingState === 'attempting') && (
+            <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-400 mb-4"></div>
+              <p className="text-gray-300 text-lg">Loading advertisement...</p>
             </div>
           )}
           
-          {hasError && (
-          <div className="flex flex-col items-center justify-center text-center p-8 bg-gray-900 rounded-xl">
-            <div className="text-gray-300 text-lg mb-4">Advertisement unavailable</div>
+          {/* Placeholder state - show placeholder during transition */}
+          {loadingState === 'placeholder' && (
+            <div className="absolute inset-0 w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-800 to-gray-900 rounded-xl border border-gray-700">
+            <div className="flex flex-col items-center justify-center text-center p-8">
+                <div className="animate-pulse text-gray-400 text-sm">Preparing advertisement...</div>
+              </div>
+            </div>
+          )}
+          
+          {/* Error state */}
+          {loadingState === 'error' && hasError && (
+            <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-8 bg-gray-900 rounded-xl">
+              <div className="text-gray-300 text-lg mb-4">Advertisement unavailable</div>
               <button
                 onClick={onClose}
                 className="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2 rounded-lg transition-colors"
               >
                 Continue
               </button>
-            </div>
-          )}
-          
-          {isVisible && (
-            <div 
-              ref={adRef}
-            className="w-full h-full flex items-center justify-center"
-              style={{ minHeight: '300px' }}
-            >
-            {/* PropellerAds OR Mock content will render here directly */}
             </div>
           )}
       </div>
