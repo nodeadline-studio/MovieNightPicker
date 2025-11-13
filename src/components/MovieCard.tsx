@@ -224,7 +224,7 @@ const MovieCard: React.FC<MovieCardProps> = ({
                        backdrop-blur-xl border border-white/10 rounded-3xl overflow-hidden 
                        shadow-2xl ring-1 ring-white/5 transform transition-transform duration-300 
                        hover:scale-[1.01] flex flex-col md:flex-row"
-                       style={!isMobile ? { maxHeight: desktopCardMaxHeight, overflowY: 'auto' } : {}}
+                       style={!isMobile ? { maxHeight: desktopCardMaxHeight, overflow: 'hidden' } : {}}
         >
           
           {/* About Button - Mobile: Positioned inside card */}
@@ -325,7 +325,7 @@ const MovieCard: React.FC<MovieCardProps> = ({
                   
                   {/* Watchlist Button - positioned inside image wrapper on desktop */}
                   {!isMobile && (
-                    <div className="absolute top-2 md:top-4 right-2 md:right-2 z-30">
+                    <div className="absolute top-2 md:top-4 right-2 md:right-4 z-30">
                 <button
                   onClick={handleWatchlistToggle}
                   className={`p-2 md:p-3 rounded-xl md:rounded-2xl backdrop-blur-sm transition-all duration-300 shadow-lg ${

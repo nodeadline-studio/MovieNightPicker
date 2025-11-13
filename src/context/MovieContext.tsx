@@ -200,8 +200,8 @@ export const MovieProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     
     try {
       // Use current filters (they were updated by applyRandomFilters if needed)
-      // Limit sessionMovies to last 20 for better variety
-      const recentSessionMovies = Array.from(sessionMovies).slice(-20);
+      // Increased to last 50 movies for better variety (from 20)
+      const recentSessionMovies = Array.from(sessionMovies).slice(-50);
       // Pass current movie ID and recent session movies to exclude from results
       const movie = await fetchRandomMovie(filterOptions, currentMovie?.id, recentSessionMovies);
       
@@ -217,10 +217,10 @@ export const MovieProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       // Track movie in session to prevent duplicates
       setSessionMovies(prev => {
         const newSet = new Set([...prev, movie.id]);
-        // Keep only last 20 movies in session
-        if (newSet.size > 20) {
+        // Keep only last 50 movies in session (increased from 20 for better variety)
+        if (newSet.size > 50) {
           const arr = Array.from(newSet);
-          return new Set(arr.slice(-20));
+          return new Set(arr.slice(-50));
         }
         return newSet;
       });
