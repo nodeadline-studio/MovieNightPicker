@@ -40,22 +40,29 @@ export class MockPropellerAds {
       }
       
       // Retry mechanism with exponential backoff
-      const maxRetries = 3;
+      const maxRetries = 10;
       let retryCount = 0;
       
       const tryInit = (): void => {
-      const container = document.getElementById(config.container);
+        // Check if ad config still exists (component might have unmounted)
+        if (!this.ads.has(config.container)) {
+          return; // Component unmounted, don't proceed with error
+        }
+        
+        const container = document.getElementById(config.container);
         
         if (!container) {
           retryCount++;
           if (retryCount < maxRetries) {
-            // Retry with exponential backoff: 50ms, 100ms, 200ms
-            setTimeout(tryInit, 50 * Math.pow(2, retryCount - 1));
+            // Retry with exponential backoff: 100ms, 200ms, 400ms, 800ms, etc.
+            setTimeout(tryInit, 100 * Math.pow(2, retryCount - 1));
             return;
           }
-          // Max retries reached
-          config.onError?.(new Error(`Container not found after ${maxRetries} retries: ${config.container}`));
-          this.ads.delete(config.container);
+          // Max retries reached - only error if component is still mounted
+          if (this.ads.has(config.container)) {
+            config.onError?.(new Error(`Container not found after ${maxRetries} retries: ${config.container}`));
+            this.ads.delete(config.container);
+          }
           return;
         }
         
@@ -63,11 +70,14 @@ export class MockPropellerAds {
         if (!container.isConnected) {
           retryCount++;
           if (retryCount < maxRetries) {
-            setTimeout(tryInit, 50 * Math.pow(2, retryCount - 1));
+            setTimeout(tryInit, 100 * Math.pow(2, retryCount - 1));
             return;
           }
-          config.onError?.(new Error(`Container not connected to DOM after ${maxRetries} retries: ${config.container}`));
-          this.ads.delete(config.container);
+          // Max retries reached - only error if component is still mounted
+          if (this.ads.has(config.container)) {
+            config.onError?.(new Error(`Container not connected to DOM after ${maxRetries} retries: ${config.container}`));
+            this.ads.delete(config.container);
+          }
           return;
         }
       
@@ -285,8 +295,8 @@ export class MockInterstitialAd {
         Discover Your Next Movie
       </h2>
       <p style="font-size: 16px; opacity: 0.9; margin-bottom: 24px; line-height: 1.4;">
-        Get personalized movie recommendations powered by AI. 
-        Find hidden gems and blockbuster hits tailored to your taste.
+        Get personalized movie recommendations tailored to your taste. 
+        Find hidden gems and blockbuster hits with smart recommendations.
       </p>
       <div style="display: flex; gap: 12px; margin-top: 24px; flex-wrap: wrap; justify-content: center;">
         <button id="mock-ad-skip" style="

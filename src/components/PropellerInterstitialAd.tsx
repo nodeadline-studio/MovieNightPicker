@@ -254,11 +254,7 @@ const PropellerInterstitialAd: React.FC<PropellerInterstitialAdProps> = ({
         // Fall through to mock fallback
       }
 
-      // State 3: Placeholder - show placeholder during transition
-      setLoadingState('placeholder');
-      await new Promise(resolve => setTimeout(resolve, 300)); // Brief placeholder display
-
-      // State 4: Showing - fallback to mock ad
+      // State 3: Showing - fallback to mock ad (no placeholder delay)
       setIsUsingMockAd(true);
       const mockInterstitial = MockInterstitialAd.getInstance();
       mockInterstitial.show({
