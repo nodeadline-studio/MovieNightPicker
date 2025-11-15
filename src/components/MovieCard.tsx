@@ -146,12 +146,22 @@ const MovieCard: React.FC<MovieCardProps> = ({
     const viewportHeight = window.innerHeight;
     const availableHeight = viewportHeight - 400; // Reserve space for header, poster, buttons, ad, padding
     
+    // For long text on desktop, use smaller font to fit without overlapping
+    if (!isMobile) {
+      if (textLength > 400) {
+        return 'text-xs md:text-sm lg:text-base'; // Smaller for long text
+      }
+      if (textLength > 300 && availableHeight < 500) {
+        return 'text-xs md:text-sm lg:text-base'; // Smaller when space is limited
+      }
+    }
+    
     // For long text (> 500 chars) and limited height (< 600px), use smaller font
     if (textLength > 500 && availableHeight < 600) {
       return 'text-xs md:text-sm lg:text-base';
     }
     return 'text-sm md:text-base lg:text-lg';
-  }, [movie.overview]);
+  }, [movie.overview, isMobile]);
   
   const formatDate = (dateString: string) => {
     if (!dateString) return 'Unknown';
@@ -240,11 +250,12 @@ const MovieCard: React.FC<MovieCardProps> = ({
               {/* Now Playing Badge */}
               {isInTheaters(movie.release_date) && (
                 <div className="absolute top-2 md:top-4 left-2 md:left-4 bg-gradient-to-r from-green-500 to-emerald-500 
-                               text-white text-xs font-bold px-2 md:px-3 py-1 md:py-2 rounded-xl md:rounded-2xl z-10 
-                               flex items-center gap-1 md:gap-2 shadow-lg backdrop-blur-sm">
+                               text-white text-xs md:text-sm font-bold px-2 md:px-3 py-1 md:py-1.5 rounded-xl md:rounded-2xl z-30 
+                               flex items-center gap-1 md:gap-2 shadow-lg backdrop-blur-sm border border-white/20"
+                               style={{ pointerEvents: 'auto' }}>
                   <Clapperboard size={10} className="md:hidden" aria-hidden="true" />
                   <Clapperboard size={12} className="hidden md:block" aria-hidden="true" />
-                  <span className="text-xs">Now Playing</span>
+                  <span className="text-xs md:text-sm font-semibold">Now Playing</span>
                 </div>
               )}
               
@@ -440,7 +451,7 @@ const MovieCard: React.FC<MovieCardProps> = ({
               </div>
               
                 {/* Overview */}
-                <div className="mb-2 md:-mb-5 flex-1 min-h-0">
+                <div className="mb-2 md:mb-2 flex-1 min-h-0" style={{ paddingBottom: isHeaderVisible ? '0.5rem' : '0' }}>
                   <div 
                     className={`flex flex-col transition-all duration-300 ease-out ${
                       isTextExpanded 

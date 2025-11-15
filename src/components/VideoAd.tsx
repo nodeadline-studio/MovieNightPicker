@@ -13,27 +13,62 @@ const VideoAd: React.FC<VideoAdProps> = ({ onClose }) => {
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
+    // Wait for video to load before starting countdown
+    const video = videoRef.current;
     
-    // Simple countdown that works
-    let timeLeft = 10;
-    setAutoSkipCountdown(timeLeft);
-    
-    timerRef.current = setInterval(() => {
-      timeLeft--;
+    const startCountdown = () => {
+      // Simple countdown that works - pause at 0
+      let timeLeft = 10;
       setAutoSkipCountdown(timeLeft);
       
-      if (timeLeft <= 0) {
-        onClose();
-      }
-    }, 1000);
+      timerRef.current = setInterval(() => {
+        timeLeft--;
+        setAutoSkipCountdown(timeLeft);
+        
+        if (timeLeft <= 0) {
+          // Pause at 0 - stop counting and auto-close
+          if (timerRef.current) {
+            clearInterval(timerRef.current);
+            timerRef.current = null;
+          }
+          onClose();
+        }
+      }, 1000);
+    };
 
     // Start video if available
-    const video = videoRef.current;
     if (video) {
       video.muted = true;
+      
+      // Wait for video to load before starting countdown
+      const handleCanPlay = () => {
+        startCountdown();
+        video.removeEventListener('canplay', handleCanPlay);
+      };
+      
+      video.addEventListener('canplay', handleCanPlay);
       video.play().catch(() => {
-        // Video autoplay blocked - silent fail
+        // Video autoplay blocked - start countdown anyway after delay
+        setTimeout(startCountdown, 1000);
       });
+      
+      // Fallback: start countdown after 2 seconds if video doesn't load
+      const fallbackTimer = setTimeout(() => {
+        if (!timerRef.current) {
+          startCountdown();
+        }
+      }, 2000);
+      
+      return () => {
+        if (timerRef.current) {
+          clearInterval(timerRef.current);
+        }
+        clearTimeout(fallbackTimer);
+        video.removeEventListener('canplay', handleCanPlay);
+      };
+    } else {
+      // No video element - start countdown immediately
+      startCountdown();
     }
 
     // Cleanup
@@ -71,15 +106,33 @@ const VideoAd: React.FC<VideoAdProps> = ({ onClose }) => {
         {/* Close button and countdown - Mobile optimized */}
         <div className="absolute top-4 right-4 z-50 flex flex-col sm:flex-row items-end sm:items-center gap-2 sm:gap-3">
           {/* Countdown - positioned above close button on mobile */}
-          <div className="bg-black bg-opacity-70 text-white px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium order-2 sm:order-1">
-            Auto-close in {autoSkipCountdown}s
-          </div>
+          {/* Only show if countdown is active (not paused at 0) */}
+          {autoSkipCountdown > 0 && (
+            <div className="bg-black bg-opacity-70 text-white px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium order-2 sm:order-1">
+              Auto-close in {autoSkipCountdown}s
+            </div>
+          )}
           
           {/* Close button - larger touch target for mobile */}
           <button
-            onClick={onClose}
+            onClick={(e) => {
+              // Prevent popunder from triggering on close button
+              e.preventDefault();
+              e.stopPropagation();
+              e.nativeEvent.stopImmediatePropagation();
+              if (timerRef.current) {
+                clearInterval(timerRef.current);
+                timerRef.current = null;
+              }
+              onClose();
+            }}
+            onMouseDown={(e) => e.stopPropagation()}
+            onMouseUp={(e) => e.stopPropagation()}
+            onTouchStart={(e) => e.stopPropagation()}
+            onTouchEnd={(e) => e.stopPropagation()}
             className="bg-black bg-opacity-50 hover:bg-opacity-70 text-white rounded-full p-3 sm:p-2 transition-all duration-200 order-1 sm:order-2 min-w-[44px] min-h-[44px] flex items-center justify-center"
             data-testid="close-button"
+            style={{ pointerEvents: 'auto', zIndex: 10000 }}
           >
             <X size={20} />
           </button>

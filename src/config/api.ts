@@ -137,7 +137,7 @@ export async function fetchRandomMovie(
       // Continue with next threshold
     }
   }
-  
+
   // Last resort: Try with minimal filters (only if all thresholds failed)
   try {
     logger.debug('Making final attempt with minimal filters...', undefined, { prefix: 'API' });
@@ -150,7 +150,7 @@ export async function fetchRandomMovie(
       maxRuntime: 300,
       inTheatersOnly: false
     }, watchlist, excludeMovieId, excludeMovieIds, 0.0);
-  } catch (finalError) {
+        } catch (finalError) {
     logger.error('All filter attempts failed', finalError, { prefix: 'API' });
     throw new Error('Unable to find any movies. Please check your internet connection.');
   }
@@ -203,7 +203,7 @@ async function attemptFetch(
     // Genre filters: use popularity to get popular movies in that genre
     sortBy = 'popularity.desc';
   }
-
+  
   // Build query parameters
   const queryParams = new URLSearchParams({
     language: 'en-US',

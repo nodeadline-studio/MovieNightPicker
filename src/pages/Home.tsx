@@ -16,8 +16,10 @@ import CookieConsent from '../components/CookieConsent';
 import PrivacyPolicy from '../components/PrivacyPolicy';
 import TermsOfService from '../components/TermsOfService';
 import PlaceholderMovieCard from '../components/PlaceholderMovieCard';
-import PropellerBannerAd from '../components/PropellerBannerAd';
-import PropellerInterstitialAd from '../components/PropellerInterstitialAd';
+import { MonetagBannerAd } from '../components/MonetagBannerAd';
+import { MonetagMultiTagBanner } from '../components/MonetagMultiTagBanner';
+import { MonetagInterstitialAd } from '../components/MonetagInterstitialAd';
+import { useMonetagAds } from '../hooks/useMonetagAds';
 import LoadingOverlay from '../components/LoadingOverlay';
 import { LoadingState } from '../types';
 import { analytics } from '../utils/analytics';
@@ -43,6 +45,13 @@ const Home: React.FC = () => {
   // Toggle for mobile ad/button order: true = ad above button (desktop-like), false = button above ad
   const MOBILE_AD_ABOVE_BUTTON = true;
 
+  // Monetag Zone IDs - Configured based on your dashboard
+  // IMPORTANT: Get exact script formats from Monetag dashboard → Zone → "Get tag"
+  // Update src/config/monetagScripts.ts with exact script URLs
+  const MONETAG_MULTITAG_ZONE_ID = MONETAG_ZONES.MULTITAG; // In-Page Push zone (MULTI) - best for static banner
+  const MONETAG_INTERSTITIAL_ZONE_ID = MONETAG_ZONES.INTERSTITIAL; // Native Banner Interstitial (MULTI) - or create dedicated Interstitial zone
+  const USE_MULTITAG_FOR_BANNER = true; // Using MultiTag for banner (includes In-Page Push/Vignette Banner)
+
   // Memoize button render callback to prevent infinite loop
   const handleButtonRender = useCallback((button: React.ReactNode) => {
     setExternalButton(button);
@@ -61,6 +70,22 @@ const Home: React.FC = () => {
     queryFn: fetchGenres,
   });
 
+  // Monetag ads - interstitial every 5 rerolls (configurable)
+  const monetagAds = useMonetagAds({
+    onClose: () => {
+      pickCounter.reset();
+      getRandomMovieSafe()
+        .catch(console.error);
+    },
+    onError: () => {
+      getRandomMovieSafe()
+        .catch(console.error);
+    },
+    pickCounter,
+    frequency: 5 // Show interstitial every 5 rerolls
+  });
+
+  // Legacy PropellerAds hook (kept for compatibility, but not used)
   const propellerAds = usePropellerAds({
     onClose: () => {
       pickCounter.reset();
@@ -105,9 +130,16 @@ const Home: React.FC = () => {
     return () => clearTimeout(timer);
   }, [isLoadingGenres]);
 
-  // REMOVED: Automatic video ad trigger on pickCount change
-  // This was causing ads to show immediately on page load
-  // Video ads are now only triggered by explicit user button clicks in MovieCard
+  // Monitor pick count and show Monetag interstitial every 5 rerolls
+  // Trigger when movie changes (which happens after pickCounter increments)
+  useEffect(() => {
+    if (currentMovie) {
+      const currentCount = pickCounter.current();
+      if (currentCount > 0) {
+        monetagAds.showInterstitial(currentCount);
+      }
+    }
+  }, [currentMovie?.id]); // Only depend on movie ID change, not pickCounter/monetagAds
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -195,7 +227,7 @@ const Home: React.FC = () => {
     : false;
 
   return (
-    <div className="min-h-screen bg-gray-950 text-white flex flex-col relative overflow-hidden" itemScope itemType="https://schema.org/WebApplication">
+    <div className="min-h-screen bg-gray-950 text-white flex flex-col relative overflow-hidden" style={{ minHeight: '100vh' }} itemScope itemType="https://schema.org/WebApplication">
       {/* Background Effects */}
       <div className="absolute inset-0 bg-gradient-to-br from-gray-900/30 via-slate-900/30 to-gray-900/30 pointer-events-none" />
       <div className="absolute top-0 left-1/4 w-96 h-96 bg-purple-500/5 rounded-full blur-3xl pointer-events-none" />
@@ -244,9 +276,9 @@ const Home: React.FC = () => {
         </header>
 
 
-        <main className="flex-1 px-4 py-0 md:py-1" style={{ minHeight: 0 }}>
-          <div className="max-w-6xl mx-auto h-full">
-            <div className="flex flex-col items-center h-full" style={{ minHeight: 0 }}>
+        <main className="flex-1 px-4 py-0 md:py-1 flex flex-col" style={{ minHeight: 0, flex: '1 0 auto' }}>
+          <div className="max-w-6xl mx-auto flex-1 flex flex-col w-full" style={{ minHeight: 0 }}>
+            <div className="flex flex-col items-center flex-1 w-full" style={{ minHeight: 0 }}>
               {/* Movie Card Section - Mobile optimized for single screen */}
               <div className="w-full flex-1 flex items-center justify-center min-h-0 -mt-[10px] md:mt-0">
                 {loadingState === LoadingState.LOADING ? (
@@ -254,76 +286,111 @@ const Home: React.FC = () => {
                 ) : error ? (
                   <NoMoviesFound />
                 ) : currentMovie ? (
-                  <div className="w-full flex flex-col" style={{ maxHeight: '100%', minHeight: 0 }}>
+                  <div className="w-full flex flex-col flex-1" style={{ maxHeight: '100%', minHeight: 0 }}>
                     {/* Mobile: Ensure content fits above footer - adjust maxHeight to account for footer */}
                     <div className="flex-1 min-h-0" style={{ maxHeight: 'calc(100% - 9rem)' }}>
-                  <MovieCard 
-                    movie={currentMovie} 
-                    isInWatchlist={isInWatchlist} 
-                    propellerAds={propellerAds}
-                    showDescriptionButton={showDescriptionButton}
-                    isButtonFading={isButtonFading}
-                    onShowDescription={handleShowDescription}
-                    onHideDescription={handleHideDescription}
+                      <MovieCard 
+                        movie={currentMovie} 
+                        isInWatchlist={isInWatchlist} 
+                        propellerAds={propellerAds}
+                        showDescriptionButton={showDescriptionButton}
+                        isButtonFading={isButtonFading}
+                        onShowDescription={handleShowDescription}
+                        onHideDescription={handleHideDescription}
                         renderButtonOutside={true}
                         onButtonRender={handleButtonRender}
                       />
                     </div>
                     
-                    {/* Desktop: Ad above button - consistent spacing */}
-                    <div className="w-full mt-3 hidden md:block flex-shrink-0">
-                      <PropellerBannerAd 
-                        placement="movie-card" 
-                        className="w-full"
-                        onError={() => console.log('Movie card ad failed to load')}
-                        onSuccess={() => console.log('Movie card ad loaded successfully')}
-                      />
-              </div>
-              
-                    {/* Desktop: Button below ad - closer spacing (ad is shorter than card) */}
+                    {/* Desktop Layout: Movie Card → Banner Ad → Button → Footer */}
+                    {/* Banner Ad - Under movie card on desktop */}
+                    {/* Use MultiTag for banner (includes In-Page Push/Vignette Banner) or regular banner */}
+                    <div className="w-full hidden md:block flex-shrink-0 mt-3">
+                      {USE_MULTITAG_FOR_BANNER ? (
+                        <MonetagMultiTagBanner 
+                          zoneId={MONETAG_MULTITAG_ZONE_ID}
+                          className="w-full"
+                          onLoad={() => console.log('Monetag MultiTag banner loaded successfully')}
+                          onError={() => console.log('Monetag MultiTag banner failed to load')}
+                        />
+                      ) : (
+                        <MonetagBannerAd 
+                          className="w-full"
+                          onLoad={() => console.log('Monetag banner ad loaded successfully')}
+                          onError={() => console.log('Monetag banner ad failed to load')}
+                        />
+                      )}
+                    </div>
+                    
+                    {/* Desktop: Button - Centered horizontally and vertically between ad and footer when ad present, or 30px under card when no ad */}
                     {externalButton && (
-                      <div className="hidden md:block mt-2 flex-shrink-0">
+                      <div 
+                        className="hidden md:flex flex-shrink-0 w-full justify-center items-center"
+                        style={{ 
+                          marginTop: 'auto',
+                          marginBottom: 'auto',
+                          minHeight: '60px', // Ensure button has space
+                          paddingTop: '1rem',
+                          paddingBottom: '1rem'
+                        }}
+                      >
                         {externalButton}
                       </div>
                     )}
                     
-                    {/* Mobile: Conditional order based on MOBILE_AD_ABOVE_BUTTON */}
+                    {/* Mobile Layout: Movie Card → Ad → Button (or Button → Ad based on MOBILE_AD_ABOVE_BUTTON) */}
                     {MOBILE_AD_ABOVE_BUTTON ? (
                       <>
-                        {/* Mobile: Ad above button - consistent spacing */}
+                        {/* Mobile: Ad above button */}
                         <div className="w-full mt-3 block md:hidden flex-shrink-0">
-                          <PropellerBannerAd 
-                            placement="movie-card" 
-                            className="w-full"
-                            onError={() => console.log('Movie card ad failed to load')}
-                            onSuccess={() => console.log('Movie card ad loaded successfully')}
-                          />
+                          {USE_MULTITAG_FOR_BANNER ? (
+                            <MonetagMultiTagBanner 
+                              zoneId={MONETAG_MULTITAG_ZONE_ID}
+                              className="w-full"
+                              onLoad={() => console.log('Monetag MultiTag banner loaded successfully')}
+                              onError={() => console.log('Monetag MultiTag banner failed to load')}
+                            />
+                          ) : (
+                            <MonetagBannerAd 
+                              className="w-full"
+                              onLoad={() => console.log('Monetag banner ad loaded successfully')}
+                              onError={() => console.log('Monetag banner ad failed to load')}
+                            />
+                          )}
                         </div>
                         
-                        {/* Mobile: Button below ad - consistent spacing */}
+                        {/* Mobile: Button below ad - centered */}
                         {externalButton && (
-                          <div className="block md:hidden mt-3 flex-shrink-0">
+                          <div className="block md:hidden mt-3 flex-shrink-0 w-full flex justify-center">
                             {externalButton}
                           </div>
                         )}
                       </>
                     ) : (
                       <>
-                        {/* Mobile: Button below movie card - consistent spacing */}
+                        {/* Mobile: Button below movie card - centered */}
                         {externalButton && (
-                          <div className="block md:hidden mt-3 flex-shrink-0">
+                          <div className="block md:hidden mt-3 flex-shrink-0 w-full flex justify-center">
                             {externalButton}
                           </div>
                         )}
                         
-                        {/* Mobile: Ad below button - consistent spacing */}
+                        {/* Mobile: Ad below button */}
                         <div className="w-full mt-3 block md:hidden flex-shrink-0">
-                <PropellerBannerAd 
-                  placement="movie-card" 
-                  className="w-full"
-                  onError={() => console.log('Movie card ad failed to load')}
-                  onSuccess={() => console.log('Movie card ad loaded successfully')}
-                />
+                          {USE_MULTITAG_FOR_BANNER ? (
+                            <MonetagMultiTagBanner 
+                              zoneId={MONETAG_MULTITAG_ZONE_ID}
+                              className="w-full"
+                              onLoad={() => console.log('Monetag MultiTag banner loaded successfully')}
+                              onError={() => console.log('Monetag MultiTag banner failed to load')}
+                            />
+                          ) : (
+                            <MonetagBannerAd 
+                              className="w-full"
+                              onLoad={() => console.log('Monetag banner ad loaded successfully')}
+                              onError={() => console.log('Monetag banner ad failed to load')}
+                            />
+                          )}
                         </div>
                       </>
                     )}
@@ -338,8 +405,8 @@ const Home: React.FC = () => {
 
         <div ref={bottomRef} />
         
-        {/* Footer - Split into 2 horizontal lines, equal spacing */}
-        <footer className="mt-2 py-3 md:py-4 px-4 border-t border-white/10 bg-gradient-to-r from-gray-900/50 to-slate-900/50 backdrop-blur-sm">
+        {/* Footer - Aligned to bottom on desktop, split into 2 horizontal lines, equal spacing */}
+        <footer className="mt-auto py-3 md:py-4 px-4 border-t border-white/10 bg-gradient-to-r from-gray-900/50 to-slate-900/50 backdrop-blur-sm flex-shrink-0">
           <div className="max-w-6xl mx-auto">
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-1 md:gap-4 text-xs md:text-sm text-gray-400">
               {/* First line: Copyright and Creator */}
@@ -379,12 +446,13 @@ const Home: React.FC = () => {
         </footer>
       </div>
 
-      {/* PropellerAds Interstitial Ad */}
-      {propellerAds.visible && propellerAds.adType === 'interstitial' && (
-        <PropellerInterstitialAd
-          onClose={propellerAds.close}
-          onError={propellerAds.close}
-          onSuccess={() => console.log('PropellerAds interstitial loaded successfully')}
+      {/* Monetag Interstitial Ad - Shows every 5 rerolls */}
+      {monetagAds.visible && (
+        <MonetagInterstitialAd
+          zoneId={MONETAG_INTERSTITIAL_ZONE_ID}
+          onClose={monetagAds.close}
+          onError={monetagAds.close}
+          onSuccess={() => console.log('Monetag interstitial loaded successfully')}
         />
       )}
 
