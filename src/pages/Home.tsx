@@ -250,11 +250,15 @@ const Home: React.FC = () => {
               {/* Movie Card Section - Mobile optimized for single screen */}
               <div className="w-full flex-1 flex items-center justify-center min-h-0 -mt-[10px] md:mt-0">
                 {loadingState === LoadingState.LOADING ? (
-                  <MovieCardSkeleton />
+                  <div className="w-full animate-[fadeIn_0.3s_ease-out]">
+                    <MovieCardSkeleton />
+                  </div>
                 ) : error ? (
-                  <NoMoviesFound />
+                  <div className="w-full animate-[fadeIn_0.3s_ease-out]">
+                    <NoMoviesFound />
+                  </div>
                 ) : currentMovie ? (
-                  <div className="w-full flex flex-col" style={{ maxHeight: '100%', minHeight: 0 }}>
+                  <div className="w-full flex flex-col animate-[fadeIn_0.3s_ease-out]" style={{ maxHeight: '100%', minHeight: 0 }}>
                     {/* Mobile: Ensure content fits above footer - adjust maxHeight to account for footer */}
                     <div className="flex-1 min-h-0" style={{ maxHeight: 'calc(100% - 9rem)' }}>
                   <MovieCard 
@@ -278,7 +282,9 @@ const Home: React.FC = () => {
                     )}
                   </div>
                 ) : (
-                  <PlaceholderMovieCard />
+                  <div className="w-full animate-[fadeIn_0.3s_ease-out]">
+                    <PlaceholderMovieCard />
+                  </div>
                 )}
               </div>
             </div>
