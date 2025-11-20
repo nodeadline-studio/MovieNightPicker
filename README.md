@@ -38,40 +38,14 @@ File: src/pages/Home.tsx - Change pickCounter.count % 7 to pickCounter.count % 5
 
 Comprehensive documentation is available in the [`docs/`](docs/) directory:
 
-### Current Status & Development
-- **Development Status**: See `docs/DEVELOPMENT_STATUS.md` for current state, known issues, and next steps
-- **UI Validation**: See `docs/UI_VALIDATION_CHECKLIST.md` for pending UI/UX validation tasks
-- **Ad Configuration**: See `docs/AD_CONFIGURATION_GUIDE.md` for Monetag ad setup instructions
-
-### Monetization & Ads
-- **Monetag Implementation**: See `docs/MONETAG_IMPLEMENTATION_SUMMARY.md` for ad integration details
-- **Monetag Quick Setup**: See `docs/MONETAG_QUICK_SETUP.md` for quick reference
-- **Ad Providers**: See `docs/AD_PROVIDERS_SETUP.md` for multi-provider architecture
-
-### Testing & Quality
-- **Testing Guidelines**: See `docs/prev/TESTING_GUIDELINES.md` for testing standards
-- **Service Worker**: See `docs/dev/SERVICE_WORKER_EXPLANATION.md` for service worker info
-
-## Current Status
-
-**Version**: 0.65.0  
-**Status**: Active Development
-
-### ✅ Working
-- Core functionality (movie discovery, filtering, watchlist)
-- UI/UX layout and responsive design
-- Build and lint passing
-
-### ⚠️ Pending
-- **Monetag Ads**: Script URLs need configuration (see `docs/AD_CONFIGURATION_GUIDE.md`)
-- **UI Validation**: Recent fixes need visual validation (see `docs/UI_VALIDATION_CHECKLIST.md`)
-
-For detailed status, see [`docs/DEVELOPMENT_STATUS.md`](docs/DEVELOPMENT_STATUS.md).
+- **Monetization**: See `docs/MONETIZATION_READY_SUMMARY.md` for monetization status
+- **PropellerAds**: See `docs/PROPELLER_ADS_SUMMARY.md` for ad integration details
+- **Testing**: See `docs/TESTING_GUIDELINES.md` for testing standards
+- **Service Worker**: See `docs/SERVICE_WORKER_EXPLANATION.md` for service worker info
 
 ## Known Issues
 
-- **Monetag Ads Not Loading**: Script URLs need to be updated from Monetag dashboard. See `docs/AD_CONFIGURATION_GUIDE.md` for instructions.
-- **UI Fixes Pending Validation**: Recent UI improvements need user validation. See `docs/UI_VALIDATION_CHECKLIST.md`.
+- **Filter Selection on Desktop**: ✅ **FIXED** - Filter panel click issue resolved. See `docs/MONETIZATION_READY_SUMMARY.md` for details.
 
 ## Roadmap
 

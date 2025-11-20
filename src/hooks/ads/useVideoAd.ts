@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { usePickCounter } from './usePickCounter';
-import { AD_CONFIG, AdFrequencyManager } from '../config/adConfig';
-import { logger } from '../utils/logger';
+import { usePickCounter } from '../usePickCounter';
+import { AD_CONFIG, AdFrequencyManager } from '../../config/ads/adConfig';
+import { logger } from '../../utils/logger';
 
 interface UseVideoAdOptions {
   onClose?: () => void;

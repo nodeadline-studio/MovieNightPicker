@@ -4,7 +4,7 @@ import Button from './ui/Button';
 
 const PlaceholderMovieCard: React.FC = () => {
   return (
-    <div className="w-full max-w-[95vw] md:max-w-4xl mx-auto bg-gray-900 rounded-xl overflow-hidden shadow-xl border border-gray-800">
+    <div className="w-full max-w-[95vw] md:max-w-[min(1254px,95vw)] mx-auto bg-gray-900 rounded-xl overflow-hidden shadow-xl border border-gray-800">
       <div className="flex flex-col md:flex-row h-full">
         <div className="w-full md:w-1/3 relative h-[40vh] md:h-[50vh] bg-gray-800 flex items-center justify-center">
           <div className="flex flex-col items-center gap-4">

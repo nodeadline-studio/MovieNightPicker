@@ -20,7 +20,7 @@ class MovieCache {
   private usedMovies = new Map<number, number>(); // movieId -> timestamp
   private loadingTimes: number[] = [];
   private readonly maxLoadingTimes = 50;
-  private readonly cacheLifetime = 2 * 60 * 60 * 1000; // 2 hours instead of 24 for better variety
+  private readonly cacheLifetime = 30 * 60 * 1000; // 30 minutes for better variety (reduced from 2 hours)
 
   constructor() {
     this.debugId = Math.random().toString(36).substr(2, 5);
@@ -199,6 +199,25 @@ class MovieCache {
       totalMovies += cachedSet.movies.length;
     }
     return totalMovies;
+  }
+
+  isMovieUsed(movieId: number): boolean {
+    const now = Date.now();
+    const timestamp = this.usedMovies.get(movieId);
+    if (!timestamp) return false;
+    
+    // Check if movie is still within cache lifetime
+    if (now - timestamp > this.cacheLifetime) {
+      // Expired, remove it
+      this.usedMovies.delete(movieId);
+      return false;
+    }
+    
+    return true;
+  }
+
+  markMovieUsed(movieId: number): void {
+    this.usedMovies.set(movieId, Date.now());
   }
 
   getUsedMoviesCount(): number {

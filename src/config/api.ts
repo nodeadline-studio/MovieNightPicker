@@ -311,7 +311,8 @@ async function attemptFetch(
       movie.vote_count >= (isTV ? 25 : 100) && // Lower threshold for TV shows
       !watchlist.some(w => w.id === movie.id) && // Exclude watchlist movies
       movie.id !== excludeMovieId && // Exclude current movie
-      !(excludeMovieIds || []).includes(movie.id); // Exclude recent session movies
+      !(excludeMovieIds || []).includes(movie.id) && // Exclude recent session movies
+      !movieCache.isMovieUsed(movie.id); // Exclude movies from cache usedMovies
   });
 
   if (validInitialMovies.length === 0) {
@@ -493,7 +494,14 @@ async function attemptFetch(
   }, { prefix: 'API' });
   
   // Weighted random selection from top movies
-  return weightedRandomSelect(topMovies);
+  const selectedMovie = weightedRandomSelect(topMovies);
+  
+  // Mark movie as used in cache to prevent duplicates
+  if (selectedMovie) {
+    movieCache.markMovieUsed(selectedMovie.id);
+  }
+  
+  return selectedMovie;
 }
 
 export async function fetchGenres(): Promise<Genre[]> {

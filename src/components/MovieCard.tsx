@@ -146,22 +146,12 @@ const MovieCard: React.FC<MovieCardProps> = ({
     const viewportHeight = window.innerHeight;
     const availableHeight = viewportHeight - 400; // Reserve space for header, poster, buttons, ad, padding
     
-    // For long text on desktop, use smaller font to fit without overlapping
-    if (!isMobile) {
-      if (textLength > 400) {
-        return 'text-xs md:text-sm lg:text-base'; // Smaller for long text
-      }
-      if (textLength > 300 && availableHeight < 500) {
-        return 'text-xs md:text-sm lg:text-base'; // Smaller when space is limited
-      }
-    }
-    
     // For long text (> 500 chars) and limited height (< 600px), use smaller font
     if (textLength > 500 && availableHeight < 600) {
       return 'text-xs md:text-sm lg:text-base';
     }
     return 'text-sm md:text-base lg:text-lg';
-  }, [movie.overview, isMobile]);
+  }, [movie.overview]);
   
   const formatDate = (dateString: string) => {
     if (!dateString) return 'Unknown';
@@ -247,15 +237,14 @@ const MovieCard: React.FC<MovieCardProps> = ({
           <div className="flex flex-col md:flex-row h-full md:h-auto">
             {/* Movie Poster - Maintain 2:3 ratio on desktop (original poster ratio) */}
             <div className="w-full md:w-1/3 relative aspect-[2/3] max-h-[38vh] sm:max-h-[42vh] md:max-h-none md:flex-shrink-0">
-              {/* Now Playing Badge */}
+              {/* Now Playing Badge - Top-left on desktop, bottom-right on mobile - ABOVE poster */}
               {isInTheaters(movie.release_date) && (
-                <div className="absolute top-2 md:top-4 left-2 md:left-4 bg-gradient-to-r from-green-500 to-emerald-500 
-                               text-white text-xs md:text-sm font-bold px-2 md:px-3 py-1 md:py-1.5 rounded-xl md:rounded-2xl z-30 
-                               flex items-center gap-1 md:gap-2 shadow-lg backdrop-blur-sm border border-white/20"
-                               style={{ pointerEvents: 'auto' }}>
+                <div className="absolute bottom-2 right-2 md:top-4 md:left-4 md:bottom-auto md:right-auto bg-gradient-to-r from-green-500 to-emerald-500 
+                               text-white text-xs font-bold px-2 md:px-3 py-1 md:py-2 rounded-xl md:rounded-2xl z-[100] 
+                               flex items-center gap-1 md:gap-2 shadow-lg backdrop-blur-sm pointer-events-none">
                   <Clapperboard size={10} className="md:hidden" aria-hidden="true" />
                   <Clapperboard size={12} className="hidden md:block" aria-hidden="true" />
-                  <span className="text-xs md:text-sm font-semibold">Now Playing</span>
+                  <span className="text-xs">Now Playing</span>
                 </div>
               )}
               
@@ -283,7 +272,7 @@ const MovieCard: React.FC<MovieCardProps> = ({
                 </div>
                 
                 <img
-                    className="w-full h-full object-cover md:object-contain transition-transform duration-500 group-hover:scale-105 relative z-10 pointer-events-auto"
+                    className="w-full h-full object-cover md:object-contain transition-transform duration-500 group-hover:scale-105 relative z-0 pointer-events-auto"
                   src={getImageUrl(movie.poster_path)}
                   alt={`Movie poster for ${movie.title}`}
                   loading="lazy"
@@ -451,7 +440,7 @@ const MovieCard: React.FC<MovieCardProps> = ({
               </div>
               
                 {/* Overview */}
-                <div className="mb-2 md:mb-2 flex-1 min-h-0" style={{ paddingBottom: isHeaderVisible ? '0.5rem' : '0' }}>
+                <div className="mb-2 md:-mb-5 flex-1 min-h-0">
                   <div 
                     className={`flex flex-col transition-all duration-300 ease-out ${
                       isTextExpanded 

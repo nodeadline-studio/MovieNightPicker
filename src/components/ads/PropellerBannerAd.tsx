@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState, useCallback, memo } from 'react';
-import { PROPELLER_ADS_CONFIG, PropellerAdsLoader, AdPlacement, PropellerAdsAnalytics } from '../config/propellerAdsConfig';
-import { MockPropellerAds } from '../config/propellerAdsMock';
+import { PROPELLER_ADS_CONFIG, PropellerAdsLoader, AdPlacement, PropellerAdsAnalytics } from '../../config/ads/propellerAdsConfig';
+import { MockPropellerAds } from '../../config/ads/propellerAdsMock';
 
 interface PropellerBannerAdProps {
   placement: 'about' | 'movie-card';

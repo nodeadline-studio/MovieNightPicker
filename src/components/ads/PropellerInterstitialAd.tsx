@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { X } from 'lucide-react';
-import { PROPELLER_ADS_CONFIG, PropellerAdsLoader, AdPlacement, PropellerAdsAnalytics } from '../config/propellerAdsConfig';
-import { MockInterstitialAd } from '../config/propellerAdsMock';
+import { PROPELLER_ADS_CONFIG, PropellerAdsLoader, AdPlacement, PropellerAdsAnalytics } from '../../config/ads/propellerAdsConfig';
+import { MockInterstitialAd } from '../../config/ads/propellerAdsMock';
 
 interface PropellerInterstitialAdProps {
   onClose: () => void;
@@ -133,7 +133,12 @@ const PropellerInterstitialAd: React.FC<PropellerInterstitialAdProps> = ({
       // State 2: Attempting - try to load real ad
       setLoadingState('attempting');
 
-      // Always try real ad first (even in development)
+      // Check if we're in development mode - skip real ad attempt in dev
+      const isDevelopment = process.env.NODE_ENV === 'development' || 
+                           typeof window !== 'undefined' && window.location.hostname === 'localhost';
+
+      // Only try real ad in production
+      if (!isDevelopment) {
       try {
       // Load PropellerAds script if not already loaded
       const loader = PropellerAdsLoader.getInstance();
@@ -252,6 +257,10 @@ const PropellerInterstitialAd: React.FC<PropellerInterstitialAdProps> = ({
           realAdTimeoutRef.current = null;
         }
         // Fall through to mock fallback
+        }
+      } else {
+        // In development, skip directly to mock
+        console.log('Development mode: using mock ad');
       }
 
       // State 3: Showing - fallback to mock ad (no placeholder delay)

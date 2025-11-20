@@ -1,7 +1,7 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
-import { usePickCounter } from './usePickCounter';
-import { PROPELLER_ADS_CONFIG, PropellerAdsLoader, AdPlacement } from '../config/propellerAdsConfig';
-import { logger } from '../utils/logger';
+import { usePickCounter } from '../usePickCounter';
+import { PROPELLER_ADS_CONFIG, PropellerAdsLoader, AdPlacement } from '../../config/ads/propellerAdsConfig';
+import { logger } from '../../utils/logger';
 
 interface UsePropellerAdsOptions {
   onClose?: () => void;

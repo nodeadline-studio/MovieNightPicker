@@ -1,9 +1,9 @@
 // Provider-agnostic Banner Ad Component
 
 import React, { useEffect, useRef, useState, useCallback, memo } from 'react';
-import { adProviderManager } from '../config/adProviders';
-import { AdPlacement, PROPELLER_ADS_CONFIG, PropellerAdsAnalytics } from '../config/propellerAdsConfig';
-import { AdPlacement as AdPlacementType } from '../config/adProviders/types';
+import { adProviderManager } from '../../config/ads/adProviders';
+import { AdPlacement, PROPELLER_ADS_CONFIG, PropellerAdsAnalytics } from '../../config/ads/propellerAdsConfig';
+import { AdPlacement as AdPlacementType } from '../../config/ads/adProviders/types';
 
 interface BannerAdProps {
   placement: 'about' | 'movie-card';
