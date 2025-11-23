@@ -47,6 +47,7 @@ export const MovieProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [filterOptions, setFilterOptions] = useState<FilterOptions>(DEFAULT_FILTER_OPTIONS);
   const [error, setError] = useState<string | null>(null);
   const [sessionMovies, setSessionMovies] = useState<Set<number>>(new Set());
+  const [previousFilterKey, setPreviousFilterKey] = useState<string>('');
 
   // Fetch genres
   const { data: genres = [] } = useQuery({
@@ -138,9 +139,27 @@ export const MovieProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       if (newOptions.ratingFrom < 0) newOptions.ratingFrom = 0;
       if (newOptions.ratingFrom > 10) newOptions.ratingFrom = 10;
       
+      // Create filter key to detect significant changes
+      const filterKey = JSON.stringify({
+        genres: newOptions.genres.sort(),
+        yearFrom: newOptions.yearFrom,
+        yearTo: newOptions.yearTo,
+        ratingFrom: newOptions.ratingFrom,
+        inTheatersOnly: newOptions.inTheatersOnly,
+        tvShowsOnly: newOptions.tvShowsOnly
+      });
+      
+      // If filters changed significantly, clear session movies and cache to allow full variety
+      if (filterKey !== previousFilterKey && previousFilterKey !== '') {
+        logger.debug('Filters changed significantly, clearing session movies and cache for better variety', undefined, { prefix: 'Context' });
+        setSessionMovies(new Set());
+        movieCache.clear();
+      }
+      setPreviousFilterKey(filterKey);
+      
       return newOptions;
     });
-  }, []);
+  }, [previousFilterKey]);
 
   const applyRandomFilters = useCallback(() => {
     if (genres.length === 0) return; // Wait for genres to load
@@ -233,42 +252,15 @@ export const MovieProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   }, [filterOptions, applyRandomFilters, currentMovie, sessionMovies]);
 
   const getRandomMovieSafe = useCallback(async () => {
-    setLoadingState(LoadingState.LOADING);
-    setError(null);
-    
-    // Apply random filters if randomizer is enabled BEFORE making the API call
-    // if (isRandomizerEnabled) {
-    //   applyRandomFilters(); // Now just call the function, it will update filters itself
-    //   // Use current filters after update
-    // }
-    
     try {
-      // Use current filters (they were updated by applyRandomFilters if needed)
-      // Limit sessionMovies to last 20 for better variety
-      const recentSessionMovies = Array.from(sessionMovies).slice(-20);
-      // Pass current movie ID and recent session movies to exclude from results
-      const movie = await fetchRandomMovie(filterOptions, currentMovie?.id, recentSessionMovies);
-      setCurrentMovie(movie);
-      setLoadingState(LoadingState.SUCCESS);
-      setPickCount(prev => prev + 1);
-      
-      // Track movie in session to prevent duplicates
-      setSessionMovies(prev => {
-        const newSet = new Set([...prev, movie.id]);
-        // Keep only last 20 movies in session
-        if (newSet.size > 20) {
-          const arr = Array.from(newSet);
-          return new Set(arr.slice(-20));
-        }
-        return newSet;
-      });
+      await getRandomMovie();
     } catch (e) {
       const errorMessage = (e as Error).message;
       setError(errorMessage);
       setLoadingState(LoadingState.ERROR);
       console.error('Error getting random movie:', errorMessage);
     }
-  }, [filterOptions, applyRandomFilters, currentMovie, sessionMovies]);
+  }, [getRandomMovie]);
 
   const addToWatchlist = useCallback((movie: Movie) => {
     setWatchlist((prev) => {

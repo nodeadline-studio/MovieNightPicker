@@ -207,7 +207,7 @@ const MovieCard: React.FC<MovieCardProps> = ({
   );
 
   return (
-    <div className="w-full max-w-[95vw] md:max-w-5xl lg:max-w-6xl mx-auto space-y-2 md:space-y-4 relative">
+    <div className="w-full max-w-[95vw] md:max-w-5xl lg:max-w-6xl mx-auto space-y-2 md:space-y-4 relative animate-[fadeIn_0.3s_ease-out]">
       {/* About Button - Desktop: Positioned outside card, above header */}
       {showDescriptionButton && !isMobile && (
         <div className="absolute md:-top-[55px] left-1/2 transform -translate-x-1/2 z-[100] pointer-events-none">
@@ -412,14 +412,14 @@ const MovieCard: React.FC<MovieCardProps> = ({
               </div>
               
               {/* Genres */}
-              <div className="mb-3 md:mb-6">
-                <div className="flex flex-wrap gap-1 md:gap-2">
+              <div className="mb-3 md:mb-4">
+                <div className="flex flex-wrap gap-1 md:gap-2 items-center">
                   {movie.genres && movie.genres.slice(0, 4).map((genre, index) => (
                     <span
                       key={genre.id}
-                      className="px-2 md:px-3 py-1 md:py-2 bg-gradient-to-r from-indigo-500/20 to-purple-500/20 
+                      className="inline-flex px-2 md:px-3 py-1 md:py-2 bg-gradient-to-r from-indigo-500/20 to-purple-500/20 
                                text-xs md:text-sm text-gray-300 rounded-lg md:rounded-xl border border-white/10
-                               hover:from-indigo-500/30 hover:to-purple-500/30 transition-all duration-200"
+                               hover:from-indigo-500/30 hover:to-purple-500/30 transition-all duration-200 whitespace-nowrap"
                       style={{
                         animationName: 'slideInUp',
                         animationDuration: '0.5s',
@@ -432,7 +432,7 @@ const MovieCard: React.FC<MovieCardProps> = ({
                     </span>
                   ))}
                   {movie.genres && movie.genres.length > 4 && (
-                    <span className="px-2 md:px-3 py-1 md:py-2 bg-white/5 text-xs md:text-sm text-gray-400 rounded-lg md:rounded-xl">
+                    <span className="inline-flex px-2 md:px-3 py-1 md:py-2 bg-white/5 text-xs md:text-sm text-gray-400 rounded-lg md:rounded-xl whitespace-nowrap">
                       +{movie.genres.length - 4} more
                     </span>
                   )}
@@ -440,7 +440,7 @@ const MovieCard: React.FC<MovieCardProps> = ({
               </div>
               
                 {/* Overview */}
-                <div className="mb-2 md:-mb-5 flex-1 min-h-0">
+                <div className={`flex-1 min-h-0 ${isTextExpanded ? 'mb-2 md:mb-2' : 'mb-2 md:-mb-5'}`}>
                   <div 
                     className={`flex flex-col transition-all duration-300 ease-out ${
                       isTextExpanded 

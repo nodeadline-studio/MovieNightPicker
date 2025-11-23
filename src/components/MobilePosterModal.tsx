@@ -46,32 +46,24 @@ const MobilePosterModal: React.FC<MobilePosterModalProps> = ({ movie, isOpen, on
 
   return (
     <div 
-      className="fixed bg-black/95 backdrop-blur-sm flex items-center justify-center z-[9999] md:hidden"
+      className="fixed inset-0 bg-black/95 backdrop-blur-sm flex items-center justify-center z-[9999] md:hidden px-4 py-6"
       role="dialog"
       aria-modal="true"
       aria-labelledby="modal-title"
       onClick={handleBackdropClick}
       style={{
-        position: 'fixed',
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        width: '100vw',
-        height: '100vh',
-        paddingTop: 'env(safe-area-inset-top)',
+        paddingTop: 'max(1.5rem, env(safe-area-inset-top))',
+        paddingBottom: 'max(1.5rem, env(safe-area-inset-bottom))',
         paddingLeft: 'max(1rem, env(safe-area-inset-left))',
-        paddingRight: 'max(1rem, env(safe-area-inset-right))',
-        paddingBottom: 'max(1rem, env(safe-area-inset-bottom))'
+        paddingRight: 'max(1rem, env(safe-area-inset-right))'
       }}
     >
       <div 
-        className="relative w-full max-w-sm h-[80vh] overflow-hidden bg-gray-900 rounded-xl border border-gray-700"
+        className="relative w-full max-w-sm overflow-hidden bg-gray-900 rounded-xl border border-gray-700 shadow-2xl"
         onClick={(e) => e.stopPropagation()}
         style={{
-          marginTop: 'max(1rem, env(safe-area-inset-top))',
-          marginLeft: 'auto',
-          marginRight: 'auto'
+          height: 'min(90vh, 640px)',
+          maxHeight: 'calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 2rem)'
         }}
       >
         {/* Close button */}

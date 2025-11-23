@@ -21,6 +21,7 @@ class MovieCache {
   private loadingTimes: number[] = [];
   private readonly maxLoadingTimes = 50;
   private readonly cacheLifetime = 30 * 60 * 1000; // 30 minutes for better variety (reduced from 2 hours)
+  private readonly filteredCacheLifetime = 5 * 60 * 1000; // 5 minutes when filters are active for better variety
 
   constructor() {
     this.debugId = Math.random().toString(36).substr(2, 5);
@@ -201,13 +202,16 @@ class MovieCache {
     return totalMovies;
   }
 
-  isMovieUsed(movieId: number): boolean {
+  isMovieUsed(movieId: number, useFilteredLifetime: boolean = false): boolean {
     const now = Date.now();
     const timestamp = this.usedMovies.get(movieId);
     if (!timestamp) return false;
     
+    // Use shorter lifetime when filters are active for better variety
+    const lifetime = useFilteredLifetime ? this.filteredCacheLifetime : this.cacheLifetime;
+    
     // Check if movie is still within cache lifetime
-    if (now - timestamp > this.cacheLifetime) {
+    if (now - timestamp > lifetime) {
       // Expired, remove it
       this.usedMovies.delete(movieId);
       return false;

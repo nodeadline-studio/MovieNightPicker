@@ -226,7 +226,7 @@ const Home: React.FC = () => {
           </div>
           
             {isHeaderVisible && (
-              <div className={`text-center mb-4 md:mb-12 transition-all duration-500 ease-out overflow-hidden ${
+              <div className={`text-center mb-6 md:mb-4 pb-6 md:pb-0 transition-all duration-500 ease-out overflow-hidden ${
                 isDescriptionFading ? 'animate-[fadeOut_0.5s_ease-out_forwards]' : 'animate-fadeIn'
               }`}>
                 <div className="max-w-2xl mx-auto">
@@ -245,7 +245,7 @@ const Home: React.FC = () => {
 
 
         <main className="flex-1 px-4 py-0 md:py-1 flex flex-col" style={{ minHeight: 0 }}>
-          <div className="max-w-6xl mx-auto flex-1 flex flex-col">
+          <div className="flex-1 flex flex-col">
             <div className="flex flex-col items-center flex-1" style={{ minHeight: 0 }}>
               {/* Movie Card Section - Mobile optimized for single screen */}
               <div className="w-full flex-1 flex items-center justify-center min-h-0 -mt-[10px] md:mt-0">
@@ -258,7 +258,7 @@ const Home: React.FC = () => {
                     <NoMoviesFound />
                   </div>
                 ) : currentMovie ? (
-                  <div className="w-full flex flex-col animate-[fadeIn_0.3s_ease-out]" style={{ maxHeight: '100%', minHeight: 0 }}>
+                  <div className="w-full max-w-6xl mx-auto flex flex-col animate-[fadeIn_0.3s_ease-out]" style={{ maxHeight: '100%', minHeight: 0 }}>
                     {/* Mobile: Ensure content fits above footer - adjust maxHeight to account for footer */}
                     <div className="flex-1 min-h-0" style={{ maxHeight: 'calc(100% - 9rem)' }}>
                   <MovieCard 
@@ -275,8 +275,11 @@ const Home: React.FC = () => {
                     </div>
                     
                     {/* Button - positioned between movie card and footer, centered vertically */}
+                    {/* Only show proper spacing after about button appears to prevent layout shift */}
                     {externalButton && (
-                      <div className="flex-1 flex items-center justify-center my-4 md:my-6 flex-shrink-0">
+                      <div className={`flex-1 flex items-center justify-center flex-shrink-0 transition-all duration-300 ${
+                        showDescriptionButton ? 'my-4 md:my-6' : 'my-2 md:my-4'
+                      }`}>
                         {externalButton}
                       </div>
                     )}
