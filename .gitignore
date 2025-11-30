@@ -64,6 +64,6 @@ pids
 node_modules/
 **/node_modules/
 
-docs/
+docs/archive/
 .env
 tests/

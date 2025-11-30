@@ -38,18 +38,24 @@ File: src/pages/Home.tsx - Change pickCounter.count % 7 to pickCounter.count % 5
 
 Comprehensive documentation is available in the [`docs/`](docs/) directory:
 
-- **Monetization**: See `docs/MONETIZATION_READY_SUMMARY.md` for monetization status
-- **PropellerAds**: See `docs/PROPELLER_ADS_SUMMARY.md` for ad integration details
-- **Testing**: See `docs/TESTING_GUIDELINES.md` for testing standards
-- **Service Worker**: See `docs/SERVICE_WORKER_EXPLANATION.md` for service worker info
+- **[Documentation Index](docs/README.md)** - Complete documentation guide
+- **[Project Status](docs/STATUS.md)** - Current status, features, and roadmap
+- **[Changelog](docs/CHANGELOG.md)** - Version history and changes
+- **[Contributing](CONTRIBUTING.md)** - Contribution guidelines
 
-## Known Issues
+For detailed documentation, see [docs/README.md](docs/README.md).
 
-- **Filter Selection on Desktop**: ✅ **FIXED** - Filter panel click issue resolved. See `docs/MONETIZATION_READY_SUMMARY.md` for details.
+## Current Status
 
-## Roadmap
+**Version**: 0.65.0  
+**Status**: ✅ Production Ready - Ads Implementation Pending
 
-See [ROADMAP.md](ROADMAP.md) for planned features and development timeline.
+### Recent Updates
+- ✅ Fixed About button positioning (no layout shift)
+- ✅ Fixed Get Movie button positioning
+- ✅ Implemented interstitial ad pause functionality
+
+See [docs/STATUS.md](docs/STATUS.md) for complete status and roadmap.
 
 ## Getting Started
 
@@ -82,22 +88,14 @@ npm run build
 
 ## Contributing
 
-Contributions are welcome! Please follow these guidelines:
+Contributions are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for detailed guidelines.
 
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. **Clean up test files** - See [Testing Guidelines](docs/TESTING_GUIDELINES.md)
-5. Submit a Pull Request
+### Quick Start for Contributors
 
-### Test Cleanup Policy
-
-Before committing, always clean up temporary test files:
-```bash
-rm -f tests/qa/*.png && rm -rf test-results/
-```
-
-See [TESTING_GUIDELINES.md](docs/TESTING_GUIDELINES.md) for complete testing standards.
+1. Read [CONTRIBUTING.md](CONTRIBUTING.md)
+2. Check [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) for development guidelines
+3. Review [docs/TESTING.md](docs/TESTING.md) for testing requirements
+4. Follow the pull request process outlined in CONTRIBUTING.md
 
 ## License
 

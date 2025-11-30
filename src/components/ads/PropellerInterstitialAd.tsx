@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { X } from 'lucide-react';
 import { PROPELLER_ADS_CONFIG, PropellerAdsLoader, AdPlacement, PropellerAdsAnalytics } from '../../config/ads/propellerAdsConfig';
 import { MockInterstitialAd } from '../../config/ads/propellerAdsMock';
+import { pauseAllMedia } from '../../utils/mediaPause';
 
 interface PropellerInterstitialAdProps {
   onClose: () => void;
@@ -302,6 +303,13 @@ const PropellerInterstitialAd: React.FC<PropellerInterstitialAdProps> = ({
     loadAd();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Only load once on mount
+
+  // Pause all media when ad becomes visible
+  useEffect(() => {
+    if (isVisible && adContentRendered) {
+      pauseAllMedia();
+    }
+  }, [isVisible, adContentRendered]);
 
   // Inject mock ad content when visible (only if using mock, not real ad, and in showing state)
   useEffect(() => {

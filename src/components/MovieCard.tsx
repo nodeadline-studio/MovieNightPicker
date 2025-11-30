@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useMediaQuery } from 'react-responsive';
 import { Movie } from '../types';
 import { getImageUrl, isInTheaters } from '../config/api';
-import { Heart, Star, Calendar, Clapperboard, ExternalLink, Sparkles, Shuffle, ChevronDown, X, Film, ChevronUp } from 'lucide-react';
+import { Heart, Star, Calendar, Clapperboard, ExternalLink, Sparkles, Shuffle, ChevronDown, X, Film } from 'lucide-react';
 import { useMovieContext } from '../context/MovieContext';
 import { usePickCounter } from '../hooks/usePickCounter';
 import * as gtag from '../utils/gtag';
@@ -44,7 +44,6 @@ const MovieCard: React.FC<MovieCardProps> = ({
   const [isTextExpanded, setIsTextExpanded] = useState(false);
   const [shouldShowTextExpansion, setShouldShowTextExpansion] = useState(false);
   const buttonElementRef = useRef<React.ReactNode>(null);
-  const hasCalledCallbackRef = useRef(false);
   const lastButtonRef = useRef<React.ReactNode>(null);
 
   // Smart text expansion logic - only expand if text > 10% of screen height
@@ -114,19 +113,15 @@ const MovieCard: React.FC<MovieCardProps> = ({
   };
 
   // Handle button rendering outside component (for desktop layout)
+  // Always update button when movie changes or when showDescriptionButton changes
+  // This ensures button is visible when description closes and about button appears
   useEffect(() => {
-    // Reset callback flag if button element changed
-    if (buttonElementRef.current !== lastButtonRef.current) {
-      hasCalledCallbackRef.current = false;
+    if (renderButtonOutside && onButtonRender && buttonElementRef.current) {
+      onButtonRender(buttonElementRef.current);
+      // Update last button ref to track changes
       lastButtonRef.current = buttonElementRef.current;
     }
-    
-    // Only call callback once per button element
-    if (renderButtonOutside && onButtonRender && buttonElementRef.current && !hasCalledCallbackRef.current) {
-      onButtonRender(buttonElementRef.current);
-      hasCalledCallbackRef.current = true;
-    }
-  }, [renderButtonOutside, onButtonRender]);
+  }, [renderButtonOutside, onButtonRender, movie.id, showDescriptionButton]);
   
   // Dynamic text container height calculation for desktop
   const textContainerHeight = useMemo(() => {
@@ -208,10 +203,12 @@ const MovieCard: React.FC<MovieCardProps> = ({
 
   return (
     <div className="w-full max-w-[95vw] md:max-w-5xl lg:max-w-6xl mx-auto space-y-2 md:space-y-4 relative animate-[fadeIn_0.3s_ease-out]">
-      {/* About Button - Desktop: Positioned outside card, above header */}
+      {/* About Button - Desktop: Positioned outside card, above header - absolutely positioned to prevent layout shift */}
       {showDescriptionButton && !isMobile && (
-        <div className="absolute md:-top-[55px] left-1/2 transform -translate-x-1/2 z-[100] pointer-events-none">
-          <AboutButton />
+        <div className="absolute -top-[55px] left-1/2 -translate-x-1/2 z-[100] pointer-events-none w-0 h-0">
+          <div className="relative -left-1/2">
+            <AboutButton />
+          </div>
         </div>
       )}
       

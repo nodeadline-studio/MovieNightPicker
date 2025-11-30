@@ -44,6 +44,7 @@ const Home: React.FC = () => {
   const MOBILE_AD_ABOVE_BUTTON = true;
 
   // Memoize button render callback to prevent infinite loop
+  // Always update button when it changes to ensure it's visible
   const handleButtonRender = useCallback((button: React.ReactNode) => {
     setExternalButton(button);
   }, []);
@@ -275,8 +276,8 @@ const Home: React.FC = () => {
                     </div>
                     
                     {/* Button - positioned between movie card and footer, centered vertically */}
-                    {/* Only show proper spacing after about button appears to prevent layout shift */}
-                    {externalButton && (
+                    {/* Always show button when movie card is loaded and positioned */}
+                    {externalButton && currentMovie && (
                       <div className={`flex-1 flex items-center justify-center flex-shrink-0 transition-all duration-300 ${
                         showDescriptionButton ? 'my-4 md:my-6' : 'my-2 md:my-4'
                       }`}>
