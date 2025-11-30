@@ -20,7 +20,8 @@ class MovieCache {
   private usedMovies = new Map<number, number>(); // movieId -> timestamp
   private loadingTimes: number[] = [];
   private readonly maxLoadingTimes = 50;
-  private readonly cacheLifetime = 24 * 60 * 60 * 1000; // 24 hours
+  private readonly cacheLifetime = 30 * 60 * 1000; // 30 minutes for better variety (reduced from 2 hours)
+  private readonly filteredCacheLifetime = 5 * 60 * 1000; // 5 minutes when filters are active for better variety
 
   constructor() {
     this.debugId = Math.random().toString(36).substr(2, 5);
@@ -139,10 +140,15 @@ class MovieCache {
   async getMovie(): Promise<Movie | null> {
     // Clean up old used movies
     const now = Date.now();
+    let cleanedCount = 0;
     for (const [id, timestamp] of this.usedMovies.entries()) {
       if (now - timestamp > this.cacheLifetime) {
         this.usedMovies.delete(id);
+        cleanedCount++;
       }
+    }
+    if (cleanedCount > 0) {
+      logger.debug(`Cleaned ${cleanedCount} expired used movies`, undefined, { prefix: `Cache ${this.debugId}` });
     }
 
     // Get all available movies from all cache sets
@@ -156,7 +162,12 @@ class MovieCache {
       !this.usedMovies.has(movie.id)
     );
     
-    if (availableMovies.length === 0) return null;
+    logger.debug(`Cache check: ${allMovies.length} total, ${this.usedMovies.size} used, ${availableMovies.length} available`, undefined, { prefix: `Cache ${this.debugId}` });
+    
+    if (availableMovies.length === 0) {
+      logger.debug('No available movies in cache', undefined, { prefix: `Cache ${this.debugId}` });
+      return null;
+    }
     
     // Simulate loading time
     await this.simulateLoadTime();
@@ -168,16 +179,53 @@ class MovieCache {
     // Mark as used
     this.usedMovies.set(movie.id, Date.now());
     
+    logger.debug(`Selected movie from cache: ${movie.id} - ${movie.title}`, undefined, { prefix: `Cache ${this.debugId}` });
+    
     return movie;
   }
 
   clear(): void {
     const size = this.cache.size;
+    const usedCount = this.usedMovies.size;
     this.cache.clear();
     this.usedMovies.clear();
     if (size > 0) {
-      logger.debug(`Cache cleared`, undefined, { prefix: `Cache ${this.debugId}` });
+      logger.debug(`Cache cleared: ${size} sets, ${usedCount} used movies`, undefined, { prefix: `Cache ${this.debugId}` });
     }
+  }
+
+  getCacheSize(): number {
+    let totalMovies = 0;
+    for (const cachedSet of this.cache.values()) {
+      totalMovies += cachedSet.movies.length;
+    }
+    return totalMovies;
+  }
+
+  isMovieUsed(movieId: number, useFilteredLifetime: boolean = false): boolean {
+    const now = Date.now();
+    const timestamp = this.usedMovies.get(movieId);
+    if (!timestamp) return false;
+    
+    // Use shorter lifetime when filters are active for better variety
+    const lifetime = useFilteredLifetime ? this.filteredCacheLifetime : this.cacheLifetime;
+    
+    // Check if movie is still within cache lifetime
+    if (now - timestamp > lifetime) {
+      // Expired, remove it
+      this.usedMovies.delete(movieId);
+      return false;
+    }
+    
+    return true;
+  }
+
+  markMovieUsed(movieId: number): void {
+    this.usedMovies.set(movieId, Date.now());
+  }
+
+  getUsedMoviesCount(): number {
+    return this.usedMovies.size;
   }
 
   removeSuspiciousMovies(): void {

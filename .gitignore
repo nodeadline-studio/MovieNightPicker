@@ -59,3 +59,11 @@ pids
 *.pid
 *.seed
 *.pid.lock
+
+# Node modules (added by cleanup script)
+node_modules/
+**/node_modules/
+
+docs/archive/
+.env
+tests/

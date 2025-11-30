@@ -14,23 +14,22 @@ const PrivacyPolicy: React.FC = () => {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-2 md:p-4 z-[70] safe-area-insets">
-      <div className="bg-gray-900 rounded-xl max-w-2xl w-full max-h-[85vh] md:max-h-[80vh] overflow-hidden border border-gray-800">
-        <div className="p-6 border-b border-gray-800 flex items-center justify-between">
+    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-[70]">
+      <div className="bg-gray-900 rounded-xl max-w-2xl w-full max-h-[80vh] border border-gray-800 flex flex-col">
+        <div className="p-6 border-b border-gray-800 flex items-center justify-between relative">
           <div className="flex items-center">
             <Shield className="text-blue-500 mr-2" size={24} />
             <h2 className="text-xl font-bold text-white">Privacy Policy</h2>
           </div>
-          <Button
-            variant="ghost"
-            size="sm"
-            icon={<X size={20} />}
+          <button
             onClick={() => setIsOpen(false)}
+            className="absolute top-4 right-4 p-2 hover:bg-gray-800 rounded-lg transition-colors"
+            aria-label="Close"
           >
-            {""}
-          </Button>
+            <X size={20} className="text-white" />
+          </button>
         </div>
-        <div className="p-4 md:p-6 overflow-y-auto max-h-[calc(85vh-140px)] md:max-h-[calc(80vh-140px)]">
+        <div className="p-6 overflow-y-auto flex-1 min-h-0">
           <div className="prose prose-invert max-w-none">
             <h3>Data Collection and Usage</h3>
             <p><strong>MovieNightPicker does NOT collect any personal data or user information.</strong></p>
@@ -83,7 +82,7 @@ const PrivacyPolicy: React.FC = () => {
             <p>If you have any questions about this Privacy Policy, please contact us.</p>
           </div>
         </div>
-        <div className="p-4 md:p-6 border-t border-gray-800">
+        <div className="p-6 border-t border-gray-800">
           <Button variant="primary" onClick={() => setIsOpen(false)} fullWidth>
             Close
           </Button>

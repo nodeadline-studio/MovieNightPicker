@@ -1,16 +1,17 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { 
   BookMarked, X, Share2, 
   Film, Tv, Star, Clock, Calendar, ExternalLink, Trash2, Eye, EyeOff 
 } from 'lucide-react';
 import { useMovieContext } from '../context/MovieContext';
 import { generateWatchlistImage } from '../utils/imageGenerator';
+import { analytics } from '../utils/analytics';
 import * as gtag from '../utils/gtag';
 import { fetchMovieDetails, getImageUrl } from '../config/api';
-import { canUseNativeShare, canShareWithFiles, canUseClipboard, isNativeFileSharingReliable, isChromeMobile, isSafariMobile, isMobileDevice } from '../utils/shareUtils';
+import { canUseNativeShare, canShareWithFiles, canUseClipboard } from '../utils/shareUtils';
 
 const WatchlistPanel: React.FC = () => {
-  const { watchlist, removeFromWatchlist } = useMovieContext();
+  const { watchlist, removeFromWatchlist, clearWatchlist, debugLocalStorage } = useMovieContext();
   const [isOpen, setIsOpen] = useState(false);
   const [showShareMenu, setShowShareMenu] = useState(false);
   const [updatedMovies, setUpdatedMovies] = useState<Record<number, { vote_average: number; imdb_id: string | null }>>({});
@@ -18,6 +19,35 @@ const WatchlistPanel: React.FC = () => {
   const [showSuccessMessage, setShowSuccessMessage] = useState(false);
   const [previewMovie, setPreviewMovie] = useState<number | null>(null);
   const [hasAnimated, setHasAnimated] = useState(false);
+
+  // Debug mode check
+  const isDebugMode = import.meta.env.DEV;
+
+  // Calculate scrollable area max-height based on viewport
+  const scrollableMaxHeight = useMemo(() => {
+    if (typeof window === 'undefined') return '100%';
+    const viewportHeight = window.innerHeight;
+    const viewportWidth = window.innerWidth;
+    
+    // Header: ~80px, padding: ~48px (p-6), footer space: ~20px
+    const reserved = 148;
+    const available = viewportHeight - reserved;
+    
+    // Calculate items per screen based on viewport
+    let itemsPerScreen = 5; // Desktop default
+    if (viewportWidth <= 375) {
+      itemsPerScreen = 3; // iPhone SE
+    } else if (viewportWidth <= 412) {
+      itemsPerScreen = 4; // Pixel 7
+    }
+    
+    // Each item is approximately 100px tall (p-4 + content)
+    const itemHeight = 100;
+    const maxVisibleHeight = itemsPerScreen * itemHeight;
+    
+    // Return calculated height, but ensure it doesn't exceed available space
+    return `${Math.min(maxVisibleHeight, available)}px`;
+  }, []);
 
   // Separate movies and TV shows
   const movies = watchlist.filter(item => item.contentType === 'movie');
@@ -39,7 +69,7 @@ const WatchlistPanel: React.FC = () => {
 
   useEffect(() => {
     if (isOpen && watchlist.length > 0) {
-      // analytics.updateWatchlistSize(watchlist.length); // Method doesn't exist
+      analytics.updateWatchlistSize(watchlist.length);
       watchlist.forEach(async (movie) => {
         try {
           const updatedMovie = await fetchMovieDetails(movie.id);
@@ -66,11 +96,11 @@ const WatchlistPanel: React.FC = () => {
     } else if (!isOpen) {
       setHasAnimated(false);
     }
-  }, [isOpen, hasAnimated]);
+  }, [isOpen]);
 
   // Close share menu when clicking outside
   useEffect(() => {
-    const handleClickOutside = () => {
+    const handleClickOutside = (event: MouseEvent) => {
       if (showShareMenu) {
         setShowShareMenu(false);
       }
@@ -140,6 +170,7 @@ const WatchlistPanel: React.FC = () => {
       document.body.removeChild(link);
       
       setShowShareMenu(false);
+      analytics.trackShare('download', watchlist.length);
       gtag.trackShare('download', watchlist.length);
     } catch (error) {
       console.error('Error generating watchlist image:', error);
@@ -160,24 +191,6 @@ const WatchlistPanel: React.FC = () => {
       const shareText = generateShareText();
       const url = window.location.origin;
       
-      // For Chrome mobile, try text-only sharing first to avoid download issues
-      if (isChromeMobile()) {
-        try {
-          const textShareData = {
-            title: '🎬 My Watchlist',
-            text: shareText,
-            url: url
-          };
-          
-          await navigator.share(textShareData);
-          setShowShareMenu(false);
-          gtag.trackShare('native', watchlist.length);
-          return;
-        } catch (error) {
-          console.log('Chrome mobile text-only share failed, trying with image...');
-        }
-      }
-      
       const imageDataUrl = await generateWatchlistImage({ 
         movies: watchlist,
         maxMovies: 6 
@@ -195,31 +208,19 @@ const WatchlistPanel: React.FC = () => {
         files: [file]
       };
       
-      // Only try file sharing if it's reliable on this browser
-      if (isNativeFileSharingReliable() && canShareWithFiles([file])) {
+      if (canShareWithFiles([file])) {
         await navigator.share(shareData);
         setShowShareMenu(false);
+        analytics.trackShare('native', watchlist.length);
         gtag.trackShare('native', watchlist.length);
       } else {
-        // For unreliable browsers, try text-only sharing
-        const textShareData = {
-          title: '🎬 My Watchlist',
-          text: shareText,
-          url: url
-        };
-        
-        await navigator.share(textShareData);
-        setShowShareMenu(false);
-        gtag.trackShare('native', watchlist.length);
+        // Fallback to download
+        await handleDownloadImage();
       }
     } catch (error) {
       console.error('Error with native share:', error);
-      // Fallback to clipboard or download based on platform
-      if (isMobileDevice()) {
-        await handleClipboardShare();
-      } else {
-        await handleDownloadImage();
-      }
+      // Fallback to download
+      await handleDownloadImage();
     } finally {
       setIsGeneratingImage(false);
     }
@@ -274,6 +275,7 @@ const WatchlistPanel: React.FC = () => {
       }
       
       setShowShareMenu(false);
+      analytics.trackShare('clipboard', watchlist.length);
       gtag.trackShare('clipboard', watchlist.length);
     } catch (error) {
       console.error('Error copying to clipboard:', error);
@@ -290,24 +292,6 @@ const WatchlistPanel: React.FC = () => {
       if (canUseNativeShare()) {
         const shareText = generateShareText();
         const url = window.location.origin;
-        
-        // For Chrome mobile, try text-only sharing first
-        if (isChromeMobile()) {
-          try {
-            const textShareData = {
-              title: '🎬 My Watchlist',
-              text: shareText,
-              url: url
-            };
-            
-            await navigator.share(textShareData);
-            setShowShareMenu(false);
-            gtag.trackShare('native', watchlist.length);
-            return;
-          } catch (error) {
-            console.log('Chrome mobile text-only share failed, trying with image...');
-          }
-        }
         
         const imageDataUrl = await generateWatchlistImage({ 
           movies: watchlist,
@@ -326,22 +310,14 @@ const WatchlistPanel: React.FC = () => {
           files: [file]
         };
         
-        // Only try file sharing if it's reliable on this browser
-        if (isNativeFileSharingReliable() && canShareWithFiles([file])) {
+        if (canShareWithFiles([file])) {
           await navigator.share(shareData);
           setShowShareMenu(false);
+          analytics.trackShare('native', watchlist.length);
           gtag.trackShare('native', watchlist.length);
         } else {
-          // For unreliable browsers, try text-only sharing
-          const textShareData = {
-            title: '🎬 My Watchlist',
-            text: shareText,
-            url: url
-          };
-          
-          await navigator.share(textShareData);
-          setShowShareMenu(false);
-          gtag.trackShare('native', watchlist.length);
+          // Fallback to clipboard
+          await handleClipboardShare();
         }
       } else {
         // Desktop: copy to clipboard with both text and image
@@ -349,12 +325,8 @@ const WatchlistPanel: React.FC = () => {
       }
     } catch (error) {
       console.error('Error with smart share:', error);
-      // Final fallback to clipboard or download based on platform
-      if (isMobileDevice()) {
-        await handleClipboardShare();
-      } else {
-        await handleDownloadImage();
-      }
+      // Final fallback to download
+      await handleDownloadImage();
     } finally {
       setIsGeneratingImage(false);
     }
@@ -382,6 +354,7 @@ const WatchlistPanel: React.FC = () => {
       return;
     }
     
+    analytics.trackShare(platform, watchlist.length);
     gtag.trackShare(platform, watchlist.length);
   };
 
@@ -390,7 +363,8 @@ const WatchlistPanel: React.FC = () => {
     title: string;
     icon: React.ReactNode;
     items: typeof watchlist;
-  }> = ({ title, icon, items }) => {
+    emptyMessage: string;
+  }> = ({ title, icon, items, emptyMessage }) => {
     if (items.length === 0) return null;
 
     return (
@@ -400,11 +374,11 @@ const WatchlistPanel: React.FC = () => {
           <h4 className="text-sm font-semibold text-white">{title}</h4>
           <span className="text-xs text-gray-400">({items.length})</span>
         </div>
-        <div className="space-y-3">
+        <div>
           {items.map((movie, index) => (
             <div 
               key={movie.id} 
-              className={`group relative bg-white/5 hover:bg-white/10 rounded-2xl p-4 
+              className={`group relative bg-white/5 hover:bg-white/10 rounded-2xl p-4 mb-3
                          border border-white/5 hover:border-white/20
                          transition-all duration-200 ease-out
                          hover:shadow-lg hover:shadow-purple-500/10
@@ -461,20 +435,17 @@ const WatchlistPanel: React.FC = () => {
                   <div className="flex items-center gap-2">
                     <button
                       onClick={(e) => handlePreviewClick(movie.id, e)}
-                      className="text-indigo-400 hover:text-indigo-300 p-1 rounded transition-colors duration-200 md:block hidden"
+                      className="text-indigo-400 hover:text-indigo-300 p-1 rounded transition-colors duration-200"
                       title={previewMovie === movie.id ? "Hide details" : "Show details"}
                     >
                       {previewMovie === movie.id ? <EyeOff size={16} /> : <Eye size={16} />}
                     </button>
                     
-                    {((updatedMovies[movie.id] && updatedMovies[movie.id].imdb_id) || movie.imdb_id) && (
+                    {(updatedMovies[movie.id]?.imdb_id || movie.imdb_id) && (
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
-                          const imdbId = (updatedMovies[movie.id] && updatedMovies[movie.id].imdb_id) || movie.imdb_id;
-                          if (imdbId) {
-                            window.open(`https://www.imdb.com/title/${imdbId}`, '_blank');
-                          }
+                          window.open(`https://www.imdb.com/title/${updatedMovies[movie.id]?.imdb_id || movie.imdb_id}`, '_blank');
                         }}
                         className="text-yellow-400 hover:text-yellow-300 p-1 rounded transition-colors duration-200"
                         title="View on IMDb"
@@ -556,14 +527,9 @@ const WatchlistPanel: React.FC = () => {
 
             {/* Action Buttons */}
             <div className="flex gap-2">
-              {((updatedMovies[movie.id] && updatedMovies[movie.id].imdb_id) || movie.imdb_id) && (
+              {(updatedMovies[movie.id]?.imdb_id || movie.imdb_id) && (
                 <button
-                  onClick={() => {
-                    const imdbId = (updatedMovies[movie.id] && updatedMovies[movie.id].imdb_id) || movie.imdb_id;
-                    if (imdbId) {
-                      window.open(`https://www.imdb.com/title/${imdbId}`, '_blank');
-                    }
-                  }}
+                  onClick={() => window.open(`https://www.imdb.com/title/${updatedMovies[movie.id]?.imdb_id || movie.imdb_id}`, '_blank')}
                   className="flex-1 bg-gradient-to-r from-yellow-500 to-orange-500 
                            hover:from-yellow-400 hover:to-orange-400
                            text-black font-semibold py-2 px-3 rounded-xl
@@ -746,13 +712,14 @@ const WatchlistPanel: React.FC = () => {
                     </div>
                   </div>
                 ) : (
-                  <div className="h-full overflow-y-auto scrollbar-hide p-6">
+                  <div className="overflow-y-auto custom-scrollbar p-6" style={{ maxHeight: scrollableMaxHeight }}>
                     <div className="space-y-4">
                       {allMovies.length > 0 && (
                         <WatchlistSection
                           title="Movies"
                           icon={<Film size={16} className="text-blue-400" />}
                           items={allMovies}
+                          emptyMessage="No movies in your watchlist"
                         />
                       )}
                       
@@ -765,6 +732,7 @@ const WatchlistPanel: React.FC = () => {
                           title="TV Shows"
                           icon={<Tv size={16} className="text-purple-400" />}
                           items={tvShows}
+                          emptyMessage="No TV shows in your watchlist"
                         />
                       )}
                     </div>

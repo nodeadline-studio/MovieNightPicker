@@ -1,132 +1,71 @@
-# 📝 MovieNightPicker Changelog
+# Changelog
 
-## [1.0.0] - 2025-01-31 - Production Release
+All notable changes to MovieNightPicker will be documented in this file.
 
-### 🎯 **Major Features Completed**
-- ✅ **AI Movie Picker**: Random movie generator with TMDB integration
-- ✅ **Advanced Filtering**: Genre, year, rating, mood-based selection
-- ✅ **Mobile-First Design**: Responsive UI optimized for all devices
-- ✅ **Watchlist Management**: Save, share, and manage movie collections
-- ✅ **Video Ad Integration**: Monetization with Google AdSense + IMA SDK
-- ✅ **Performance Optimization**: Core Web Vitals optimization
-
-### 🔧 **Technical Improvements**
-- ✅ **React 18 + TypeScript**: Modern frontend architecture
-- ✅ **Tailwind CSS**: Utility-first styling with custom animations
-- ✅ **Vite Build System**: Fast development and optimized production builds
-- ✅ **Netlify Deployment**: Edge hosting with global CDN
-- ✅ **SEO Foundation**: Meta tags, structured data, sitemap
-
-### 📱 **Mobile Optimization (Completed)**
-- ✅ **Responsive Layout**: Mobile-first design approach
-- ✅ **Touch Interactions**: Optimized for mobile devices
-- ✅ **Safe Area Handling**: Proper iOS/Android safe area support
-- ✅ **Loading States**: Optimized skeleton loading components
-- ✅ **Modal Optimization**: Mobile-friendly modal experiences
-
-### 🎨 **UI/UX Enhancements**
-- ✅ **Movie Card Design**: Beautiful, interactive movie cards
-- ✅ **Hover Effects**: Smooth animations and transitions
-- ✅ **Genre Pills**: Dynamic genre display with smart sizing
-- ✅ **Poster Modal**: Full-screen poster viewing experience
-- ✅ **Loading Transitions**: Smooth loading state animations
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
-## [0.9.0] - 2025-01-25 - Pre-Production
+## [0.65.0] - 2025-01-XX
 
-### 🔧 **Core Functionality**
-- ✅ **TMDB API Integration**: 50,000+ movie database
-- ✅ **Filter System**: Progressive filter relaxation
-- ✅ **Random Selection**: Smart movie picking algorithm
-- ✅ **Error Handling**: Graceful fallbacks and user feedback
+### Fixed
+- **About Button Positioning**: Fixed desktop About button causing movie card layout shift
+  - Changed to absolute positioning with zero-width container
+  - Button no longer affects card position when appearing
+- **Get Movie Button**: Fixed button appearing between movie card and footer
+  - Button now appears correctly on all devices when description closes
+  - Updated button rendering logic to respond to `showDescriptionButton` changes
 
-### 📱 **Mobile Development**
-- ✅ **Responsive Breakpoints**: Mobile, tablet, desktop
-- ✅ **Touch Gestures**: Tap, hold, swipe interactions
-- ✅ **Performance**: Optimized for mobile devices
+### Added
+- **Interstitial Ad Pause**: Implemented media pause functionality for interstitial ads
+  - Created `utils/mediaPause.ts` utility
+  - Pauses all videos, audio, and iframe media when ads appear
+  - Integrated into `PropellerInterstitialAd.tsx`
 
----
+### Changed
+- Improved button rendering callback logic in `MovieCard.tsx`
+- Updated `useEffect` dependencies to ensure proper button visibility
 
-## [0.8.0] - 2025-01-20 - Beta Features
-
-### 🎬 **Movie Management**
-- ✅ **Watchlist System**: Add/remove movies
-- ✅ **Share Functionality**: Social sharing capabilities
-- ✅ **Movie Details**: Comprehensive movie information
-
-### 🎨 **Design System**
-- ✅ **Component Library**: Reusable UI components
-- ✅ **Animation System**: CSS transitions and animations
-- ✅ **Theme Support**: Dark theme with accent colors
+### Removed
+- Removed unused `hasCalledCallbackRef` variable
+- Removed unused `ChevronUp` import
 
 ---
 
-## [0.7.0] - 2025-01-15 - Alpha Release
+## [0.64.0] - Previous Version
 
-### 🚀 **Foundation**
-- ✅ **React App Setup**: Vite + TypeScript configuration
-- ✅ **Basic Routing**: Single-page application structure
-- ✅ **State Management**: Context API implementation
-- ✅ **API Layer**: HTTP client and error handling
-
----
-
-## [0.6.0] - 2025-01-10 - Planning & Design
-
-### 📋 **Project Setup**
-- ✅ **Requirements Analysis**: User needs and feature planning
-- ✅ **Technical Architecture**: Tech stack selection
-- ✅ **UI/UX Design**: Wireframes and mockups
-- ✅ **Project Structure**: Folder organization and naming
+### Previous Changes
+- Core functionality implementation
+- Filter system
+- Watchlist management
+- Responsive design
+- Ad system architecture
 
 ---
 
-## 🔄 **Development Timeline**
+## [Unreleased]
 
-| Phase | Duration | Status | Key Deliverables |
-|-------|----------|---------|------------------|
-| **Planning** | 1 week | ✅ Complete | Requirements, architecture |
-| **Foundation** | 1 week | ✅ Complete | React setup, basic structure |
-| **Core Features** | 2 weeks | ✅ Complete | Movie picker, filters |
-| **Mobile UI** | 2 weeks | ✅ Complete | Responsive design, optimization |
-| **Testing** | 1 week | ✅ Complete | QA, bug fixes |
-| **Production** | 1 week | ✅ Complete | Deployment, monitoring |
-| **SEO & Marketing** | Ongoing | 🟡 In Progress | Content, backlinks |
+### Planned
+- Production ad integration
+- Enhanced filtering options
+- Performance optimizations
+- User preferences persistence
 
 ---
 
-## 🎯 **Next Milestones**
+## Version History Format
 
-### **Phase 1: Content Expansion (Week 1-2)**
-- [ ] Dynamic movie pages (genre, year)
-- [ ] Blog content system
-- [ ] Enhanced meta tags
-
-### **Phase 2: SEO Implementation (Week 3-4)**
-- [ ] Google Search Console setup
-- [ ] Content optimization
-- [ ] Backlink strategy
-
-### **Phase 3: Community Building (Week 5-6)**
-- [ ] Reddit engagement
-- [ ] Social media presence
-- [ ] User feedback collection
+- **[Major.Minor.Patch]** - Version number
+- **YYYY-MM-DD** - Release date
+- **Fixed** - Bug fixes
+- **Added** - New features
+- **Changed** - Changes in existing functionality
+- **Deprecated** - Soon-to-be removed features
+- **Removed** - Removed features
+- **Security** - Security fixes
 
 ---
 
-## 📊 **Quality Metrics**
+**Note**: For detailed implementation history, see `docs/archive/` directory.
 
-| Metric | Target | Current | Status |
-|--------|--------|---------|---------|
-| **Performance** | 90+ | 95 | ✅ Exceeds |
-| **Accessibility** | 95+ | 92 | 🟡 Good |
-| **SEO Score** | 90+ | 85 | 🟡 Improving |
-| **Mobile UX** | 90+ | 95 | ✅ Exceeds |
-| **Code Quality** | 90+ | 88 | 🟡 Good |
-
----
-
-**Last Updated**: 2025-01-31  
-**Next Review**: 2025-02-07  
-**Status**: ✅ Production Ready, SEO Phase Starting

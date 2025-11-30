@@ -1,0 +1,107 @@
+{
+  "projectContext": {
+    "name": "MovieNightPicker",
+    "type": "B2C Ad-Based Movie Recommendation App",
+    "techStack": ["React", "TypeScript", "Vite", "Tailwind CSS"],
+    "status": "Complete, add ads then sell",
+    "priority": "MEDIUM - Tier 3 project",
+    "keyFiles": [
+      "src/ - React application",
+      "vite.config.ts - Build configuration",
+      "tailwind.config.js - Tailwind config"
+    ]
+  },
+  "rules": {
+    "references": {
+      "masterRules": "../../.cursorrules - See root .cursorrules for all agent rules",
+      "projectPlan": "Docs/plans/movienightpicker/PLAN.md",
+      "statusDoc": "README.md"
+    },
+    "logicTemplating": {
+      "codevIntegration": {
+        "enabled": false,
+        "note": "Consider enabling for ad integration features"
+      },
+      "workflowTemplates": {
+        "adIntegration": {
+          "steps": ["Choose ad provider", "Create ad component", "Add placement logic", "Test ad display", "Verify no duplicates", "Test revenue"],
+          "template": "Provider → Component → Placement → Test → Verify → Revenue"
+        },
+        "responsiveDesign": {
+          "steps": ["Measure viewport", "Test breakpoints", "Verify layout", "Test interactions"],
+          "template": "Measure → Test → Verify → Interactions",
+          "breakpoints": [375, 768, 1024, 1440]
+        }
+      }
+    },
+    "projectSpecific": {
+      "documentationProtocol": {
+        "primaryStatusFile": "README.md",
+        "archiveLocation": "docs/archive/",
+        "rule": "Update existing docs, don't create new analysis files"
+      },
+      "apiConnectivity": {
+        "frontendPort": "Check vite.config.ts or package.json scripts",
+        "corsCheck": "Verify CORS if backend exists"
+      },
+      "validationGates": {
+        "build": "npm run build",
+        "lint": "npm run lint",
+        "type": "npm run type-check || tsc --noEmit",
+        "visual": "Browser tools mandatory, test at 375/768/1024/1440px",
+        "adTest": "Verify no duplicate ads, check localStorage state"
+      },
+      "responsiveBreakpoints": {
+        "mobile": 375,
+        "tablet": 768,
+        "desktop": 1024,
+        "wide": 1440,
+        "rule": "Test at all breakpoints for UI changes"
+      },
+      "adIntegrationProtocols": {
+        "adPlacement": {
+          "pattern": "Identify placement points → Create ad component → Add logic → Test",
+          "duplicatePrevention": "Check localStorage, verify no duplicate ads showing"
+        },
+        "adTesting": {
+          "steps": ["Test ad display", "Verify no duplicates", "Check localStorage", "Test revenue tracking"]
+        }
+      }
+    },
+    "roleSpecificRules": {
+      "developer": {
+        "focus": ["Ad integration", "Responsive design", "Component optimization"],
+        "decisions": ["Ad placement strategy", "Duplicate prevention logic", "Revenue tracking"],
+        "workflows": {
+          "adFeature": "Provider → Component → Placement → Test → Verify",
+          "responsiveFix": "Measure → Test → Verify → Document"
+        }
+      },
+      "productManager": {
+        "focus": ["Revenue optimization", "User experience", "Ad placement strategy"],
+        "decisions": ["Ad provider selection", "Placement locations", "Revenue targets"]
+      }
+    },
+    "patternPrevention": {
+      "enforcePreChangeChecklist": true,
+      "enforcePostChangeVerification": true,
+      "enforceFeedbackDetection": true,
+      "projectSpecificChecks": [
+        "Before changing MovieCard.tsx: Check if About button positioning was already fixed",
+        "Before changing PropellerInterstitialAd.tsx: Check if ad container ready issue was already fixed",
+        "Before changing ad components: Verify duplicate prevention logic exists",
+        "Before creating new docs: Check docs/archive/ and docs/prev/ for existing versions",
+        "After UI changes: Test at 375/768/1024/1440px breakpoints",
+        "After ad changes: Verify no duplicate ads showing, check localStorage state"
+      ]
+    },
+    "criticalReminders": [
+      "Add ads before selling on code marketplaces",
+      "Update existing docs, don't create new analysis files",
+      "Test ad integration thoroughly",
+      "Verify no duplicate ads - check localStorage",
+      "Test at all responsive breakpoints",
+      "Check for existing fixes before making changes"
+    ]
+  }
+}

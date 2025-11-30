@@ -46,6 +46,8 @@ export const MovieProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [loadingState, setLoadingState] = useState<LoadingState>(LoadingState.IDLE);
   const [filterOptions, setFilterOptions] = useState<FilterOptions>(DEFAULT_FILTER_OPTIONS);
   const [error, setError] = useState<string | null>(null);
+  const [sessionMovies, setSessionMovies] = useState<Set<number>>(new Set());
+  const [previousFilterKey, setPreviousFilterKey] = useState<string>('');
 
   // Fetch genres
   const { data: genres = [] } = useQuery({
@@ -137,34 +139,77 @@ export const MovieProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       if (newOptions.ratingFrom < 0) newOptions.ratingFrom = 0;
       if (newOptions.ratingFrom > 10) newOptions.ratingFrom = 10;
       
+      // Create filter key to detect significant changes
+      const filterKey = JSON.stringify({
+        genres: newOptions.genres.sort(),
+        yearFrom: newOptions.yearFrom,
+        yearTo: newOptions.yearTo,
+        ratingFrom: newOptions.ratingFrom,
+        inTheatersOnly: newOptions.inTheatersOnly,
+        tvShowsOnly: newOptions.tvShowsOnly
+      });
+      
+      // If filters changed significantly, clear session movies and cache to allow full variety
+      if (filterKey !== previousFilterKey && previousFilterKey !== '') {
+        logger.debug('Filters changed significantly, clearing session movies and cache for better variety', undefined, { prefix: 'Context' });
+        setSessionMovies(new Set());
+        movieCache.clear();
+      }
+      setPreviousFilterKey(filterKey);
+      
       return newOptions;
     });
-  }, []);
+  }, [previousFilterKey]);
 
   const applyRandomFilters = useCallback(() => {
-    const currentYear = new Date().getFullYear();
-    const maxYear = currentYear;
+    if (genres.length === 0) return; // Wait for genres to load
     
-    const randomFilters: FilterState = {
-      genre: genres[Math.floor(Math.random() * genres.length)]?.id?.toString() || '',
-      year: Math.floor(Math.random() * (maxYear - 1900) + 1900).toString(),
-      rating: (Math.floor(Math.random() * 5) + 1).toString(),
-      runtime: (Math.floor(Math.random() * 180) + 60).toString(),
-      language: ['en', 'es', 'fr', 'de', 'it'][Math.floor(Math.random() * 5)],
-      sortBy: ['popularity', 'rating', 'release_date'][Math.floor(Math.random() * 3)]
+    // More diverse genre selection - avoid popular combinations
+    const numGenres = Math.floor(Math.random() * 2) + 2; // 2-3 genres for better diversity
+    const shuffledGenres = [...genres].sort(() => Math.random() - 0.5);
+    const randomGenres = shuffledGenres.slice(0, numGenres).map(g => g.id);
+    
+    const currentYear = new Date().getFullYear();
+    const minYear = 1960; // Start from 1960 for greater diversity
+    
+    // More diverse time periods
+    const periods = [
+      { from: 1960, to: 1980 }, // Classic era
+      { from: 1980, to: 2000 }, // 80s-90s
+      { from: 2000, to: 2010 }, // 2000s
+      { from: 2010, to: currentYear }, // Modern
+      { from: 1960, to: currentYear }, // All time
+    ];
+    
+    const selectedPeriod = periods[Math.floor(Math.random() * periods.length)];
+    const yearFrom = selectedPeriod.from + Math.floor(Math.random() * 5); // Small variation
+    const yearTo = Math.min(selectedPeriod.to, currentYear);
+    
+    const rating = Math.floor(Math.random() * 2.5) + 5.5; // 5.5-8.0 for better diversity
+    
+    const newFilters = {
+      genres: randomGenres,
+      yearFrom,
+      yearTo,
+      ratingFrom: rating,
+      inTheatersOnly: false,
+      includeAdult: true,
+      tvShowsOnly: false,
+      maxRuntime: 180
     };
     
-    setFilters(randomFilters);
-    gtag.event('apply_random_filters', {
-      filters: randomFilters
-    });
-  }, [genres]);
+    logger.debug('🎲 Applied random filters:', newFilters, { prefix: 'Context' });
+    updateFilterOptions(newFilters);
+    // Removed automatic movie search - now only updates filters
+  }, [genres, updateFilterOptions]);
 
   const getRandomMovie = useCallback(async () => {
     setLoadingState(LoadingState.LOADING);
     setError(null);
-    movieCache.clear();
-    movieCache.removeSuspiciousMovies(); // Clear any cached movies with suspicious ratings
+    
+    // DON'T clear usedMovies - keep duplicate prevention active
+    // Only remove suspicious movies, but preserve usedMovies tracking
+    movieCache.removeSuspiciousMovies(); // Keep this
     
     // Apply random filters if randomizer is enabled BEFORE making the API call
     // if (isRandomizerEnabled) {
@@ -174,46 +219,48 @@ export const MovieProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     
     try {
       // Use current filters (they were updated by applyRandomFilters if needed)
-      const movie = await fetchRandomMovie(filterOptions);
+      // Increased to last 100 movies for better variety (from 50)
+      const recentSessionMovies = Array.from(sessionMovies).slice(-100);
+      // Pass current movie ID and recent session movies to exclude from results
+      const movie = await fetchRandomMovie(filterOptions, currentMovie?.id, recentSessionMovies);
+      
+      // Log to check for duplicates
+      if (currentMovie && currentMovie.id === movie.id) {
+        console.warn(`[Cache] Duplicate movie detected: ${movie.id} - ${movie.title}`);
+      }
+      
       setCurrentMovie(movie);
       setLoadingState(LoadingState.SUCCESS);
       setPickCount(prev => prev + 1);
+      
+      // Track movie in session to prevent duplicates
+      setSessionMovies(prev => {
+        const newSet = new Set([...prev, movie.id]);
+        // Keep only last 100 movies in session (increased from 50 for better variety)
+        if (newSet.size > 100) {
+          const arr = Array.from(newSet);
+          return new Set(arr.slice(-100));
+        }
+        return newSet;
+      });
     } catch (e) {
       const errorMessage = (e as Error).message;
       setError(errorMessage);
       setLoadingState(LoadingState.ERROR);
       throw e; // Let the component handle the error
     }
-  }, [filterOptions, applyRandomFilters]);
+  }, [filterOptions, applyRandomFilters, currentMovie, sessionMovies]);
 
   const getRandomMovieSafe = useCallback(async () => {
-    setLoadingState(LoadingState.LOADING);
-    setError(null);
-    
-    // Apply random filters if randomizer is enabled BEFORE making the API call
-    // if (isRandomizerEnabled) {
-    //   applyRandomFilters(); // Now just call the function, it will update filters itself
-    //   // Use current filters after update
-    // }
-    
     try {
-      // Use current filters (they were updated by applyRandomFilters if needed)
-      const movie = await fetchRandomMovie(filterOptions);
-      
-      // Set movie first, then update loading state to ensure smooth transition
-      setCurrentMovie(movie);
-      
-      // Immediate state update to prevent flickering
-      setLoadingState(LoadingState.SUCCESS);
-      
-      setPickCount(prev => prev + 1);
+      await getRandomMovie();
     } catch (e) {
       const errorMessage = (e as Error).message;
       setError(errorMessage);
       setLoadingState(LoadingState.ERROR);
       console.error('Error getting random movie:', errorMessage);
     }
-  }, [filterOptions, applyRandomFilters]);
+  }, [getRandomMovie]);
 
   const addToWatchlist = useCallback((movie: Movie) => {
     setWatchlist((prev) => {
@@ -237,8 +284,8 @@ export const MovieProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     });
   }, [filterOptions.tvShowsOnly]);
 
-  const removeFromWatchlist = useCallback((movieId: number) => {
-    setWatchlist(prev => prev.filter(movie => movie.id !== movieId));
+  const removeFromWatchlist = useCallback((id: number) => {
+    setWatchlist((prev) => prev.filter((movie) => movie.id !== id));
   }, []);
 
   const resetPickCount = useCallback(() => {
@@ -252,6 +299,25 @@ export const MovieProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const handleDebugLocalStorage = useCallback(() => {
     debugLocalStorage();
+  }, []);
+
+  const getMovieFromCache = useCallback(async (): Promise<CacheResult> => {
+    setLoadingState(LoadingState.LOADING);
+    setError(null);
+    
+    try {
+      const movie = await movieCache.getMovie();
+      if (movie) {
+        setCurrentMovie(movie);
+        setLoadingState(LoadingState.SUCCESS);
+        return { success: true, movie };
+      }
+      return { success: false };
+    } catch (e) {
+      setError('Failed to load movie from cache');
+      setLoadingState(LoadingState.ERROR);
+      return { success: false };
+    }
   }, []);
 
   return (

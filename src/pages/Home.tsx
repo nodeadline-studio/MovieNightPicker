@@ -1,11 +1,10 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { useMediaQuery } from 'react-responsive';
-import { Film, ChevronDown, X } from 'lucide-react'; 
+import { Film } from 'lucide-react'; 
 import { useMovieContext } from '../context/MovieContext';
 import { usePickCounter } from '../hooks/usePickCounter';
 import { timers } from '../utils/timers';
-import { useVideoAd } from '../hooks/useVideoAd';
-import { useVideoPreload } from '../hooks/useVideoPreload';
+import { usePropellerAds } from '../hooks/ads/usePropellerAds';
 import { useQuery } from '@tanstack/react-query';
 import { fetchGenres } from '../config/api';
 import MovieCard from '../components/MovieCard';
@@ -17,42 +16,13 @@ import CookieConsent from '../components/CookieConsent';
 import PrivacyPolicy from '../components/PrivacyPolicy';
 import TermsOfService from '../components/TermsOfService';
 import PlaceholderMovieCard from '../components/PlaceholderMovieCard';
-import VideoAd from '../components/VideoAd';
-import GoogleVideoAd from '../components/GoogleVideoAd';
+import PropellerBannerAd from '../components/ads/PropellerBannerAd';
+import PropellerInterstitialAd from '../components/ads/PropellerInterstitialAd';
 import LoadingOverlay from '../components/LoadingOverlay';
 import { LoadingState } from '../types';
+import { analytics } from '../utils/analytics';
+import * as gtag from '../utils/gtag';
 
-const Desktop = ({ children }: { children: React.ReactNode }) =>
-  useMediaQuery({ minWidth: 1200 }) ? children : null;
-const Mobile = ({ children }: { children: React.ReactNode }) =>
-  useMediaQuery({ maxWidth: 767 }) ? children : null;
-
-const generateMathProblem = (difficulty: number = 1) => {
-  const operations = ['+', '-', '*'];
-  const operation = operations[Math.floor(Math.random() * operations.length)];
-  let num1 = Math.floor(Math.random() * (10 * difficulty)) + 1;
-  let num2 = Math.floor(Math.random() * (10 * difficulty)) + 1;
-  
-  let answer;
-  switch (operation) {
-    case '+':
-      answer = num1 + num2;
-      break;
-    case '-':
-      if (num2 > num1) [num1, num2] = [num2, num1];
-      answer = num1 - num2;
-      break;
-    case '*':
-      num1 = Math.floor(Math.random() * (5 * difficulty)) + 1;
-      num2 = Math.floor(Math.random() * (5 * difficulty)) + 1;
-      answer = num1 * num2;
-      break;
-    default:
-      answer = num1 + num2;
-  }
-  
-  return { num1, num2, operation, answer };
-};
 
 const Home: React.FC = () => {
   const [isHeaderVisible, setIsHeaderVisible] = useState(true);
@@ -62,11 +32,22 @@ const Home: React.FC = () => {
   const [isButtonFading, setIsButtonFading] = useState(false);
   const [isInitialLoading, setIsInitialLoading] = useState(true);
   const [hasInitiallyLoaded, setHasInitiallyLoaded] = useState(false);
+  const [hasUserInteracted, setHasUserInteracted] = useState(false);
   const [isManuallyOpened, setIsManuallyOpened] = useState(false);
-  const [isTransitioning, setIsTransitioning] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const pickCounter = usePickCounter();
   const [filterPanelOpen, setFilterPanelOpen] = useState(false);
+  const [externalButton, setExternalButton] = useState<React.ReactNode>(null);
+  const isDesktop = useMediaQuery({ minWidth: 768 });
+  
+  // Toggle for mobile ad/button order: true = ad above button (desktop-like), false = button above ad
+  const MOBILE_AD_ABOVE_BUTTON = true;
+
+  // Memoize button render callback to prevent infinite loop
+  // Always update button when it changes to ensure it's visible
+  const handleButtonRender = useCallback((button: React.ReactNode) => {
+    setExternalButton(button);
+  }, []);
 
   const { 
     currentMovie, 
@@ -81,7 +62,7 @@ const Home: React.FC = () => {
     queryFn: fetchGenres,
   });
 
-  const videoAd = useVideoAd({
+  const propellerAds = usePropellerAds({
     onClose: () => {
       pickCounter.reset();
       getRandomMovieSafe()
@@ -91,33 +72,27 @@ const Home: React.FC = () => {
       getRandomMovieSafe()
         .catch(console.error);
     },
-    enableTestAds: false
+    enableTestAds: false,
+    pickCounter
   });
 
-  // Preload video ad in background
-  useVideoPreload('/ad_preview.mp4');
-
   const handleInitialLoad = useCallback(async () => {
+    setHasUserInteracted(true);
     
     try {
       await getRandomMovieSafe();
       if (currentMovie) {
-        // analytics.setLastMovie(currentMovie.id); // Removed analytics import
-        // gtag.trackMoviePick(currentMovie.id, currentMovie.title); // Removed gtag import
+        analytics.setLastMovie(currentMovie.id);
+        gtag.trackMoviePick(currentMovie.id, currentMovie.title);
       }
-      // Reset transition state after successful load
-      setIsTransitioning(false);
     } catch (error) {
       console.error('Failed to get initial movie:', error);
-      // Reset transition state even on error
-      setIsTransitioning(false);
     }
   }, [getRandomMovieSafe, currentMovie]);
 
   useEffect(() => {
     if (!isLoadingGenres && !isInitialLoading && !hasInitiallyLoaded) {
       setHasInitiallyLoaded(true);
-      setIsTransitioning(true); // Mark as transitioning
       handleInitialLoad();
     }
   }, [isLoadingGenres, isInitialLoading, hasInitiallyLoaded, handleInitialLoad]);
@@ -127,23 +102,9 @@ const Home: React.FC = () => {
       if (!isLoadingGenres) {
         setIsInitialLoading(false);
       }
-    }, 300); // Reduced from 500ms for faster transition
+    }, 1000);
     return () => clearTimeout(timer);
   }, [isLoadingGenres]);
-
-  // Keep showing loading until we have a movie or an error
-  // Also prevent showing placeholder during initial load or transitions
-  const shouldShowLoading = isInitialLoading || 
-                           loadingState === LoadingState.LOADING || 
-                           isTransitioning ||
-                           (!currentMovie && !error && !hasInitiallyLoaded);
-
-  // Reset transition state when loading completes
-  useEffect(() => {
-    if (loadingState === LoadingState.SUCCESS && currentMovie) {
-      setIsTransitioning(false);
-    }
-  }, [loadingState, currentMovie]);
 
   // REMOVED: Automatic video ad trigger on pickCount change
   // This was causing ads to show immediately on page load
@@ -200,19 +161,6 @@ const Home: React.FC = () => {
   }, [isHeaderVisible, isManuallyOpened]);
 
   // All handlers defined before any conditional returns
-  const handleGetMovie = useCallback(() => {
-    
-    if (!videoAd.visible) {
-      getRandomMovieSafe()
-        .then(() => {
-          if (currentMovie) {
-            // analytics.setLastMovie(currentMovie.id); // Removed analytics import
-            // gtag.trackMoviePick(currentMovie.id, currentMovie.title); // Removed gtag import
-          }
-        })
-        .catch(console.error);
-    }
-  }, [pickCounter, videoAd.visible, getRandomMovieSafe, currentMovie]);
 
   const handleShowDescription = useCallback(() => {
     setShowDescriptionButton(false);
@@ -254,18 +202,18 @@ const Home: React.FC = () => {
       <div className="absolute top-0 left-1/4 w-96 h-96 bg-purple-500/5 rounded-full blur-3xl pointer-events-none" />
       <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-indigo-500/5 rounded-full blur-3xl pointer-events-none" />
       
-      <div className="relative z-10">
+      <div className="relative z-10 flex flex-col min-h-screen">
         <header className={`pt-2 md:pt-8 px-4 transition-all duration-500 ease-in-out ${
           isHeaderVisible ? 'pb-1 md:pb-8 opacity-100' : 'pb-0'
         }`}>
           <div className="max-w-6xl mx-auto relative">
             <div className="flex items-center justify-between mb-6 md:mb-8">
               <div className="flex items-center gap-3">
-                <div className="p-3 bg-gradient-to-r from-indigo-600 to-purple-600 rounded-2xl shadow-lg">
+                <div className="w-10 h-10 flex items-center justify-center bg-gradient-to-r from-indigo-600 to-purple-600 rounded-2xl shadow-lg">
                   <Film size={32} className="text-white" aria-hidden="true" />
                 </div>
                 <div>
-                  <h1 className="text-2xl md:text-3xl font-bold bg-gradient-to-r from-white via-gray-100 to-gray-300 bg-clip-text text-transparent relative z-30 mobile-title-above-about" itemProp="name">
+                  <h1 className="text-2xl md:text-3xl font-bold bg-gradient-to-r from-white via-gray-100 to-gray-300 bg-clip-text text-transparent" itemProp="name">
                     MovieNightPicker
                   </h1>
                   <p className="text-sm text-gray-400 hidden md:block">Discover your next favorite movie</p>
@@ -279,14 +227,14 @@ const Home: React.FC = () => {
           </div>
           
             {isHeaderVisible && (
-              <div className={`text-center mb-4 md:mb-12 transition-all duration-500 ease-out overflow-hidden ${
+              <div className={`text-center mb-6 md:mb-4 pb-6 md:pb-0 transition-all duration-500 ease-out overflow-hidden ${
                 isDescriptionFading ? 'animate-[fadeOut_0.5s_ease-out_forwards]' : 'animate-fadeIn'
               }`}>
                 <div className="max-w-2xl mx-auto">
                   <h2 className="text-xl md:text-2xl font-semibold mb-4 bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">
                     Can't decide what to watch?
             </h2>
-                  <p className="text-gray-300 text-base md:text-lg leading-relaxed" itemProp="description">
+                  <p className="text-gray-300 text-[0.875rem] md:text-lg leading-relaxed" itemProp="description">
                     Let our smart movie picker help you discover your next favorite film. 
                     Filter by genre, year, rating and more to find the perfect movie for your mood.
             </p>
@@ -296,66 +244,61 @@ const Home: React.FC = () => {
           </div>
         </header>
 
-        {/* Fixed Description Button - Completely outside header structure */}
-        {showDescriptionButton && !isHeaderVisible && (
-          <div className="absolute top-0 left-0 right-0 z-20 pointer-events-none">
-            <div className="max-w-6xl mx-auto px-4 pointer-events-none">
-                            <div className={`flex items-center justify-center pt-[42px] md:pt-[76px] ml-[10px] md:ml-0 transition-all duration-300 ease-out pointer-events-none ${
-                isButtonFading ? 'animate-[slideUp_0.3s_ease-out_forwards]' : 'animate-[slideDown_0.3s_ease-out_forwards]'
-              }`}>
-                
-                {/* About Button - No blur effect on mobile */}
-                <div className="flex items-center gap-2 pointer-events-auto">
-                  <button
-                    onClick={handleShowDescription}
-                    className="group inline-flex items-center gap-2 px-3 py-0.75 md:py-0.7 
-                             bg-gradient-to-r from-slate-900/30 via-gray-900/20 to-slate-800/30
-                             hover:from-slate-800/40 hover:via-gray-800/30 hover:to-slate-700/40
-                             border border-white/5 hover:border-white/10 rounded-lg
-                             text-gray-600 hover:text-gray-400 text-xs font-medium leading-tight
-                             transition-all duration-300 ease-out
-                             hover:scale-105 active:scale-95 md:backdrop-blur-sm backdrop-blur-none whitespace-nowrap"
-                  >
-                    <span>What's all about?</span>
-                    <ChevronDown size={12} className="group-hover:translate-y-0.5 transition-transform duration-200" />
-                  </button>
-                  <button 
-                    onClick={handleHideDescription}
-                    className="p-1.5 text-gray-700 hover:text-gray-500 hover:bg-white/3 rounded-md
-                             transition-all duration-200 ease-out"
-                    aria-label="Hide button"
-                  >
-                    <X size={12} />
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
 
-        <main className="flex-1 px-4 py-0 md:py-2 -mt-2 md:mt-0">
-          <div className="max-w-6xl mx-auto h-full">
-            <div className="flex flex-col items-center h-full">
+        <main className="flex-1 px-4 py-0 md:py-1 flex flex-col" style={{ minHeight: 0 }}>
+          <div className="flex-1 flex flex-col">
+            <div className="flex flex-col items-center flex-1" style={{ minHeight: 0 }}>
               {/* Movie Card Section - Mobile optimized for single screen */}
-              <div className={`w-full flex-1 flex items-center justify-center min-h-0 movie-card-container content-stable ${shouldShowLoading ? 'loading-transition loading' : 'loading-transition loaded'}`}>
-                {shouldShowLoading ? (
-                  <MovieCardSkeleton />
+              <div className="w-full flex-1 flex items-center justify-center min-h-0 -mt-[10px] md:mt-0">
+                {loadingState === LoadingState.LOADING ? (
+                  <div className="w-full animate-[fadeIn_0.3s_ease-out]">
+                    <MovieCardSkeleton />
+                  </div>
                 ) : error ? (
-                  <NoMoviesFound />
+                  <div className="w-full animate-[fadeIn_0.3s_ease-out]">
+                    <NoMoviesFound />
+                  </div>
                 ) : currentMovie ? (
-                  <MovieCard movie={currentMovie} isInWatchlist={isInWatchlist} videoAd={videoAd} />
+                  <div className="w-full max-w-6xl mx-auto flex flex-col animate-[fadeIn_0.3s_ease-out]" style={{ maxHeight: '100%', minHeight: 0 }}>
+                    {/* Mobile: Ensure content fits above footer - adjust maxHeight to account for footer */}
+                    <div className="flex-1 min-h-0" style={{ maxHeight: 'calc(100% - 9rem)' }}>
+                  <MovieCard 
+                    movie={currentMovie} 
+                    isInWatchlist={isInWatchlist} 
+                    propellerAds={propellerAds}
+                    showDescriptionButton={showDescriptionButton}
+                    isButtonFading={isButtonFading}
+                    onShowDescription={handleShowDescription}
+                    onHideDescription={handleHideDescription}
+                        renderButtonOutside={true}
+                        onButtonRender={handleButtonRender}
+                      />
+                    </div>
+                    
+                    {/* Button - positioned between movie card and footer, centered vertically */}
+                    {/* Always show button when movie card is loaded and positioned */}
+                    {externalButton && currentMovie && (
+                      <div className={`flex-1 flex items-center justify-center flex-shrink-0 transition-all duration-300 ${
+                        showDescriptionButton ? 'my-4 md:my-6' : 'my-2 md:my-4'
+                      }`}>
+                        {externalButton}
+                      </div>
+                    )}
+                  </div>
                 ) : (
-                  <PlaceholderMovieCard />
+                  <div className="w-full animate-[fadeIn_0.3s_ease-out]">
+                    <PlaceholderMovieCard />
+                  </div>
                 )}
               </div>
             </div>
           </div>
         </main>
 
-        <div ref={bottomRef} />
+        <div ref={bottomRef} className="hidden" />
         
-        {/* Footer - Split into 2 horizontal lines, equal spacing */}
-        <footer className="mt-2 py-3 md:py-4 px-4 border-t border-white/10 bg-gradient-to-r from-gray-900/50 to-slate-900/50 backdrop-blur-sm">
+        {/* Footer - Split into 2 horizontal lines, equal spacing - Always at bottom on desktop */}
+        <footer className="mt-auto py-3 md:py-4 px-4 border-t border-white/10 bg-gradient-to-r from-gray-900/50 to-slate-900/50 backdrop-blur-sm flex-shrink-0">
           <div className="max-w-6xl mx-auto">
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-1 md:gap-4 text-xs md:text-sm text-gray-400">
               {/* First line: Copyright and Creator */}
@@ -395,21 +338,13 @@ const Home: React.FC = () => {
         </footer>
       </div>
 
-      {/* Video Ad */}
-      {videoAd.visible && (
-        <>
-          {videoAd.adType === 'video' && (
-            <VideoAd
-              onClose={videoAd.close}
-            />
-          )}
-          {videoAd.adType === 'google' && (
-            <GoogleVideoAd
-              onClose={videoAd.close}
-              onError={videoAd.close}
-            />
-          )}
-        </>
+      {/* PropellerAds Interstitial Ad */}
+      {propellerAds.visible && propellerAds.adType === 'interstitial' && (
+        <PropellerInterstitialAd
+          onClose={propellerAds.close}
+          onError={propellerAds.close}
+          onSuccess={() => console.log('PropellerAds interstitial loaded successfully')}
+        />
       )}
 
       {/* Modals */}

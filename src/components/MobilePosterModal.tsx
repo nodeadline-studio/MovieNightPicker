@@ -1,0 +1,91 @@
+import React, { useEffect } from 'react';
+import { X } from 'lucide-react';
+import { Movie } from '../types';
+import { getImageUrl } from '../config/api';
+
+interface MobilePosterModalProps {
+  movie: Movie;
+  isOpen: boolean;
+  onClose: () => void;
+}
+
+const MobilePosterModal: React.FC<MobilePosterModalProps> = ({ movie, isOpen, onClose }) => {
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = 'hidden';
+      
+      // Handle escape key
+      const handleEscape = (e: KeyboardEvent) => {
+        if (e.key === 'Escape') {
+          onClose();
+        }
+      };
+      
+      document.addEventListener('keydown', handleEscape);
+      return () => {
+        document.removeEventListener('keydown', handleEscape);
+        document.body.style.overflow = 'unset';
+      };
+    } else {
+      document.body.style.overflow = 'unset';
+    }
+    
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
+  }, [isOpen, onClose]);
+
+  if (!isOpen) return null;
+
+  const handleBackdropClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    // Close modal if clicking on backdrop (not on modal content)
+    if (e.target === e.currentTarget) {
+      onClose();
+    }
+  };
+
+  return (
+    <div 
+      className="fixed inset-0 bg-black/95 backdrop-blur-sm flex items-center justify-center z-[9999] md:hidden px-4 py-6"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="modal-title"
+      onClick={handleBackdropClick}
+      style={{
+        paddingTop: 'max(1.5rem, env(safe-area-inset-top))',
+        paddingBottom: 'max(1.5rem, env(safe-area-inset-bottom))',
+        paddingLeft: 'max(1rem, env(safe-area-inset-left))',
+        paddingRight: 'max(1rem, env(safe-area-inset-right))'
+      }}
+    >
+      <div 
+        className="relative w-full max-w-sm overflow-hidden bg-gray-900 rounded-xl border border-gray-700 shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          height: 'min(90vh, 640px)',
+          maxHeight: 'calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 2rem)'
+        }}
+      >
+        {/* Close button */}
+        <button
+          onClick={onClose}
+          className="absolute top-4 right-4 z-10 bg-black/50 hover:bg-black/70 text-white p-2 rounded-full transition-colors"
+          aria-label="Close poster modal"
+        >
+          <X size={20} />
+        </button>
+        
+        {/* Poster image */}
+        <div className="relative w-full h-full flex items-center justify-center overflow-hidden rounded-xl">
+          <img
+            className="w-full h-full object-cover rounded-xl"
+            src={getImageUrl(movie.poster_path, 'original')}
+            alt={`${movie.title} poster`}
+          />
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default MobilePosterModal;

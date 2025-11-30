@@ -1,9 +1,12 @@
-import React, { useState } from 'react';
-import { SlidersHorizontal, X, Clapperboard, Star, Calendar, Trash2, Shuffle, Sparkles, CheckSquare } from 'lucide-react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { SlidersHorizontal, X, Clapperboard, Star, Calendar, Trash2, ChevronRight, AlertTriangle, StarHalf, Shuffle, Sparkles, CheckSquare } from 'lucide-react';
 import { useMovieContext } from '../context/MovieContext';
+import Button from './ui/Button';
 import TimelineSlider from './ui/TimelineSlider';
 import { movieCache } from '../utils/cache';
 import { LoadingState } from '../types';
+import { analytics } from '../utils/analytics';
+import * as gtag from '../utils/gtag';
 
 interface FilterPanelProps {
   isOpen: boolean;
@@ -21,9 +24,23 @@ const FilterPanel: React.FC<FilterPanelProps> = ({ isOpen, setIsOpen }) => {
     applyRandomFilters
   } = useMovieContext();
   const [isApplyingAndPicking, setIsApplyingAndPicking] = useState(false);
+  const [excludeWatchlist, setExcludeWatchlist] = useState(false);
   const [activeTab, setActiveTab] = useState<'basic' | 'advanced'>('basic');
   const [captchaVerified, setCaptchaVerified] = useState(false);
   const [captchaScore, setCaptchaScore] = useState<number | null>(null);
+  const [mathProblem, setMathProblem] = useState<{ question: string; answer: number } | null>(null);
+
+  // Calculate filter content height for iPhone SE (375x667)
+  const filterContentHeight = useMemo(() => {
+    if (typeof window === 'undefined') return 'auto';
+    const viewportHeight = window.innerHeight;
+    const headerHeight = 64; // h-16
+    const tabsHeight = 48; // h-12
+    const footerHeight = 120; // buttons + padding
+    const safetyMargin = 20;
+    const calculated = viewportHeight - headerHeight - tabsHeight - footerHeight - safetyMargin;
+    return calculated > 200 ? `${calculated}px` : 'auto';
+  }, []);
 
   const currentYear = new Date().getFullYear();
   
@@ -51,6 +68,39 @@ const FilterPanel: React.FC<FilterPanelProps> = ({ isOpen, setIsOpen }) => {
     if (filterOptions.inTheatersOnly) count++;
     if (filterOptions.tvShowsOnly) count++;
     return count;
+  };
+
+  const generateMathProblem = (difficulty: number) => {
+    const operators = ['+', '-', '*'];
+    const operator = operators[Math.floor(Math.random() * operators.length)];
+    let num1 = Math.floor(Math.random() * (10 * difficulty)) + 1;
+    let num2 = Math.floor(Math.random() * (10 * difficulty)) + 1;
+    
+    let answer: number;
+    let question: string;
+    
+    switch (operator) {
+      case '+':
+        answer = num1 + num2;
+        question = `${num1} + ${num2}`;
+        break;
+      case '-':
+        if (num2 > num1) [num1, num2] = [num2, num1];
+        answer = num1 - num2;
+        question = `${num1} - ${num2}`;
+        break;
+      case '*':
+        num1 = Math.floor(num1 / difficulty);
+        num2 = Math.floor(num2 / difficulty);
+        answer = num1 * num2;
+        question = `${num1} × ${num2}`;
+        break;
+      default:
+        answer = num1 + num2;
+        question = `${num1} + ${num2}`;
+    }
+    
+    return { question, answer };
   };
 
   const handleGenreToggle = (genreId: number, e: React.MouseEvent<HTMLButtonElement>) => {
@@ -108,16 +158,13 @@ const FilterPanel: React.FC<FilterPanelProps> = ({ isOpen, setIsOpen }) => {
       if (captchaScore === null) {
         setCaptchaScore(100);
       }
-      // const difficulty = Math.min(5, Math.floor(pickCount / 10) + 1); // Removed unused variable
-      // setMathProblem(generateMathProblem(difficulty)); // This line was removed
+      const difficulty = Math.min(5, Math.floor(pickCount / 10) + 1);
+      setMathProblem(generateMathProblem(difficulty));
       setCaptchaVerified(false);
       return;
     }
 
-    if (pickCount >= 9 && (pickCount + 1) % 10 === 0) {
-      // setShowVideoAd(true); // This line was removed
-      return;
-    }
+    // Video ad logic removed - now handled by PropellerAds system
 
     try {
       setIsApplyingAndPicking(true);
@@ -158,21 +205,24 @@ const FilterPanel: React.FC<FilterPanelProps> = ({ isOpen, setIsOpen }) => {
       <>
         {/* Overlay */}
         <div 
-          className={`fixed inset-0 bg-black/40 z-40 transition-opacity duration-300 ease-out pointer-events-none ${
-            isOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0'
+          className={`fixed inset-0 bg-black/40 z-[49] transition-opacity duration-300 ease-out ${
+            isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'
           }`}
           onClick={closePanel}
+          style={{ pointerEvents: isOpen ? 'auto' : 'none' }}
         />
         
         {/* Panel */}
-        <div className={`fixed top-0 right-0 h-[100dvh] w-full md:w-[420px] z-50 transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] ${
-          isOpen ? 'translate-x-0 opacity-100' : 'translate-x-full opacity-0'
-      }`}>
+        <div 
+          className={`fixed top-0 right-0 h-[100dvh] w-full md:w-[420px] z-50 transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] ${
+            isOpen ? 'translate-x-0 opacity-100' : 'translate-x-full opacity-0 pointer-events-none'
+          }`}
+          onClick={(e) => e.stopPropagation()}
+        >
           <div className="h-full bg-gradient-to-br from-slate-900/95 via-gray-900/95 to-slate-800/95 
                          backdrop-blur-xl border-l border-white/10 shadow-2xl
                          ring-1 ring-white/5 flex flex-col
-                         pb-[env(safe-area-inset-bottom)]
-                         max-h-[100dvh] md:max-h-[90vh]">
+                         pb-[env(safe-area-inset-bottom)]">
             
             {/* Header - Fixed Height */}
             <div className="relative p-3 md:p-4 border-b border-white/10 flex-shrink-0 h-16 md:h-20">
@@ -188,9 +238,9 @@ const FilterPanel: React.FC<FilterPanelProps> = ({ isOpen, setIsOpen }) => {
                   </div>
                 </div>
                 <button
-                  onClick={closePanel}
+                onClick={closePanel}
                   className="p-2 text-gray-400 hover:text-white hover:bg-white/10 rounded-xl transition-all duration-200"
-                >
+              >
                   <X size={20} />
                 </button>
               </div>
@@ -221,16 +271,16 @@ const FilterPanel: React.FC<FilterPanelProps> = ({ isOpen, setIsOpen }) => {
           </div>
 
             {/* Content - Flexible Height */}
-            <div className="flex-1 overflow-y-auto custom-scrollbar p-3 md:p-4 min-h-0">
+            <div className="flex-1 overflow-y-auto custom-scrollbar p-3 md:p-4 min-h-0" style={{ maxHeight: filterContentHeight }}>
             {activeTab === 'basic' ? (
-                <div className="h-full flex flex-col gap-4 md:gap-6">
+                <div className="h-full flex flex-col gap-6">
                   {/* Time & Rating Filters */}
                   <div className="space-y-4">
                     {/* Year Range */}
                     <div>
                       <div className="flex items-center gap-2 mb-3">
-                        <Calendar size={18} className="text-blue-400 md:w-4 md:h-4" />
-                        <h4 className="text-lg md:text-base font-semibold text-white">Release Year</h4>
+                        <Calendar size={16} className="text-blue-400" />
+                        <h4 className="text-base font-semibold text-white">Release Year</h4>
                         <span className="text-sm text-gray-400 ml-auto">
                           {filterOptions.yearFrom} - {filterOptions.yearTo}
                         </span>
@@ -256,8 +306,8 @@ const FilterPanel: React.FC<FilterPanelProps> = ({ isOpen, setIsOpen }) => {
                     {/* Rating */}
                     <div>
                       <div className="flex items-center gap-2 mb-3">
-                        <Star size={18} className="text-yellow-400 md:w-4 md:h-4" />
-                        <h4 className="text-lg md:text-base font-semibold text-white">Minimum Rating</h4>
+                        <Star size={16} className="text-yellow-400" />
+                        <h4 className="text-base font-semibold text-white">Minimum Rating</h4>
                         <span className="text-sm text-gray-400 ml-auto">{filterOptions.ratingFrom.toFixed(1)}</span>
                       </div>
                       <div className="bg-white/5 rounded-xl p-4 border border-white/10">
@@ -366,7 +416,10 @@ const FilterPanel: React.FC<FilterPanelProps> = ({ isOpen, setIsOpen }) => {
                                     [@media(max-height:600px)]:grid-cols-3
                                     [@media(max-height:500px)]:grid-cols-4
                                     [@media(max-height:400px)]:grid-cols-5">
-                        {genres.map((genre) => (
+                        {genres
+                          .filter(genre => !['War', 'Politics', 'Documentary'].includes(genre.name)) // Remove problematic genres
+                          .sort((a, b) => a.name.localeCompare(b.name)) // Sort alphabetically
+                          .map((genre, index) => (
                       <button
                         key={genre.id}
                         onClick={(e) => handleGenreToggle(genre.id, e)}
@@ -455,4 +508,7 @@ const FilterPanel: React.FC<FilterPanelProps> = ({ isOpen, setIsOpen }) => {
   );
 };
 
-export default FilterPanel;
+// Memoize FilterPanel to prevent unnecessary re-renders
+export default React.memo(FilterPanel, (prevProps, nextProps) => {
+  return prevProps.isOpen === nextProps.isOpen;
+});
