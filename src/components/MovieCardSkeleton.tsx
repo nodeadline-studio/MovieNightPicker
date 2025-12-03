@@ -18,8 +18,13 @@ const MovieCardSkeleton: React.FC = () => {
 
   return (
     <div 
-      className="w-full max-w-[95vw] md:max-w-5xl lg:max-w-6xl mx-auto space-y-2 md:space-y-4 relative animate-[fadeIn_0.3s_ease-out]"
-      style={{ transform: 'scale(0.8)', transformOrigin: 'center' }}
+      className="w-full max-w-[95vw] md:max-w-5xl lg:max-w-6xl mx-auto space-y-2 md:space-y-4 relative animate-[fadeIn_0.15s_ease-out]"
+      style={{ 
+        transform: 'scale(0.95)', 
+        transformOrigin: 'center',
+        opacity: 0.9,
+        ...(isMobile ? {} : { marginTop: '-25px' }) // Move up 25px on desktop only
+      }}
     >
       <div className="relative group">
         {/* Background glow effect - DISABLED during loading */}

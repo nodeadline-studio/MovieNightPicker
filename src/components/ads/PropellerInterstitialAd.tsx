@@ -3,6 +3,8 @@ import { X } from 'lucide-react';
 import { PROPELLER_ADS_CONFIG, PropellerAdsLoader, AdPlacement, PropellerAdsAnalytics } from '../../config/ads/propellerAdsConfig';
 import { MockInterstitialAd } from '../../config/ads/propellerAdsMock';
 import { pauseAllMedia } from '../../utils/mediaPause';
+import { loadInterstitialAd, preloadInterstitialAd, loadNextAdInCycle } from '../../utils/monetagAds';
+import { markFirstCommercialBreakCompleted, hasFirstCommercialBreakCompleted } from '../../utils/vignetteAd';
 
 interface PropellerInterstitialAdProps {
   onClose: () => void;
@@ -93,7 +95,7 @@ const PropellerInterstitialAd: React.FC<PropellerInterstitialAdProps> = ({
     }
   }, [onClose]);
 
-  // Load and display the interstitial ad - try real ad first, fallback to mock
+  // Load and display Monetag interstitial ad
   const loadAd = useCallback(async () => {
     try {
       // State 1: Loading - show spinner immediately
@@ -109,7 +111,7 @@ const PropellerInterstitialAd: React.FC<PropellerInterstitialAdProps> = ({
 
       // CRITICAL: Wait for container to be attached to DOM with retry mechanism
       let retries = 0;
-      const maxRetries = 20; // Increased retries for slower DOM attachment
+      const maxRetries = 20;
       while (retries < maxRetries) {
         if (adRef.current && adRef.current.isConnected) {
           // Container is ready, clean up previous content
@@ -128,166 +130,30 @@ const PropellerInterstitialAd: React.FC<PropellerInterstitialAdProps> = ({
         throw new Error('Ad container not ready after retries');
       }
 
-      let realAdLoaded = false;
-      let realAdLoadPromise: Promise<void> | null = null;
-
-      // State 2: Attempting - try to load real ad
+      // State 2: Attempting - load Monetag interstitial ad
       setLoadingState('attempting');
 
-      // Check if we're in development mode - skip real ad attempt in dev
-      const isDevelopment = process.env.NODE_ENV === 'development' || 
-                           typeof window !== 'undefined' && window.location.hostname === 'localhost';
-
-      // Only try real ad in production
-      if (!isDevelopment) {
-      try {
-      // Load PropellerAds script if not already loaded
-      const loader = PropellerAdsLoader.getInstance();
-      await loader.loadScript();
-
-        // Wait for PropellerAds to be available (with timeout)
-        await new Promise((resolve, reject) => {
-          const timeout = setTimeout(() => {
-            clearInterval(checkInterval);
-            reject(new Error('PropellerAds timeout'));
-          }, 3000);
-          
-          const checkInterval = setInterval(() => {
-            if ((window as any).propellerads) {
-              clearInterval(checkInterval);
-              clearTimeout(timeout);
-              resolve(true);
-      }
-          }, 100);
-        });
-
-      // Generate unique container ID
-      const containerId = AdPlacement.generateAdId('interstitial');
-        containerIdRef.current = containerId;
-
-        // Wait for container to be ready
-        let retries = 0;
-        const maxRetries = 10;
-        while (retries < maxRetries) {
-          if (adRef.current && adRef.current.isConnected) {
-        adRef.current.id = containerId;
-            const containerInDOM = document.getElementById(containerId);
-            if (containerInDOM) {
-              break;
-            }
-          }
-          await new Promise(resolve => setTimeout(resolve, 100));
-          retries++;
-        }
-
-        if (retries >= maxRetries || !adRef.current) {
-          throw new Error('Container not ready after retries');
-      }
-
-      // Initialize the interstitial ad
-      if ((window as any).propellerads && (window as any).propellerads.init) {
-          // Create promise for real ad loading
-          realAdLoadPromise = new Promise<void>((resolve, reject) => {
-        (window as any).propellerads.init({
-          container: containerId,
-          adUnitId: PROPELLER_ADS_CONFIG.adUnits.interstitial.movieLoad,
-          publisherId: PROPELLER_ADS_CONFIG.publisherId,
-          type: 'interstitial',
-          onLoad: () => {
-                setIsUsingMockAd(false);
-                realAdLoaded = true;
-                setAdContentRendered(true);
-            setIsVisible(true);
-                setLoadingState('showing');
-            PropellerAdsAnalytics.trackAdShown('interstitial', 'movie-load');
-            onSuccess?.();
-                resolve();
-          },
-          onError: (error: Error) => {
-            console.error('PropellerAds interstitial error:', error);
-                reject(error);
-          },
-          onClick: () => {
-            PropellerAdsAnalytics.trackAdClicked('interstitial', 'movie-load');
-          },
-          onClose: () => {
-            onClose();
-          }
-        });
-          });
-
-          // Race: real ad load vs timeout (5 seconds)
-          const timeoutPromise = new Promise<void>((_, reject) => {
-            realAdTimeoutRef.current = setTimeout(() => {
-              reject(new Error('Real ad timeout'));
-            }, 5000);
-          });
-
-          try {
-            await Promise.race([
-              realAdLoadPromise,
-              timeoutPromise
-            ]);
-            
-            // Clear timeout if ad loaded successfully
-            if (realAdTimeoutRef.current) {
-              clearTimeout(realAdTimeoutRef.current);
-              realAdTimeoutRef.current = null;
-            }
-            
-            if (realAdLoaded) {
-              return; // Real ad loaded successfully
-            }
-          } catch (timeoutError) {
-            // Real ad timed out or failed - clear timeout and fall through to mock
-            if (realAdTimeoutRef.current) {
-              clearTimeout(realAdTimeoutRef.current);
-              realAdTimeoutRef.current = null;
-            }
-            // Don't throw - fall through to mock ad fallback
-            console.log('Real ad timeout, falling back to mock');
-          }
-      } else {
-        throw new Error('PropellerAds initialization failed');
-      }
-      } catch (realAdError) {
-        console.log('Real ad failed, falling back to mock:', realAdError);
-        // Clear timeout if exists
-        if (realAdTimeoutRef.current) {
-          clearTimeout(realAdTimeoutRef.current);
-          realAdTimeoutRef.current = null;
-        }
-        // Fall through to mock fallback
-        }
-      } else {
-        // In development, skip directly to mock
-        console.log('Development mode: using mock ad');
-      }
-
-      // State 3: Showing - fallback to mock ad (no placeholder delay)
-      setIsUsingMockAd(true);
-      const mockInterstitial = MockInterstitialAd.getInstance();
-      mockInterstitial.show({
-        onLoad: () => {
+      // Load Monetag interstitial ad directly into container
+      if (adRef.current) {
+        // Set data-zone immediately so Monetag can find it
+        adRef.current.setAttribute('data-zone', '10184307');
+        adRef.current.style.width = '100%';
+        adRef.current.style.height = '100%';
+        adRef.current.style.minHeight = '300px';
+        
+        // Load the ad script and inject into container
+        loadInterstitialAd(adRef.current);
+        
+        // Wait for ad to initialize, then show
+        // Monetag needs time to scan for containers and inject ads
+        setTimeout(() => {
           setAdContentRendered(true);
           setIsVisible(true);
           setLoadingState('showing');
           PropellerAdsAnalytics.trackAdShown('interstitial', 'movie-load');
           onSuccess?.();
-        },
-        onClose: () => {
-          onClose();
-        },
-        onError: (error: Error) => {
-          console.error('Mock interstitial error:', error);
-          setHasError(true);
-          setLoadingState('error');
-          PropellerAdsAnalytics.trackAdError('interstitial', 'movie-load', error.message || 'Unknown error');
-          onError?.();
-        },
-        skipDelay: PROPELLER_ADS_CONFIG.display.interstitial.skipDelay,
-        autoCloseAfter: PROPELLER_ADS_CONFIG.display.interstitial.autoCloseAfter
-      });
+        }, 2000); // Increased delay for Monetag to initialize
+      }
 
     } catch (error) {
       console.error('Error loading interstitial ad:', error);
@@ -308,6 +174,8 @@ const PropellerInterstitialAd: React.FC<PropellerInterstitialAdProps> = ({
   useEffect(() => {
     if (isVisible && adContentRendered) {
       pauseAllMedia();
+      // Mark first commercial break as completed
+      markFirstCommercialBreakCompleted();
     }
   }, [isVisible, adContentRendered]);
 
@@ -414,6 +282,10 @@ const PropellerInterstitialAd: React.FC<PropellerInterstitialAdProps> = ({
   // Handle skip button click
   const handleSkip = () => {
     if (canSkip) {
+      // Load next ad in cycle (vignette or notifications) after first ad
+      if (hasFirstCommercialBreakCompleted()) {
+        loadNextAdInCycle();
+      }
       onClose();
     }
   };
@@ -479,8 +351,10 @@ const PropellerInterstitialAd: React.FC<PropellerInterstitialAdProps> = ({
         paddingRight: 'env(safe-area-inset-right)'
       }}
     >
-      {/* Close button and countdown - ABOVE ad content */}
-      <div className="absolute top-4 right-4 z-50 flex flex-row items-center gap-2">
+      {/* Monetag Interstitial Ad - loaded directly into container */}
+
+      {/* Close button and countdown - ABOVE ad content and Monetag overlay */}
+      <div className="absolute top-4 right-4 z-10 flex flex-row items-center gap-2">
         {/* Countdown or Skip Ad text - LEFT of X button */}
           {!canSkip && remainingTime > 0 && (
           <div className="bg-black bg-opacity-70 text-white px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium">
@@ -512,6 +386,7 @@ const PropellerInterstitialAd: React.FC<PropellerInterstitialAdProps> = ({
       {/* Ad content container - NO white background wrapper */}
       <div className="relative w-full max-w-[95vw] md:max-w-5xl lg:max-w-6xl h-[70vh] max-h-[600px] flex items-center justify-center">
           {/* Ad container - ALWAYS rendered for ref attachment, conditionally visible */}
+          {/* Monetag interstitial ad will be injected here via data-zone attribute */}
           <div 
             ref={adRef}
             className={`w-full h-full flex items-center justify-center ${
@@ -521,8 +396,9 @@ const PropellerInterstitialAd: React.FC<PropellerInterstitialAdProps> = ({
               minHeight: '300px',
               visibility: loadingState === 'showing' && isVisible ? 'visible' : 'hidden'
             }}
+            data-zone="10184307"
           >
-            {/* PropellerAds OR Mock content will render here directly */}
+            {/* Monetag interstitial ad will render here */}
           </div>
           
           {/* Loading state - show spinner */}

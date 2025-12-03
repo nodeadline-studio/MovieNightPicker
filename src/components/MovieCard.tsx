@@ -7,6 +7,7 @@ import { useMovieContext } from '../context/MovieContext';
 import { usePickCounter } from '../hooks/usePickCounter';
 import * as gtag from '../utils/gtag';
 import MobilePosterModal from './MobilePosterModal';
+import { preloadInterstitialAd } from '../utils/monetagAds';
 
 interface PropellerAdsHook {
   visible: boolean;
@@ -41,6 +42,7 @@ const MovieCard: React.FC<MovieCardProps> = ({
   const pickCounter = usePickCounter();
   const isMobile = useMediaQuery({ maxWidth: 767 });
   const [isPosterModalOpen, setIsPosterModalOpen] = useState(false);
+  const [isPosterLoading, setIsPosterLoading] = useState(true);
   const [isTextExpanded, setIsTextExpanded] = useState(false);
   const [shouldShowTextExpansion, setShouldShowTextExpansion] = useState(false);
   const buttonElementRef = useRef<React.ReactNode>(null);
@@ -76,6 +78,11 @@ const MovieCard: React.FC<MovieCardProps> = ({
       clearTimeout(timeoutId);
     };
   }, [movie.overview]);
+
+  // Reset poster loading state when movie changes
+  useEffect(() => {
+    setIsPosterLoading(true);
+  }, [movie.id]);
   
   const handleWatchlistToggle = () => {
     if (isInWatchlist) {
@@ -91,7 +98,12 @@ const MovieCard: React.FC<MovieCardProps> = ({
     try {
       const count = pickCounter.inc();
       
-      // Show PropellerAds interstitial every 5 picks
+      // Preload interstitial ad before 5th reroll (when count is 4, before showing)
+      if (count === 4) {
+        preloadInterstitialAd();
+      }
+      
+      // Show interstitial ad every 5 picks (after 5th reroll)
       if (count >= 5 && count % 5 === 0) {
         propellerAds.showInterstitial(count);
         
@@ -113,40 +125,57 @@ const MovieCard: React.FC<MovieCardProps> = ({
   };
 
   // Handle button rendering outside component (for desktop layout)
-  // Always update button when movie changes or when showDescriptionButton changes
-  // This ensures button is visible when description closes and about button appears
+  // Always update button when movie changes - button should be available immediately when movie loads
+  // This ensures button is visible as soon as movie is loaded, not waiting for About button
   useEffect(() => {
-    if (renderButtonOutside && onButtonRender && buttonElementRef.current) {
-      onButtonRender(buttonElementRef.current);
-      // Update last button ref to track changes
+    // Create button element immediately when movie is available
+    if (renderButtonOutside && onButtonRender && movie.id && buttonElementRef.current) {
+      // Use requestAnimationFrame to avoid setState during render warning
+      requestAnimationFrame(() => {
+        if (buttonElementRef.current) {
+          onButtonRender(buttonElementRef.current);
       lastButtonRef.current = buttonElementRef.current;
     }
-  }, [renderButtonOutside, onButtonRender, movie.id, showDescriptionButton]);
+      });
+    }
+  }, [renderButtonOutside, onButtonRender, movie.id]); // Removed showDescriptionButton - button should always be available
   
   // Dynamic text container height calculation for desktop
+  // Strategy: Use minimal text size (text-sm), calculate actual text height, fit without overflow
+  // Only allow scrolling if text absolutely cannot fit
   const textContainerHeight = useMemo(() => {
     if (typeof window === 'undefined' || isMobile || isTextExpanded) return 'auto';
+    
     const viewportHeight = window.innerHeight;
-    const reserved = 400; // header + poster + buttons + ad + padding
+    // Reserve space: header (~80px) + poster (~40vh) + action buttons (~80px) + footer (~60px) + padding (~40px) + About button (~20px) + spacing (~20px)
+    const reserved = 300;
     const available = viewportHeight - reserved;
-    return available > 200 ? `${available * 0.6}px` : '200px';
-  }, [isMobile, isTextExpanded]);
+    
+    // Calculate text requirements with minimal font size (text-sm = 14px base, leading-relaxed = 1.625)
+    const textLength = movie.overview?.length || 0;
+    const charsPerLine = 85; // Characters per line at text-sm on desktop
+    const lineHeight = 14 * 1.625; // ~22.75px per line
+    const estimatedLines = Math.ceil(textLength / charsPerLine);
+    const estimatedContentHeight = estimatedLines * lineHeight;
+    
+    // Available space for text (after reserving for other elements)
+    const textAvailableSpace = Math.max(available * 0.9, 150); // 90% of available, minimum 150px
+    
+    // If content fits in available space, use content height; otherwise use available space (will scroll only if needed)
+    return `${Math.min(estimatedContentHeight, textAvailableSpace)}px`;
+  }, [isMobile, isTextExpanded, movie.overview]);
 
-  // Dynamic font sizing based on text length and available space
+  // Dynamic font sizing: Use minimal text size (text-sm) for desktop to maximize content fit
+  // Only increase size if there's plenty of space
   const textSizeClasses = useMemo(() => {
-    if (typeof window === 'undefined') {
+    if (typeof window === 'undefined' || isMobile) {
       return 'text-sm md:text-base lg:text-lg';
     }
-    const textLength = movie.overview?.length || 0;
-    const viewportHeight = window.innerHeight;
-    const availableHeight = viewportHeight - 400; // Reserve space for header, poster, buttons, ad, padding
     
-    // For long text (> 500 chars) and limited height (< 600px), use smaller font
-    if (textLength > 500 && availableHeight < 600) {
-      return 'text-xs md:text-sm lg:text-base';
-    }
-    return 'text-sm md:text-base lg:text-lg';
-  }, [movie.overview]);
+    // Desktop: Always use text-sm (minimal) to fit maximum content
+    // This ensures text block height calculation is accurate
+    return 'text-sm';
+  }, [isMobile]);
   
   const formatDate = (dateString: string) => {
     if (!dateString) return 'Unknown';
@@ -159,7 +188,7 @@ const MovieCard: React.FC<MovieCardProps> = ({
     return new Date(dateString).getFullYear().toString();
   };
 
-  // Calculate max height for desktop movie card (10% reduction)
+  // Calculate max height for desktop movie card - ensure it fits viewport without scrolling
   const desktopCardMaxHeight = useMemo(() => {
     if (typeof window === 'undefined' || isMobile) return 'none';
     const viewportHeight = window.innerHeight;
@@ -203,16 +232,16 @@ const MovieCard: React.FC<MovieCardProps> = ({
 
   return (
     <div className="w-full max-w-[95vw] md:max-w-5xl lg:max-w-6xl mx-auto space-y-2 md:space-y-4 relative animate-[fadeIn_0.3s_ease-out]">
-      {/* About Button - Desktop: Positioned outside card, above header - absolutely positioned to prevent layout shift */}
+      {/* About Button - Desktop: Positioned 10-20px above card, maintaining minimal distance without overlapping */}
+      {/* Use padding-top on container to reserve space, then position button absolutely within that space */}
+      <div className="relative" style={{ paddingTop: showDescriptionButton && !isMobile ? '44px' : '0' }}>
       {showDescriptionButton && !isMobile && (
-        <div className="absolute -top-[55px] left-1/2 -translate-x-1/2 z-[100] pointer-events-none w-0 h-0">
-          <div className="relative -left-1/2">
-            <AboutButton />
-          </div>
+          <div className="absolute top-0 left-1/2 -translate-x-1/2 z-[100] pointer-events-auto">
+          <AboutButton />
         </div>
       )}
       
-      {/* Movie Card */}
+        {/* Movie Card - constant position, doesn't shift when About button appears */}
       <div className="relative group">
         {/* Background glow effect */}
         <div className="absolute -inset-1 bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 rounded-3xl blur opacity-20 group-hover:opacity-30 transition-opacity duration-300" />
@@ -260,16 +289,18 @@ const MovieCard: React.FC<MovieCardProps> = ({
               >
                 {/* Image wrapper - matches image bounds on desktop with object-contain */}
                 <div className="relative h-full w-full md:h-auto md:flex-shrink-0 overflow-hidden">
-                {/* Loading state with icon */}
-                  <div className="absolute inset-0 bg-gradient-to-br from-gray-800 to-gray-900 flex items-center justify-center pointer-events-none z-0">
-                  <div className="flex flex-col items-center gap-3">
-                    <Film size={48} className="text-gray-500 animate-pulse" />
-                    <div className="text-gray-500 text-sm">Loading...</div>
-                  </div>
-                </div>
+                {/* Loading state with icon - shown while poster is loading */}
+                  {isPosterLoading && (
+                    <div className="absolute inset-0 bg-gradient-to-br from-gray-800 to-gray-900 flex items-center justify-center pointer-events-none z-10">
+                      <div className="flex flex-col items-center gap-3">
+                        <Film size={48} className="text-gray-500 animate-pulse" />
+                        <div className="text-gray-500 text-sm">Loading...</div>
+                      </div>
+                    </div>
+                  )}
                 
                 <img
-                    className="w-full h-full object-cover md:object-contain transition-transform duration-500 group-hover:scale-105 relative z-0 pointer-events-auto"
+                    className="w-full h-full object-cover md:object-contain transition-opacity duration-300 group-hover:scale-105 relative z-0 pointer-events-auto"
                   src={getImageUrl(movie.poster_path)}
                   alt={`Movie poster for ${movie.title}`}
                   loading="lazy"
@@ -285,15 +316,12 @@ const MovieCard: React.FC<MovieCardProps> = ({
                     }
                   }}
                   onLoad={(e) => {
+                    setIsPosterLoading(false);
                     const target = e.target as HTMLImageElement;
                     target.style.opacity = '1';
-                    // Hide loading state when image loads
-                    const loadingState = target.previousElementSibling as HTMLElement;
-                    if (loadingState) {
-                      loadingState.style.display = 'none';
-                    }
                   }}
                   onError={(e) => {
+                    setIsPosterLoading(false);
                     const target = e.target as HTMLImageElement;
                     // Hide the image and show error state
                     target.style.display = 'none';
@@ -313,7 +341,7 @@ const MovieCard: React.FC<MovieCardProps> = ({
                   }}
                   style={{
                       objectPosition: isMobile ? 'center 20%' : 'left center',
-                    opacity: '0',
+                    opacity: isPosterLoading ? 0 : 1,
                     transition: 'opacity 0.3s ease-in-out'
                   }}
                 />
@@ -437,19 +465,16 @@ const MovieCard: React.FC<MovieCardProps> = ({
               </div>
               
                 {/* Overview */}
-                <div className={`flex-1 min-h-0 ${isTextExpanded ? 'mb-2 md:mb-2' : 'mb-2 md:-mb-5'}`}>
+                <div className="flex-1 min-h-0 mb-2 md:mb-3">
                   <div 
-                    className={`flex flex-col transition-all duration-300 ease-out ${
-                      isTextExpanded 
-                        ? '' // No constraints when expanded
-                        : isMobile 
-                          ? '' // Use line-clamp instead of max-height
-                          : '' // No max-height on desktop when collapsed
-                    }`}
+                    className="flex flex-col transition-all duration-300 ease-out"
                     style={{
                       transformOrigin: 'top center',
                       ...(isMobile ? {} : { 
+                        // Desktop: use calculated height to fit text without overflowing buttons
                         maxHeight: isTextExpanded ? 'none' : textContainerHeight,
+                        overflow: isTextExpanded ? 'visible' : 'auto', // Allow scroll only if text doesn't fit
+                        overflowY: isTextExpanded ? 'visible' : 'auto',
                       })
                     }}
                   >
@@ -487,7 +512,7 @@ const MovieCard: React.FC<MovieCardProps> = ({
                 </div>
               
               {/* Action Buttons - Horizontal Layout */}
-              <div className="flex flex-row gap-2 md:gap-3 mt-auto flex-shrink-0">
+              <div className="flex flex-row gap-2 md:gap-3 mt-2 md:mt-3 flex-shrink-0">
                 <button
                   onClick={() => window.open(`https://www.imdb.com/title/${movie.imdb_id}`, '_blank')}
                   className="flex-1 bg-gradient-to-r from-yellow-500 to-orange-500 
@@ -529,6 +554,7 @@ const MovieCard: React.FC<MovieCardProps> = ({
                   <span className="md:hidden">{isInWatchlist ? 'Remove' : 'Add'}</span>
                 </button>
               </div>
+              </div>
             </div>
           </div>
         </div>
@@ -564,7 +590,7 @@ const MovieCard: React.FC<MovieCardProps> = ({
       </div>
         );
         
-        // Store button element in ref for useEffect
+        // Store button element in ref for useEffect - always store
         buttonElementRef.current = buttonElement;
         
         // On mobile, render button inside component

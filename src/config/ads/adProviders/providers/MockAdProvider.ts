@@ -9,7 +9,7 @@ export class MockAdProvider implements IAdProvider {
 
   async isAvailable(): Promise<boolean> {
     // Always available in development
-    const isDevelopment = process.env.NODE_ENV === 'development' || 
+    const isDevelopment = import.meta.env.MODE === 'development' || 
                          (typeof window !== 'undefined' && window.location.hostname === 'localhost');
     return isDevelopment;
   }

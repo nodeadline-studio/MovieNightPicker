@@ -22,6 +22,7 @@ import LoadingOverlay from '../components/LoadingOverlay';
 import { LoadingState } from '../types';
 import { analytics } from '../utils/analytics';
 import * as gtag from '../utils/gtag';
+import { loadVignetteAd, hasFirstCommercialBreakCompleted } from '../utils/vignetteAd';
 
 
 const Home: React.FC = () => {
@@ -185,6 +186,19 @@ const Home: React.FC = () => {
     );
     io.observe(bottomRef.current);
   }, []);
+
+  // Load vignette ad after first commercial break when movie is loaded
+  // MUST be before early return to follow Rules of Hooks
+  useEffect(() => {
+    if (currentMovie && hasFirstCommercialBreakCompleted() && loadingState === LoadingState.SUCCESS) {
+      // Small delay to ensure movie is fully rendered
+      const timer = setTimeout(() => {
+        loadVignetteAd();
+      }, 500);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [currentMovie, loadingState]);
 
   // Early return after all hooks are defined
   if (isInitialLoading || isLoadingGenres) {

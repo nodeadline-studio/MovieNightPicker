@@ -70,7 +70,7 @@ const PropellerBannerAd: React.FC<PropellerBannerAdProps> = ({
       }
 
       // Check if we're in development mode
-      const isDevelopment = process.env.NODE_ENV === 'development' || 
+      const isDevelopment = import.meta.env.MODE === 'development' || 
                            typeof window !== 'undefined' && window.location.hostname === 'localhost';
 
       if (isDevelopment) {

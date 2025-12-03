@@ -315,8 +315,8 @@ class APIMonitoringService {
     }
     
     // Send to custom monitoring endpoint if configured
-    if (process.env.VITE_MONITORING_ENDPOINT) {
-      fetch(process.env.VITE_MONITORING_ENDPOINT, {
+    if (import.meta.env.VITE_MONITORING_ENDPOINT) {
+      fetch(import.meta.env.VITE_MONITORING_ENDPOINT, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

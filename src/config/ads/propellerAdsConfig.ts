@@ -46,7 +46,7 @@ export interface PropellerAdsConfig {
 }
 
 // Development mode flag
-const isDevelopment = process.env.NODE_ENV === 'development' || 
+const isDevelopment = import.meta.env.MODE === 'development' || 
                      typeof window !== 'undefined' && window.location.hostname === 'localhost';
 
 // Get publisher ID from environment variable or use default

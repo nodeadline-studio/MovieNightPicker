@@ -178,7 +178,7 @@ class AnalyticsTracker {
     this.sendToAnalytics(event);
 
     // Console log in debug mode
-    if (process.env.NODE_ENV === 'development') {
+    if (import.meta.env.MODE === 'development') {
       console.log('Analytics Event:', event);
     }
   }
@@ -366,8 +366,8 @@ class AnalyticsTracker {
     }
 
     // Custom analytics endpoint (if configured)
-    if (process.env.VITE_ANALYTICS_ENDPOINT) {
-      fetch(process.env.VITE_ANALYTICS_ENDPOINT, {
+    if (import.meta.env.VITE_ANALYTICS_ENDPOINT) {
+      fetch(import.meta.env.VITE_ANALYTICS_ENDPOINT, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(event)

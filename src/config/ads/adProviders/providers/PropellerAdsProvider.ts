@@ -12,7 +12,7 @@ export class PropellerAdsProvider implements IAdProvider {
     if (typeof window === 'undefined') return false;
     
     // In development, always available (uses mock)
-    const isDevelopment = process.env.NODE_ENV === 'development' || 
+    const isDevelopment = import.meta.env.MODE === 'development' || 
                          window.location.hostname === 'localhost';
     if (isDevelopment) return true;
 
@@ -28,7 +28,7 @@ export class PropellerAdsProvider implements IAdProvider {
 
   async loadBanner(config: BannerAdConfig): Promise<AdLoadResult> {
     try {
-      const isDevelopment = process.env.NODE_ENV === 'development' || 
+      const isDevelopment = import.meta.env.MODE === 'development' || 
                            (typeof window !== 'undefined' && window.location.hostname === 'localhost');
 
       if (isDevelopment) {
@@ -87,7 +87,7 @@ export class PropellerAdsProvider implements IAdProvider {
 
   async loadInterstitial(config: InterstitialAdConfig): Promise<AdLoadResult> {
     try {
-      const isDevelopment = process.env.NODE_ENV === 'development' || 
+      const isDevelopment = import.meta.env.MODE === 'development' || 
                            (typeof window !== 'undefined' && window.location.hostname === 'localhost');
 
       if (isDevelopment) {
