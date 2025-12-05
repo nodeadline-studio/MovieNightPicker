@@ -63,19 +63,32 @@ const Home: React.FC = () => {
     queryFn: fetchGenres,
   });
 
+  const [isAdBlockingMovie, setIsAdBlockingMovie] = useState(false);
+
   const propellerAds = usePropellerAds({
     onClose: () => {
+      // Ad is closed - now allow movie to load
+      setIsAdBlockingMovie(false);
       pickCounter.reset();
       getRandomMovieSafe()
         .catch(console.error);
     },
     onError: () => {
+      // Ad error - allow movie to load
+      setIsAdBlockingMovie(false);
       getRandomMovieSafe()
         .catch(console.error);
     },
     enableTestAds: false,
     pickCounter
   });
+
+  // Block movie loading when ad is visible
+  useEffect(() => {
+    if (propellerAds.visible && propellerAds.adType === 'interstitial') {
+      setIsAdBlockingMovie(true);
+    }
+  }, [propellerAds.visible, propellerAds.adType]);
 
   const handleInitialLoad = useCallback(async () => {
     setHasUserInteracted(true);

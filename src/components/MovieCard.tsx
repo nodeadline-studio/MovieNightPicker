@@ -96,6 +96,11 @@ const MovieCard: React.FC<MovieCardProps> = ({
 
   const handleGetRandomMovie = async () => {
     try {
+      // Don't allow new movie if ad is currently showing
+      if (propellerAds.visible && propellerAds.adType === 'interstitial') {
+        return; // Block movie loading until ad is closed
+      }
+
       const count = pickCounter.inc();
       
       // Preload interstitial ad before 5th reroll (when count is 4, before showing)
@@ -106,16 +111,11 @@ const MovieCard: React.FC<MovieCardProps> = ({
       // Show interstitial ad every 5 picks (after 5th reroll)
       if (count >= 5 && count % 5 === 0) {
         propellerAds.showInterstitial(count);
-        
-        // Wait for ad to show
-        await new Promise(resolve => setTimeout(resolve, 200));
-        
-        if (propellerAds.visible) {
-          return; // Don't get new movie if ad is showing
-        }
+        // Don't load new movie - wait for ad to be closed
+        return;
       }
       
-      // Get new movie if no ad is showing
+      // Get new movie only if no ad is showing
       if (!propellerAds.visible) {
         await getRandomMovie();
       }
@@ -147,8 +147,17 @@ const MovieCard: React.FC<MovieCardProps> = ({
     if (typeof window === 'undefined' || isMobile || isTextExpanded) return 'auto';
     
     const viewportHeight = window.innerHeight;
-    // Reserve space: header (~80px) + poster (~40vh) + action buttons (~80px) + footer (~60px) + padding (~40px) + About button (~20px) + spacing (~20px)
-    const reserved = 300;
+    // Reserve space more accurately:
+    // - Header: ~80px
+    // - About button: ~44px (when visible)
+    // - Card padding: ~32px (top + bottom)
+    // - Title + meta: ~120px
+    // - Genres: ~40px
+    // - Action buttons: ~80px (height + margin)
+    // - Footer: ~60px
+    // - Spacing between elements: ~40px
+    // Total: ~496px, use 500px for safety
+    const reserved = 500;
     const available = viewportHeight - reserved;
     
     // Calculate text requirements with minimal font size (text-sm = 14px base, leading-relaxed = 1.625)
@@ -159,7 +168,8 @@ const MovieCard: React.FC<MovieCardProps> = ({
     const estimatedContentHeight = estimatedLines * lineHeight;
     
     // Available space for text (after reserving for other elements)
-    const textAvailableSpace = Math.max(available * 0.9, 150); // 90% of available, minimum 150px
+    // Use 95% of available to ensure buttons don't overlap
+    const textAvailableSpace = Math.max(available * 0.95, 200); // 95% of available, minimum 200px
     
     // If content fits in available space, use content height; otherwise use available space (will scroll only if needed)
     return `${Math.min(estimatedContentHeight, textAvailableSpace)}px`;
@@ -192,11 +202,11 @@ const MovieCard: React.FC<MovieCardProps> = ({
   const desktopCardMaxHeight = useMemo(() => {
     if (typeof window === 'undefined' || isMobile) return 'none';
     const viewportHeight = window.innerHeight;
-    // Reserve: header (~80px) + ad (50px) + button (~60px) + footer (~60px) + spacing (~40px) = ~290px
-    // Reduce by 10%: use 90% of available space
-    const reserved = 290;
+    // Reserve: header (~80px) + About button (~44px when visible) + button (~60px) + footer (~60px) + spacing (~40px) = ~284px
+    // Use 92% of available space to ensure everything fits
+    const reserved = 284;
     const available = viewportHeight - reserved;
-    return available > 400 ? `${available * 0.9}px` : 'none';
+    return available > 400 ? `${available * 0.92}px` : 'none';
   }, [isMobile]);
 
   // Button component to avoid duplication
@@ -260,9 +270,9 @@ const MovieCard: React.FC<MovieCardProps> = ({
             </div>
           )}
           
-          <div className="flex flex-col md:flex-row h-full md:h-auto">
-            {/* Movie Poster - Maintain 2:3 ratio on desktop (original poster ratio) */}
-            <div className="w-full md:w-1/3 relative aspect-[2/3] max-h-[38vh] sm:max-h-[42vh] md:max-h-none md:flex-shrink-0">
+          <div className="flex flex-col md:flex-row h-full md:h-auto md:items-stretch">
+            {/* Movie Poster - Maintain 2:3 ratio on desktop, fit by height without cutting */}
+            <div className="w-full md:w-1/3 relative aspect-[2/3] max-h-[38vh] sm:max-h-[42vh] md:aspect-[2/3] md:h-auto md:max-h-full md:flex-shrink-0 md:flex md:flex-col">
               {/* Now Playing Badge - Top-left on desktop, bottom-right on mobile - ABOVE poster */}
               {isInTheaters(movie.release_date) && (
                 <div className="absolute bottom-2 right-2 md:top-4 md:left-4 md:bottom-auto md:right-auto bg-gradient-to-r from-green-500 to-emerald-500 
@@ -276,7 +286,7 @@ const MovieCard: React.FC<MovieCardProps> = ({
               
               {/* Poster Image - wrapper to match image bounds on desktop */}
               <div 
-                className="relative w-full h-full flex items-start cursor-pointer md:cursor-default md:block"
+                className="relative w-full h-full flex items-start cursor-pointer md:cursor-default md:flex md:items-stretch"
                 onClick={(e) => {
                   e.stopPropagation();
                   // Use CSS media query approach for better mobile detection
@@ -287,8 +297,8 @@ const MovieCard: React.FC<MovieCardProps> = ({
                   }
                 }}
               >
-                {/* Image wrapper - matches image bounds on desktop with object-contain */}
-                <div className="relative h-full w-full md:h-auto md:flex-shrink-0 overflow-hidden">
+                {/* Image wrapper - matches image bounds on desktop with object-contain, fit by height */}
+                <div className="relative h-full w-full md:h-full md:w-auto md:flex-shrink-0 overflow-hidden">
                 {/* Loading state with icon - shown while poster is loading */}
                   {isPosterLoading && (
                     <div className="absolute inset-0 bg-gradient-to-br from-gray-800 to-gray-900 flex items-center justify-center pointer-events-none z-10">
@@ -300,7 +310,7 @@ const MovieCard: React.FC<MovieCardProps> = ({
                   )}
                 
                 <img
-                    className="w-full h-full object-cover md:object-contain transition-opacity duration-300 group-hover:scale-105 relative z-0 pointer-events-auto"
+                    className="w-full h-full object-cover md:object-contain md:h-full md:w-auto transition-opacity duration-300 group-hover:scale-105 relative z-0 pointer-events-auto"
                   src={getImageUrl(movie.poster_path)}
                   alt={`Movie poster for ${movie.title}`}
                   loading="lazy"
@@ -340,7 +350,7 @@ const MovieCard: React.FC<MovieCardProps> = ({
                     }
                   }}
                   style={{
-                      objectPosition: isMobile ? 'center 20%' : 'left center',
+                      objectPosition: isMobile ? 'center 20%' : 'center center',
                     opacity: isPosterLoading ? 0 : 1,
                     transition: 'opacity 0.3s ease-in-out'
                   }}
@@ -465,7 +475,7 @@ const MovieCard: React.FC<MovieCardProps> = ({
               </div>
               
                 {/* Overview */}
-                <div className="flex-1 min-h-0 mb-2 md:mb-3">
+                <div className="flex-1 min-h-0 mb-2 md:mb-4">
                   <div 
                     className="flex flex-col transition-all duration-300 ease-out"
                     style={{
@@ -475,6 +485,8 @@ const MovieCard: React.FC<MovieCardProps> = ({
                         maxHeight: isTextExpanded ? 'none' : textContainerHeight,
                         overflow: isTextExpanded ? 'visible' : 'auto', // Allow scroll only if text doesn't fit
                         overflowY: isTextExpanded ? 'visible' : 'auto',
+                        // Ensure minimum spacing from buttons below
+                        marginBottom: isTextExpanded ? '0' : '0.5rem',
                       })
                     }}
                   >

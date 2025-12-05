@@ -37,17 +37,21 @@ This document describes the Monetag ad integration for MovieNightPicker, includi
 ## Technical Notes
 
 ### 404 Errors
-The 404 errors from `vaimucuvikuwu.net` are **expected** and **non-critical**. Monetag uses redirects and tracking URLs that may return 404s, but the ads will still function correctly. These are internal Monetag analytics/tracking requests.
+The 404 errors from Monetag domains (e.g., `6opo.com`, `vaimucuvikuwu.net`, `baymr.com`) are **expected** and **non-critical**. Monetag uses redirects and tracking URLs that may return 404s, but the ads will still function correctly. These are internal Monetag analytics/tracking requests and do not affect ad display.
 
 ### Script Loading
-- Scripts are loaded asynchronously
+- Scripts are loaded asynchronously and appended to `<head>` for better compatibility
 - Monetag automatically scans for containers with matching `data-zone` attributes
-- Containers must be in DOM when script loads or when script scans
+- **CRITICAL**: Containers must be in DOM and visible BEFORE script loads for best results
+- If script loads before container, a re-scan is triggered by removing/re-adding `data-zone` attribute
+- Scripts use `async` but not `defer` to ensure immediate execution
 
 ### Container Requirements
 - Container must have `data-zone` attribute matching the script's zone
-- Container should have proper dimensions (width, height, minHeight)
-- Container must be visible when ad should display
+- Container should have proper dimensions (width: 100%, height: 100%, minHeight: 300px)
+- Container must be visible (visibility: visible, display: block, opacity: 1) when ad should display
+- Container must be in DOM before script loads for optimal detection
+- For interstitial ads: Container is created and made visible 500ms before script loads
 
 ## Files
 

@@ -4,8 +4,6 @@ MovieNightPicker is a web application designed to help users quickly discover mo
 
 ## Features
 
-File: src/pages/Home.tsx - Change pickCounter.count % 7 to pickCounter.count % 5
-
 ### Core Functionality
 - **Random Movie Selection**: Get instant movie recommendations with a single click
 - **Detailed Movie Information**: View posters, ratings, release dates, genres, and plot summaries

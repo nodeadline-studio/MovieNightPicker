@@ -1,7 +1,6 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { X } from 'lucide-react';
-import { PROPELLER_ADS_CONFIG, PropellerAdsLoader, AdPlacement, PropellerAdsAnalytics } from '../../config/ads/propellerAdsConfig';
-import { MockInterstitialAd } from '../../config/ads/propellerAdsMock';
+import { PROPELLER_ADS_CONFIG, AdPlacement, PropellerAdsAnalytics } from '../../config/ads/propellerAdsConfig';
 import { pauseAllMedia } from '../../utils/mediaPause';
 import { loadInterstitialAd, preloadInterstitialAd, loadNextAdInCycle } from '../../utils/monetagAds';
 import { markFirstCommercialBreakCompleted, hasFirstCommercialBreakCompleted } from '../../utils/vignetteAd';
@@ -32,7 +31,7 @@ interface PropellerInterstitialConfig {
   onClose?: () => void;
 }
 
-type AdLoadingState = 'loading' | 'attempting' | 'placeholder' | 'showing' | 'error';
+type AdLoadingState = 'loading' | 'attempting' | 'showing' | 'error';
 
 const PropellerInterstitialAd: React.FC<PropellerInterstitialAdProps> = ({ 
   onClose, 
@@ -44,12 +43,11 @@ const PropellerInterstitialAd: React.FC<PropellerInterstitialAdProps> = ({
   const [loadingState, setLoadingState] = useState<AdLoadingState>('loading');
   const [hasError, setHasError] = useState(false);
   const [isVisible, setIsVisible] = useState(false);
-  const [isUsingMockAd, setIsUsingMockAd] = useState(false);
   const [adContentRendered, setAdContentRendered] = useState(false);
   const adRef = useRef<HTMLDivElement>(null);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
-  const containerIdRef = useRef<string | null>(null);
-  const realAdTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const monetagCheckIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const mutationObserverRef = useRef<MutationObserver | null>(null);
 
   // Skip countdown timer - starts ONLY when ad is visible AND content is rendered
   useEffect(() => {
@@ -116,7 +114,6 @@ const PropellerInterstitialAd: React.FC<PropellerInterstitialAdProps> = ({
         if (adRef.current && adRef.current.isConnected) {
           // Container is ready, clean up previous content
           adRef.current.innerHTML = '';
-          adRef.current.removeAttribute('id');
           await new Promise(resolve => requestAnimationFrame(resolve));
           break;
         }
@@ -133,27 +130,136 @@ const PropellerInterstitialAd: React.FC<PropellerInterstitialAdProps> = ({
       // State 2: Attempting - load Monetag interstitial ad
       setLoadingState('attempting');
 
-      // Load Monetag interstitial ad directly into container
+      // Set up container for Monetag FIRST, before loading script
       if (adRef.current) {
-        // Set data-zone immediately so Monetag can find it
+        // Make container visible FIRST so Monetag can detect it when scanning
+        setIsVisible(true);
+        
+        // Set data-zone attribute BEFORE script loads - Monetag script will automatically find and inject ad
         adRef.current.setAttribute('data-zone', '10184307');
         adRef.current.style.width = '100%';
         adRef.current.style.height = '100%';
         adRef.current.style.minHeight = '300px';
+        adRef.current.style.position = 'relative';
+        adRef.current.style.display = 'block';
+        adRef.current.style.visibility = 'visible';
+        adRef.current.style.opacity = '1';
         
-        // Load the ad script and inject into container
-        loadInterstitialAd(adRef.current);
-        
-        // Wait for ad to initialize, then show
-        // Monetag needs time to scan for containers and inject ads
-        setTimeout(() => {
+        // Force a reflow to ensure container is in DOM and visible
+        void adRef.current.offsetHeight;
+      }
+
+      // CRITICAL: Container must be in DOM BEFORE script loads
+      // Wait for container to be fully rendered and visible
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      // Verify container is in DOM and visible
+      if (adRef.current && !adRef.current.isConnected) {
+        throw new Error('Container not in DOM');
+      }
+      
+      // Check if script is already loaded
+      const existingScript = document.querySelector('script[data-zone="10184307"]') || 
+                             document.querySelector('script[src*="groleegni.net/vignette.min.js"][data-zone="10184307"]');
+      
+      if (existingScript) {
+        // Script already loaded - container should have been ready before script loaded
+        // Try to trigger re-scan by temporarily removing and re-adding data-zone
+        if (adRef.current) {
+          const currentZone = adRef.current.getAttribute('data-zone');
+          adRef.current.removeAttribute('data-zone');
+          // Force reflow
+          void adRef.current.offsetHeight;
+          await new Promise(resolve => setTimeout(resolve, 100));
+          adRef.current.setAttribute('data-zone', '10184307');
+          console.log('Triggered Monetag re-scan for existing script - container ready');
+        }
+      } else {
+        // Script not loaded yet - load it now (container is already ready)
+        preloadInterstitialAd();
+        // Wait a bit for script to start loading
+        await new Promise(resolve => setTimeout(resolve, 200));
+      }
+      
+      // Use MutationObserver to detect when Monetag injects content
+      mutationObserverRef.current = new MutationObserver((mutations) => {
+        if (adRef.current) {
+          const hasAdContent = adRef.current.querySelector('iframe') || 
+                              adRef.current.querySelector('[id*="ad"]') ||
+                              adRef.current.querySelector('[class*="ad"]') ||
+                              adRef.current.querySelector('div[style*="position"]') ||
+                              adRef.current.querySelector('div[style*="absolute"]') ||
+                              (adRef.current.children.length > 0 && adRef.current.innerHTML.trim().length > 100);
+          
+          if (hasAdContent) {
+            if (mutationObserverRef.current) {
+              mutationObserverRef.current.disconnect();
+              mutationObserverRef.current = null;
+            }
+            if (monetagCheckIntervalRef.current) {
+              clearInterval(monetagCheckIntervalRef.current);
+              monetagCheckIntervalRef.current = null;
+            }
           setAdContentRendered(true);
-          setIsVisible(true);
           setLoadingState('showing');
           PropellerAdsAnalytics.trackAdShown('interstitial', 'movie-load');
           onSuccess?.();
-        }, 2000); // Increased delay for Monetag to initialize
+          }
+        }
+      });
+      
+      // Observe the container for changes
+      if (adRef.current && mutationObserverRef.current) {
+        mutationObserverRef.current.observe(adRef.current, {
+          childList: true,
+          subtree: true,
+          attributes: true,
+          attributeFilter: ['style', 'class', 'id']
+        });
       }
+      
+      // Also use interval as fallback
+      let checkCount = 0;
+      const maxChecks = 60; // 30 seconds max wait
+      monetagCheckIntervalRef.current = setInterval(() => {
+        checkCount++;
+        
+        // Check if Monetag has injected content
+        if (adRef.current) {
+          const hasAdContent = adRef.current.querySelector('iframe') || 
+                              adRef.current.querySelector('[id*="ad"]') ||
+                              adRef.current.querySelector('[class*="ad"]') ||
+                              adRef.current.querySelector('div[style*="position"]') ||
+                              adRef.current.querySelector('div[style*="absolute"]') ||
+                              (adRef.current.children.length > 0 && adRef.current.innerHTML.trim().length > 100);
+          
+          if (hasAdContent) {
+            if (mutationObserverRef.current) {
+              mutationObserverRef.current.disconnect();
+              mutationObserverRef.current = null;
+            }
+            clearInterval(monetagCheckIntervalRef.current!);
+            monetagCheckIntervalRef.current = null;
+            setAdContentRendered(true);
+            setLoadingState('showing');
+            PropellerAdsAnalytics.trackAdShown('interstitial', 'movie-load');
+            onSuccess?.();
+          } else if (checkCount >= maxChecks) {
+            // Timeout - ad didn't load
+            if (mutationObserverRef.current) {
+              mutationObserverRef.current.disconnect();
+              mutationObserverRef.current = null;
+            }
+            clearInterval(monetagCheckIntervalRef.current!);
+            monetagCheckIntervalRef.current = null;
+            console.warn('Monetag ad did not load within timeout period - closing ad');
+            // Close ad if it doesn't load - don't show empty container
+            setHasError(true);
+            setLoadingState('error');
+            onError?.();
+          }
+        }
+      }, 500); // Check every 500ms
 
     } catch (error) {
       console.error('Error loading interstitial ad:', error);
@@ -179,79 +285,6 @@ const PropellerInterstitialAd: React.FC<PropellerInterstitialAdProps> = ({
     }
   }, [isVisible, adContentRendered]);
 
-  // Inject mock ad content when visible (only if using mock, not real ad, and in showing state)
-  useEffect(() => {
-    // Only inject mock ad when:
-    // 1. Ad is visible
-    // 2. No error occurred
-    // 3. We're using mock ad (real ad definitively failed)
-    // 4. Loading state is 'showing' (ad is ready to display)
-    // 5. Ad content container exists
-    if (isVisible && !hasError && isUsingMockAd && loadingState === 'showing' && adRef.current) {
-      const mockInterstitial = MockInterstitialAd.getInstance();
-      
-      // Only inject if mock ad exists and we're using mock (not real ad)
-      if (mockInterstitial.currentAd) {
-        // Use requestAnimationFrame for reliable DOM timing
-        const injectAd = () => {
-          if (adRef.current && mockInterstitial.currentAd) {
-            // Clear container first
-            adRef.current.innerHTML = '';
-            // Clone the mock ad element to avoid issues if it's already in DOM
-            const clonedAd = mockInterstitial.currentAd.cloneNode(true) as HTMLElement;
-            adRef.current.appendChild(clonedAd);
-            
-            // Re-attach event listeners to cloned element
-            const skipBtn = clonedAd.querySelector('#mock-ad-skip') as HTMLButtonElement;
-            const actionBtn = clonedAd.querySelector('#mock-ad-action');
-            
-            if (skipBtn) {
-              skipBtn.addEventListener('click', () => {
-                if (canSkip) {
-                  onClose();
-                }
-              });
-            }
-            
-            if (actionBtn) {
-              actionBtn.addEventListener('click', () => {
-                console.log('Mock ad action clicked - would navigate to advertiser in production');
-              });
-            }
-          }
-        };
-        
-        // Try immediate injection, fallback to requestAnimationFrame
-        if (adRef.current) {
-          injectAd();
-        } else {
-          requestAnimationFrame(injectAd);
-        }
-      }
-    }
-  }, [isVisible, hasError, isUsingMockAd, loadingState, canSkip, onClose]);
-
-  // Update mock ad skip button state when canSkip or remainingTime changes
-  useEffect(() => {
-    if (isVisible && !hasError && isUsingMockAd && adRef.current) {
-      const skipBtn = adRef.current.querySelector('#mock-ad-skip') as HTMLButtonElement;
-      if (skipBtn) {
-        if (canSkip) {
-          skipBtn.style.opacity = '1';
-          skipBtn.style.cursor = 'pointer';
-          skipBtn.style.pointerEvents = 'auto';
-          skipBtn.disabled = false;
-          skipBtn.textContent = 'Skip Ad';
-        } else {
-          skipBtn.style.opacity = '0.5';
-          skipBtn.style.cursor = 'not-allowed';
-          skipBtn.style.pointerEvents = 'none';
-          skipBtn.disabled = true;
-          skipBtn.textContent = remainingTime > 0 ? `Skip in ${remainingTime}s` : 'Skip Ad';
-        }
-      }
-    }
-  }, [isVisible, hasError, isUsingMockAd, canSkip, remainingTime]);
 
   // Cleanup on unmount
   useEffect(() => {
@@ -259,11 +292,8 @@ const PropellerInterstitialAd: React.FC<PropellerInterstitialAdProps> = ({
       // Clean up container
       if (adRef.current) {
         adRef.current.innerHTML = '';
-        adRef.current.removeAttribute('id');
+        adRef.current.removeAttribute('data-zone');
       }
-      
-      // Clear container ID reference
-      containerIdRef.current = null;
       
       // Clear interval if exists
       if (intervalRef.current) {
@@ -271,10 +301,16 @@ const PropellerInterstitialAd: React.FC<PropellerInterstitialAdProps> = ({
         intervalRef.current = null;
       }
       
-      // Clear real ad timeout if exists
-      if (realAdTimeoutRef.current) {
-        clearTimeout(realAdTimeoutRef.current);
-        realAdTimeoutRef.current = null;
+      // Clear Monetag check interval if exists
+      if (monetagCheckIntervalRef.current) {
+        clearInterval(monetagCheckIntervalRef.current);
+        monetagCheckIntervalRef.current = null;
+      }
+      
+      // Disconnect mutation observer if exists
+      if (mutationObserverRef.current) {
+        mutationObserverRef.current.disconnect();
+        mutationObserverRef.current = null;
       }
     };
   }, []);
@@ -296,20 +332,13 @@ const PropellerInterstitialAd: React.FC<PropellerInterstitialAdProps> = ({
     setIsVisible(false);
     setAdContentRendered(false);
     setLoadingState('loading');
-    setIsUsingMockAd(false);
     setCanSkip(false);
     setRemainingTime(PROPELLER_ADS_CONFIG.display.interstitial.skipDelay);
     
     // Clear container
     if (adRef.current) {
       adRef.current.innerHTML = '';
-      adRef.current.removeAttribute('id');
-    }
-    
-    // Clear timeouts
-    if (realAdTimeoutRef.current) {
-      clearTimeout(realAdTimeoutRef.current);
-      realAdTimeoutRef.current = null;
+      adRef.current.removeAttribute('data-zone');
     }
     
     // Clear interval
@@ -318,10 +347,10 @@ const PropellerInterstitialAd: React.FC<PropellerInterstitialAdProps> = ({
       intervalRef.current = null;
     }
     
-    // Reset mock ad state
-    const mockInterstitial = MockInterstitialAd.getInstance();
-    if (mockInterstitial.currentAd) {
-      mockInterstitial.currentAd = null;
+    // Clear Monetag check interval
+    if (monetagCheckIntervalRef.current) {
+      clearInterval(monetagCheckIntervalRef.current);
+      monetagCheckIntervalRef.current = null;
     }
     
     onClose();
@@ -389,12 +418,12 @@ const PropellerInterstitialAd: React.FC<PropellerInterstitialAdProps> = ({
           {/* Monetag interstitial ad will be injected here via data-zone attribute */}
           <div 
             ref={adRef}
-            className={`w-full h-full flex items-center justify-center ${
-              loadingState === 'showing' && isVisible ? 'visible' : 'hidden'
-            }`}
+            className="w-full h-full flex items-center justify-center"
             style={{ 
               minHeight: '300px',
-              visibility: loadingState === 'showing' && isVisible ? 'visible' : 'hidden'
+              visibility: isVisible ? 'visible' : 'hidden',
+              display: isVisible ? 'block' : 'none',
+              opacity: isVisible ? '1' : '0'
             }}
             data-zone="10184307"
           >
@@ -406,15 +435,6 @@ const PropellerInterstitialAd: React.FC<PropellerInterstitialAdProps> = ({
             <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-400 mb-4"></div>
               <p className="text-gray-300 text-lg">Loading advertisement...</p>
-            </div>
-          )}
-          
-          {/* Placeholder state - show placeholder during transition */}
-          {loadingState === 'placeholder' && (
-            <div className="absolute inset-0 w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-800 to-gray-900 rounded-xl border border-gray-700">
-            <div className="flex flex-col items-center justify-center text-center p-8">
-                <div className="animate-pulse text-gray-400 text-sm">Preparing advertisement...</div>
-              </div>
             </div>
           )}
           

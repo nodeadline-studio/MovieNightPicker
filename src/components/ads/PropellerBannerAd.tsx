@@ -1,6 +1,5 @@
 import React, { useEffect, useRef, useState, useCallback, memo } from 'react';
-import { PROPELLER_ADS_CONFIG, PropellerAdsLoader, AdPlacement, PropellerAdsAnalytics } from '../../config/ads/propellerAdsConfig';
-import { MockPropellerAds } from '../../config/ads/propellerAdsMock';
+import { PROPELLER_ADS_CONFIG, AdPlacement, PropellerAdsAnalytics } from '../../config/ads/propellerAdsConfig';
 
 interface PropellerBannerAdProps {
   placement: 'about' | 'movie-card';
@@ -39,11 +38,11 @@ const PropellerBannerAd: React.FC<PropellerBannerAdProps> = ({
   const [hasError, setHasError] = useState(false);
   const [isVisible, setIsVisible] = useState(false);
   const adRef = useRef<HTMLDivElement>(null);
-  const adContainerRef = useRef<HTMLDivElement>(null); // Dedicated container for ad content (React doesn't manage this)
+  const adContainerRef = useRef<HTMLDivElement>(null);
   const observerRef = useRef<IntersectionObserver | null>(null);
-  const mockAdTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const containerIdRef = useRef<string | null>(null);
   const isMountedRef = useRef(true);
+  const hasLoadedRef = useRef(false); // Track if ad has been loaded once
 
   // Get ad unit ID based on placement
   const getAdUnitId = (): string => {
@@ -57,8 +56,13 @@ const PropellerBannerAd: React.FC<PropellerBannerAdProps> = ({
     }
   };
 
-  // Load and display the ad
+  // Load and display the ad - only load once, then persist
   const loadAd = useCallback(async () => {
+    // If ad has already been loaded, don't reload
+    if (hasLoadedRef.current) {
+      return;
+    }
+
     try {
       setIsLoading(true);
       setHasError(false);
@@ -69,142 +73,13 @@ const PropellerBannerAd: React.FC<PropellerBannerAdProps> = ({
         return;
       }
 
-      // Check if we're in development mode
-      const isDevelopment = import.meta.env.MODE === 'development' || 
-                           typeof window !== 'undefined' && window.location.hostname === 'localhost';
-
-      if (isDevelopment) {
-        // Use mock banner ad
-        const mockAds = MockPropellerAds.getInstance();
-        
-        // Ensure dedicated ad container exists and has ID set
-        if (!adContainerRef.current) {
-          throw new Error('Ad container ref not available');
-        }
-        
-        // Wait for container ID to be set (by useEffect)
-        let retries = 0;
-        const maxRetries = 10;
-        while (retries < maxRetries && !containerIdRef.current) {
-          await new Promise(resolve => setTimeout(resolve, 50));
-          retries++;
-        }
-        
-        if (!containerIdRef.current) {
-          throw new Error('Container ID not set after waiting');
-        }
-        
-        const containerId = containerIdRef.current;
-        
-        // Wait for DOM to be ready - use multiple checks
-        retries = 0;
-        while (retries < maxRetries) {
-          await new Promise(resolve => setTimeout(resolve, 50));
-          
-          // Check if component is still mounted
-          if (!isMountedRef.current || !adContainerRef.current) {
-            return; // Component unmounted, don't proceed
-          }
-          
-          // Verify container exists and is connected
-          const container = document.getElementById(containerId);
-          if (container && container.isConnected) {
-            break; // Container is ready
-          }
-          
-          retries++;
-          if (retries >= maxRetries) {
-            throw new Error(`Container not found in DOM after ${maxRetries} checks: ${containerId}`);
-          }
-        }
-        
-        // Final verification
-        const container = document.getElementById(containerId);
-        if (!container || !container.isConnected) {
-          throw new Error('Container not found in DOM or not connected after retries');
-        }
-
-        const [width, height] = AdPlacement.getBannerSize();
-        mockAds.init({
-          container: containerId,
-          adUnitId: getAdUnitId(),
-          publisherId: PROPELLER_ADS_CONFIG.publisherId,
-          width: width,
-          height: height,
-          onLoad: () => {
-            // Check if component is still mounted before updating state
-            if (!isMountedRef.current) return;
+      // Banner ads are not implemented with Monetag yet
+      // For now, just mark as loaded (empty state)
+      // TODO: Implement Monetag banner ads if needed
             setIsLoading(false);
-            setIsVisible(true);
-            PropellerAdsAnalytics.trackAdShown('banner', placement);
-            onSuccess?.();
-          },
-          onError: (error: Error) => {
-            // Check if component is still mounted before updating state
-            if (!isMountedRef.current) return;
-            console.error('Mock banner error:', error);
-            setHasError(true);
-            setIsLoading(false);
-            PropellerAdsAnalytics.trackAdError('banner', placement, error.message || 'Unknown error');
-            onError?.();
-          },
-          onClick: () => {
-            PropellerAdsAnalytics.trackAdClicked('banner', placement);
-          }
-        });
-        return;
-      }
-
-      // Load PropellerAds script if not already loaded
-      const loader = PropellerAdsLoader.getInstance();
-      await loader.loadScript();
-
-      // Wait for PropellerAds to be available
-      if (!(window as any).propellerads) {
-        throw new Error('PropellerAds not available');
-      }
-
-      // Use container ID that was set by useEffect
-      if (!containerIdRef.current) {
-        throw new Error('Container ID not set');
-      }
-      const containerId = containerIdRef.current;
-
-      // Get appropriate banner size
-      const [width, height] = AdPlacement.getBannerSize();
-
-      // Initialize the ad
-      if ((window as any).propellerads && (window as any).propellerads.init) {
-        (window as any).propellerads.init({
-          container: containerId,
-          adUnitId: getAdUnitId(),
-          publisherId: PROPELLER_ADS_CONFIG.publisherId,
-          width: width,
-          height: height,
-          onLoad: () => {
-            // Check if component is still mounted before updating state
-            if (!isMountedRef.current) return;
-            setIsLoading(false);
-            setIsVisible(true);
-            PropellerAdsAnalytics.trackAdShown('banner', placement);
-            onSuccess?.();
-          },
-          onError: (error: Error) => {
-            // Check if component is still mounted before updating state
-            if (!isMountedRef.current) return;
-            console.error('PropellerAds banner error:', error);
-            setHasError(true);
-            setIsLoading(false);
-            PropellerAdsAnalytics.trackAdError('banner', placement, error.message || 'Unknown error');
-            onError?.();
-          },
-          onClick: () => {
-            PropellerAdsAnalytics.trackAdClicked('banner', placement);
-          }
-        });
-      } else {
-        throw new Error('PropellerAds initialization failed');
-      }
+      setIsVisible(false);
+      setHasError(false);
+      hasLoadedRef.current = true; // Mark as loaded so it won't reload
 
     } catch (error) {
       console.error('Error loading PropellerAds banner:', error);
@@ -215,8 +90,13 @@ const PropellerBannerAd: React.FC<PropellerBannerAdProps> = ({
     }
   }, [placement, onError, onSuccess]);
 
-  // Intersection Observer for lazy loading
+  // Intersection Observer for lazy loading - only load once
   useEffect(() => {
+    // Don't reload if already loaded
+    if (hasLoadedRef.current) {
+      return;
+    }
+
     if (!PROPELLER_ADS_CONFIG.performance.lazyLoading) {
       loadAd();
       return;
@@ -225,7 +105,7 @@ const PropellerBannerAd: React.FC<PropellerBannerAdProps> = ({
     const observer = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
-          if (entry.isIntersecting && isLoading && !hasError) {
+          if (entry.isIntersecting && isLoading && !hasError && !hasLoadedRef.current) {
             loadAd();
             observer.disconnect();
           }
@@ -275,18 +155,6 @@ const PropellerBannerAd: React.FC<PropellerBannerAdProps> = ({
       // Clean up intersection observer
       if (observerRef.current) {
         observerRef.current.disconnect();
-      }
-      
-      // Clean up mock ad content to prevent React removeChild errors
-      if (containerIdRef.current) {
-        // Destroy mock ad instance (this will clean up the ad element only)
-        const mockAds = MockPropellerAds.getInstance();
-        mockAds.destroy(containerIdRef.current);
-      }
-      
-      // Clear any pending timeouts
-      if (mockAdTimeoutRef.current) {
-        clearTimeout(mockAdTimeoutRef.current);
       }
     };
   }, []);
