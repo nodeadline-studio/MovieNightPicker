@@ -177,9 +177,9 @@ class AnalyticsTracker {
     // Send to analytics service (if configured)
     this.sendToAnalytics(event);
 
-    // Console log in debug mode
-    if (import.meta.env.MODE === 'development') {
-      console.log('Analytics Event:', event);
+    // Console log only in dev mode
+    if (import.meta.env.DEV) {
+      console.debug('[Analytics] Event:', event);
     }
   }
 

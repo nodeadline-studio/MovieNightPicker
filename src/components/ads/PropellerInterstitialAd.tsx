@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { X } from 'lucide-react';
 import { PROPELLER_ADS_CONFIG, AdPlacement, PropellerAdsAnalytics } from '../../config/ads/propellerAdsConfig';
 import { pauseAllMedia } from '../../utils/mediaPause';
-import { loadInterstitialAd, preloadInterstitialAd, loadNextAdInCycle } from '../../utils/monetagAds';
+import { preloadInterstitialAd, loadNextAdInCycle, loadNextInterstitial } from '../../utils/monetagAds';
 import { markFirstCommercialBreakCompleted, hasFirstCommercialBreakCompleted } from '../../utils/vignetteAd';
 
 interface PropellerInterstitialAdProps {
@@ -82,6 +82,15 @@ const PropellerInterstitialAd: React.FC<PropellerInterstitialAdProps> = ({
     };
   }, [isVisible, adContentRendered]);
 
+  // Absolute safety: allow skip after max wait even if ad failed to render
+  useEffect(() => {
+    if (!isVisible) return;
+    const maxWait = setTimeout(() => {
+      setCanSkip(true);
+    }, 12000); // 12s hard cap
+    return () => clearTimeout(maxWait);
+  }, [isVisible]);
+
   // Auto-close timer
   useEffect(() => {
     if (PROPELLER_ADS_CONFIG.display.interstitial.autoCloseAfter > 0) {
@@ -135,7 +144,7 @@ const PropellerInterstitialAd: React.FC<PropellerInterstitialAdProps> = ({
         // Make container visible FIRST so Monetag can detect it when scanning
         setIsVisible(true);
         
-        // Set data-zone attribute BEFORE script loads - Monetag script will automatically find and inject ad
+        // Set data-zone attribute BEFORE init
         adRef.current.setAttribute('data-zone', '10184307');
         adRef.current.style.width = '100%';
         adRef.current.style.height = '100%';
@@ -149,7 +158,6 @@ const PropellerInterstitialAd: React.FC<PropellerInterstitialAdProps> = ({
         void adRef.current.offsetHeight;
       }
 
-      // CRITICAL: Container must be in DOM BEFORE script loads
       // Wait for container to be fully rendered and visible
       await new Promise(resolve => setTimeout(resolve, 500));
       
@@ -157,28 +165,10 @@ const PropellerInterstitialAd: React.FC<PropellerInterstitialAdProps> = ({
       if (adRef.current && !adRef.current.isConnected) {
         throw new Error('Container not in DOM');
       }
-      
-      // Check if script is already loaded
-      const existingScript = document.querySelector('script[data-zone="10184307"]') || 
-                             document.querySelector('script[src*="groleegni.net/vignette.min.js"][data-zone="10184307"]');
-      
-      if (existingScript) {
-        // Script already loaded - container should have been ready before script loaded
-        // Try to trigger re-scan by temporarily removing and re-adding data-zone
-        if (adRef.current) {
-          const currentZone = adRef.current.getAttribute('data-zone');
-          adRef.current.removeAttribute('data-zone');
-          // Force reflow
-          void adRef.current.offsetHeight;
-          await new Promise(resolve => setTimeout(resolve, 100));
-          adRef.current.setAttribute('data-zone', '10184307');
-          console.log('Triggered Monetag re-scan for existing script - container ready');
-        }
-      } else {
-        // Script not loaded yet - load it now (container is already ready)
-        preloadInterstitialAd();
-        // Wait a bit for script to start loading
-        await new Promise(resolve => setTimeout(resolve, 200));
+
+      // Initialize Monetag interstitial via tag.js SDK with rotation
+      if (adRef.current) {
+        await loadNextInterstitial(adRef.current);
       }
       
       // Use MutationObserver to detect when Monetag injects content
@@ -252,7 +242,9 @@ const PropellerInterstitialAd: React.FC<PropellerInterstitialAdProps> = ({
             }
             clearInterval(monetagCheckIntervalRef.current!);
             monetagCheckIntervalRef.current = null;
-            console.warn('Monetag ad did not load within timeout period - closing ad');
+            if (import.meta.env.DEV) {
+              console.warn('[Monetag] Ad did not load within timeout period - closing ad');
+            }
             // Close ad if it doesn't load - don't show empty container
             setHasError(true);
             setLoadingState('error');

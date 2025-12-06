@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
+import React, { createContext, useContext, useState, useCallback, useEffect, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Movie, Genre, FilterOptions, LoadingState, WatchlistMovie } from '../types';
 import { fetchRandomMovie, fetchGenres } from '../config/api';
@@ -48,6 +48,8 @@ export const MovieProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [error, setError] = useState<string | null>(null);
   const [sessionMovies, setSessionMovies] = useState<Set<number>>(new Set());
   const [previousFilterKey, setPreviousFilterKey] = useState<string>('');
+  const isFetchingRef = useRef(false);
+  const lastFetchRef = useRef(0);
 
   // Fetch genres
   const { data: genres = [] } = useQuery({
@@ -101,13 +103,17 @@ export const MovieProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       }).filter(movie => {
         // Remove movies with perfect 10.0 rating (likely deleted/invalid)
         if (movie.vote_average >= 10.0) {
-          console.warn(`Removing suspicious movie from watchlist: ${movie.title} (rating: ${movie.vote_average})`);
+          if (import.meta.env.DEV) {
+          console.warn(`[Watchlist] Removing suspicious movie: ${movie.title} (rating: ${movie.vote_average})`);
+        }
           hasChanges = true;
           return false;
         }
         // Remove movies with missing essential data
         if (!movie.title || !movie.id || !movie.poster_path) {
-          console.warn(`Removing incomplete movie from watchlist: ${movie.title || 'Unknown'}`);
+          if (import.meta.env.DEV) {
+          console.warn(`[Watchlist] Removing incomplete movie: ${movie.title || 'Unknown'}`);
+        }
           hasChanges = true;
           return false;
         }
@@ -204,18 +210,26 @@ export const MovieProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   }, [genres, updateFilterOptions]);
 
   const getRandomMovie = useCallback(async () => {
+    if (isFetchingRef.current) {
+      logger.debug('Skipping getRandomMovie: fetch already in progress', undefined, { prefix: 'Context' });
+      return;
+    }
+
+    const now = Date.now();
+    const recentlyFetched = now - lastFetchRef.current < 1200 && loadingState === LoadingState.SUCCESS;
+    if (recentlyFetched) {
+      logger.debug('Skipping getRandomMovie: throttled to prevent double fetch', undefined, { prefix: 'Context' });
+      return;
+    }
+
+    isFetchingRef.current = true;
+    lastFetchRef.current = now;
     setLoadingState(LoadingState.LOADING);
     setError(null);
     
     // DON'T clear usedMovies - keep duplicate prevention active
     // Only remove suspicious movies, but preserve usedMovies tracking
     movieCache.removeSuspiciousMovies(); // Keep this
-    
-    // Apply random filters if randomizer is enabled BEFORE making the API call
-    // if (isRandomizerEnabled) {
-    //   applyRandomFilters(); // Now just call the function, it will update filters itself
-    //   // Use current filters after update
-    // }
     
     try {
       // Use current filters (they were updated by applyRandomFilters if needed)
@@ -226,7 +240,9 @@ export const MovieProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       
       // Log to check for duplicates
       if (currentMovie && currentMovie.id === movie.id) {
-        console.warn(`[Cache] Duplicate movie detected: ${movie.id} - ${movie.title}`);
+        if (import.meta.env.DEV) {
+          console.warn(`[Cache] Duplicate movie detected: ${movie.id} - ${movie.title}`);
+        }
       }
       
       setCurrentMovie(movie);
@@ -248,8 +264,10 @@ export const MovieProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       setError(errorMessage);
       setLoadingState(LoadingState.ERROR);
       throw e; // Let the component handle the error
+    } finally {
+      isFetchingRef.current = false;
     }
-  }, [filterOptions, applyRandomFilters, currentMovie, sessionMovies]);
+  }, [filterOptions, applyRandomFilters, currentMovie, sessionMovies, loadingState]);
 
   const getRandomMovieSafe = useCallback(async () => {
     try {

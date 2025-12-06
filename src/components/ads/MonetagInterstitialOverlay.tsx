@@ -35,10 +35,13 @@ const MonetagInterstitialOverlay: React.FC<MonetagInterstitialOverlayProps> = ({
       script.setAttribute('data-cfasync', 'false');
       script.onload = () => {
         scriptLoadedRef.current = true;
-        console.log('Monetag interstitial script loaded for zone', zoneId);
+        if (import.meta.env.DEV) {
+          console.debug(`[Monetag] Interstitial script loaded for zone ${zoneId}`);
+        }
       };
       script.onerror = (error) => {
-        console.error('Failed to load Monetag script:', error);
+        // Keep error logs visible in production for debugging
+        console.error('[Monetag] Failed to load interstitial script:', error);
         // Still mark as loaded to prevent retries
         scriptLoadedRef.current = true;
       };
@@ -58,7 +61,9 @@ const MonetagInterstitialOverlay: React.FC<MonetagInterstitialOverlayProps> = ({
         // Set data-zone attribute for Monetag to inject ad
         containerRef.current.setAttribute('data-zone', zoneId);
         adInitializedRef.current = true;
-        console.log('Monetag interstitial ad container initialized');
+        if (import.meta.env.DEV) {
+          console.debug('[Monetag] Interstitial ad container initialized');
+        }
       } else if (!scriptLoadedRef.current) {
         // Retry if script not loaded yet
         setTimeout(checkAndInit, 100);

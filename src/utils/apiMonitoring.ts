@@ -64,7 +64,9 @@ class APIMonitoringService {
       this.checkAPIHealth();
     }, 30000);
     
-    console.log('🔍 API Monitoring started');
+    if (import.meta.env.DEV) {
+      console.debug('[APIMonitoring] Started');
+    }
   }
 
   // Stop monitoring
@@ -74,7 +76,9 @@ class APIMonitoringService {
       this.checkInterval = null;
     }
     this.isMonitoring = false;
-    console.log('🔍 API Monitoring stopped');
+    if (import.meta.env.DEV) {
+      console.debug('[APIMonitoring] Stopped');
+    }
   }
 
   // Monitor API call
@@ -133,7 +137,9 @@ class APIMonitoringService {
       // Return fallback data if available
       const fallback = this.getFallbackData(endpoint);
       if (fallback) {
-        console.warn(`⚠️ Using fallback data for ${endpoint}:`, errorMessage);
+        if (import.meta.env.DEV) {
+          console.warn(`[APIMonitoring] Using fallback data for ${endpoint}:`, errorMessage);
+        }
         return fallback;
       }
       

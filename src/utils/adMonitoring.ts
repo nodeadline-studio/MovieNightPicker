@@ -69,13 +69,17 @@ class AdMonitoringService {
     if (this.isMonitoring) return;
     
     this.isMonitoring = true;
-    console.log('🎬 Ad Monitoring started');
+    if (import.meta.env.DEV) {
+      console.debug('[AdMonitoring] Started');
+    }
   }
 
   // Stop monitoring
   stopMonitoring(): void {
     this.isMonitoring = false;
-    console.log('🎬 Ad Monitoring stopped');
+    if (import.meta.env.DEV) {
+      console.debug('[AdMonitoring] Stopped');
+    }
   }
 
   // Track ad impression
@@ -99,7 +103,9 @@ class AdMonitoringService {
     this.updatePerformanceSummary();
     this.saveMetrics();
     
-    console.log('🎬 Ad impression tracked:', adId);
+    if (import.meta.env.DEV) {
+      console.debug(`[AdMonitoring] Impression tracked: ${adId}`);
+    }
   }
 
   // Track ad click
@@ -126,7 +132,9 @@ class AdMonitoringService {
     // Track conversion
     this.trackConversion(adId, revenue);
     
-    console.log('🎬 Ad click tracked:', adId, 'Revenue:', revenue);
+    if (import.meta.env.DEV) {
+      console.debug(`[AdMonitoring] Click tracked: ${adId}, Revenue: ${revenue}`);
+    }
   }
 
   // Track ad skip
@@ -150,7 +158,9 @@ class AdMonitoringService {
     this.updatePerformanceSummary();
     this.saveMetrics();
     
-    console.log('🎬 Ad skip tracked:', adId);
+    if (import.meta.env.DEV) {
+      console.debug(`[AdMonitoring] Skip tracked: ${adId}`);
+    }
   }
 
   // Track ad completion
@@ -174,7 +184,9 @@ class AdMonitoringService {
     this.updatePerformanceSummary();
     this.saveMetrics();
     
-    console.log('🎬 Ad completion tracked:', adId);
+    if (import.meta.env.DEV) {
+      console.debug(`[AdMonitoring] Completion tracked: ${adId}`);
+    }
   }
 
   // Track ad error

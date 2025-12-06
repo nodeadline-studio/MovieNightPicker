@@ -43,10 +43,15 @@ const MovieCard: React.FC<MovieCardProps> = ({
   const isMobile = useMediaQuery({ maxWidth: 767 });
   const [isPosterModalOpen, setIsPosterModalOpen] = useState(false);
   const [isPosterLoading, setIsPosterLoading] = useState(true);
+  const [hasPosterError, setHasPosterError] = useState(false);
   const [isTextExpanded, setIsTextExpanded] = useState(false);
   const [shouldShowTextExpansion, setShouldShowTextExpansion] = useState(false);
   const buttonElementRef = useRef<React.ReactNode>(null);
   const lastButtonRef = useRef<React.ReactNode>(null);
+  const posterImageRef = useRef<HTMLImageElement | null>(null);
+  const posterLoadTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const posterPlaceholder = 'https://via.placeholder.com/500x750?text=No+Image';
+  const posterObjectPositionMobile = hasPosterError ? 'center center' : 'center 45%';
 
   // Smart text expansion logic - only expand if text > 10% of screen height
   React.useEffect(() => {
@@ -79,10 +84,122 @@ const MovieCard: React.FC<MovieCardProps> = ({
     };
   }, [movie.overview]);
 
+  // Track last movie ID to prevent unnecessary resets
+  const lastMovieIdRef = useRef<number | null>(null);
+  const lastPosterPathRef = useRef<string | null>(null);
+
   // Reset poster loading state when movie changes
   useEffect(() => {
+    // Only reset if movie ID or poster path actually changed
+    const movieIdChanged = lastMovieIdRef.current !== movie.id;
+    const posterPathChanged = lastPosterPathRef.current !== (movie.poster_path || null);
+    
+    if (!movieIdChanged && !posterPathChanged) {
+      // Movie hasn't actually changed, don't reset loading state
+      return;
+    }
+
+    // Update refs
+    lastMovieIdRef.current = movie.id;
+    lastPosterPathRef.current = movie.poster_path || null;
+
+    // Clear any existing timeout
+    if (posterLoadTimeoutRef.current) {
+      clearTimeout(posterLoadTimeoutRef.current);
+      posterLoadTimeoutRef.current = null;
+    }
+
+    // Reset states only when movie actually changes
     setIsPosterLoading(true);
-  }, [movie.id]);
+    setHasPosterError(false);
+
+    if (!movie.poster_path) {
+      // Immediately resolve loading when no poster path is available
+      setIsPosterLoading(false);
+      setHasPosterError(true);
+      return;
+    }
+
+    // Check if image is already loaded (cached images)
+    // Use requestAnimationFrame to ensure DOM is updated
+    requestAnimationFrame(() => {
+      if (posterImageRef.current) {
+        const img = posterImageRef.current;
+        // Verify the src matches current movie's poster
+        const expectedSrc = getImageUrl(movie.poster_path);
+        if (img.src === expectedSrc && img.complete && img.naturalWidth > 0) {
+          // Image is already loaded and matches current movie
+          setIsPosterLoading(false);
+          setHasPosterError(false);
+          return;
+        }
+      }
+
+      // Safety timeout: if image hasn't loaded within 8 seconds, show error
+      // Use a ref check to avoid stale closure
+      posterLoadTimeoutRef.current = setTimeout(() => {
+        // Check current state via a function to avoid stale closure
+        setIsPosterLoading((currentLoading) => {
+          if (currentLoading) {
+            if (import.meta.env.DEV) {
+              console.warn(`[Poster] Load timeout for movie ${movie.id}: ${movie.title}`);
+            }
+            setHasPosterError(true);
+            return false;
+          }
+          return currentLoading;
+        });
+      }, 8000);
+    });
+
+    // Cleanup on unmount or movie change
+    return () => {
+      if (posterLoadTimeoutRef.current) {
+        clearTimeout(posterLoadTimeoutRef.current);
+        posterLoadTimeoutRef.current = null;
+      }
+    };
+  }, [movie.id, movie.poster_path]);
+
+  // Additional check: verify image loaded state after a brief delay
+  // This handles cases where onLoad doesn't fire for cached images
+  // Only check once per movie to avoid unnecessary re-renders
+  const lastCheckedMovieIdRef = useRef<number | null>(null);
+  useEffect(() => {
+    if (!movie.poster_path || hasPosterError || movie.id === lastCheckedMovieIdRef.current) return;
+    
+    lastCheckedMovieIdRef.current = movie.id;
+
+    const checkImageLoaded = () => {
+      if (posterImageRef.current && posterImageRef.current.src) {
+        const img = posterImageRef.current;
+        // If image is complete and has dimensions, it's loaded
+        if (img.complete && img.naturalWidth > 0) {
+          setIsPosterLoading((currentLoading) => {
+            if (currentLoading) {
+              if (posterLoadTimeoutRef.current) {
+                clearTimeout(posterLoadTimeoutRef.current);
+                posterLoadTimeoutRef.current = null;
+              }
+              return false;
+            }
+            return currentLoading;
+          });
+          setHasPosterError(false);
+        }
+      }
+    };
+
+    // Check after a short delay to allow image to start loading
+    const checkTimeout = setTimeout(checkImageLoaded, 100);
+    // Also check after image src might have loaded
+    const checkTimeout2 = setTimeout(checkImageLoaded, 500);
+
+    return () => {
+      clearTimeout(checkTimeout);
+      clearTimeout(checkTimeout2);
+    };
+  }, [movie.id, movie.poster_path]);
   
   const handleWatchlistToggle = () => {
     if (isInWatchlist) {
@@ -143,21 +260,15 @@ const MovieCard: React.FC<MovieCardProps> = ({
   // Dynamic text container height calculation for desktop
   // Strategy: Use minimal text size (text-sm), calculate actual text height, fit without overflow
   // Only allow scrolling if text absolutely cannot fit
-  const textContainerHeight = useMemo(() => {
-    if (typeof window === 'undefined' || isMobile || isTextExpanded) return 'auto';
+  const textLayout = useMemo(() => {
+    if (typeof window === 'undefined' || isMobile || isTextExpanded) {
+      return { height: 'auto', needsScroll: false };
+    }
     
     const viewportHeight = window.innerHeight;
-    // Reserve space more accurately:
-    // - Header: ~80px
-    // - About button: ~44px (when visible)
-    // - Card padding: ~32px (top + bottom)
-    // - Title + meta: ~120px
-    // - Genres: ~40px
-    // - Action buttons: ~80px (height + margin)
-    // - Footer: ~60px
-    // - Spacing between elements: ~40px
-    // Total: ~496px, use 500px for safety
-    const reserved = 500;
+    // Reserve space conservatively to allow the card to grow taller
+    // Total reserved ~360px to free more room for text
+    const reserved = 360;
     const available = viewportHeight - reserved;
     
     // Calculate text requirements with minimal font size (text-sm = 14px base, leading-relaxed = 1.625)
@@ -168,11 +279,15 @@ const MovieCard: React.FC<MovieCardProps> = ({
     const estimatedContentHeight = estimatedLines * lineHeight;
     
     // Available space for text (after reserving for other elements)
-    // Use 95% of available to ensure buttons don't overlap
-    const textAvailableSpace = Math.max(available * 0.95, 200); // 95% of available, minimum 200px
+    // Use 99% of available to minimize inner scroll and prefer height growth
+    const textAvailableSpace = Math.max(available * 0.99, 320); // minimum 320px
     
     // If content fits in available space, use content height; otherwise use available space (will scroll only if needed)
-    return `${Math.min(estimatedContentHeight, textAvailableSpace)}px`;
+    const targetHeight = Math.min(estimatedContentHeight, textAvailableSpace);
+    return { 
+      height: `${targetHeight}px`,
+      needsScroll: estimatedContentHeight > textAvailableSpace
+    };
   }, [isMobile, isTextExpanded, movie.overview]);
 
   // Dynamic font sizing: Use minimal text size (text-sm) for desktop to maximize content fit
@@ -203,10 +318,10 @@ const MovieCard: React.FC<MovieCardProps> = ({
     if (typeof window === 'undefined' || isMobile) return 'none';
     const viewportHeight = window.innerHeight;
     // Reserve: header (~80px) + About button (~44px when visible) + button (~60px) + footer (~60px) + spacing (~40px) = ~284px
-    // Use 92% of available space to ensure everything fits
+    // Use 98% of available space to give text more room vertically
     const reserved = 284;
     const available = viewportHeight - reserved;
-    return available > 400 ? `${available * 0.92}px` : 'none';
+    return available > 400 ? `${available * 0.98}px` : 'none';
   }, [isMobile]);
 
   // Button component to avoid duplication
@@ -270,7 +385,7 @@ const MovieCard: React.FC<MovieCardProps> = ({
             </div>
           )}
           
-          <div className="flex flex-col md:flex-row h-full md:h-auto md:items-stretch">
+          <div className="flex flex-col md:flex-row h-full md:h-auto md:items-stretch md:gap-6 lg:gap-8">
             {/* Movie Poster - Maintain 2:3 ratio on desktop, fit by height without cutting */}
             <div className="w-full md:w-1/3 relative aspect-[2/3] max-h-[38vh] sm:max-h-[42vh] md:aspect-[2/3] md:h-auto md:max-h-full md:flex-shrink-0 md:flex md:flex-col">
               {/* Now Playing Badge - Top-left on desktop, bottom-right on mobile - ABOVE poster */}
@@ -310,51 +425,76 @@ const MovieCard: React.FC<MovieCardProps> = ({
                   )}
                 
                 <img
-                    className="w-full h-full object-cover md:object-contain md:h-full md:w-auto transition-opacity duration-300 group-hover:scale-105 relative z-0 pointer-events-auto"
-                  src={getImageUrl(movie.poster_path)}
+                  ref={posterImageRef}
+                  className="w-full h-full object-cover md:object-contain md:h-full md:w-auto transition-opacity duration-300 group-hover:scale-105 relative z-0 pointer-events-auto"
+                  src={!hasPosterError && movie.poster_path ? getImageUrl(movie.poster_path) : posterPlaceholder}
                   alt={`Movie poster for ${movie.title}`}
                   loading="lazy"
-                    decoding="async"
+                  decoding="async"
                   itemProp="image"
                   onClick={(e) => {
                     e.stopPropagation();
                     // Use CSS media query approach for better mobile detection
                     const isMobile = window.matchMedia('(max-width: 767px)').matches;
                     if (isMobile) {
-                        e.preventDefault();
+                      e.preventDefault();
                       setIsPosterModalOpen(true);
                     }
                   }}
                   onLoad={(e) => {
-                    setIsPosterLoading(false);
+                    // Clear timeout on successful load
+                    if (posterLoadTimeoutRef.current) {
+                      clearTimeout(posterLoadTimeoutRef.current);
+                      posterLoadTimeoutRef.current = null;
+                    }
+                    
                     const target = e.target as HTMLImageElement;
-                    target.style.opacity = '1';
-                  }}
-                  onError={(e) => {
-                    setIsPosterLoading(false);
-                    const target = e.target as HTMLImageElement;
-                    // Hide the image and show error state
-                    target.style.display = 'none';
-                    const loadingState = target.previousElementSibling as HTMLElement;
-                    if (loadingState) {
-                      loadingState.innerHTML = `
-                        <div class="flex flex-col items-center justify-center text-gray-400">
-                          <div class="w-16 h-16 bg-gray-700 rounded-lg mb-2 flex items-center justify-center">
-                            <svg class="w-8 h-8" fill="currentColor" viewBox="0 0 20 20">
-                              <path fill-rule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clip-rule="evenodd" />
-                            </svg>
-                          </div>
-                          <span class="text-sm">No Image</span>
-                        </div>
-                      `;
+                    // Verify image actually loaded (not just event fired)
+                    if (target.complete && target.naturalWidth > 0) {
+                      setIsPosterLoading(false);
+                      setHasPosterError(false);
+                      target.style.opacity = '1';
+                    } else {
+                      // Image not actually loaded, treat as error
+                      setIsPosterLoading(false);
+                      setHasPosterError(true);
                     }
                   }}
+                  onError={(e) => {
+                    // Clear timeout on error
+                    if (posterLoadTimeoutRef.current) {
+                      clearTimeout(posterLoadTimeoutRef.current);
+                      posterLoadTimeoutRef.current = null;
+                    }
+
+                    if (hasPosterError) return; // Prevent infinite loop
+                    
+                    setIsPosterLoading(false);
+                    setHasPosterError(true);
+                    const target = e.currentTarget as HTMLImageElement;
+                    target.onerror = null; // Prevent infinite error loop
+                    
+                    // Only set placeholder if we have a poster_path (avoid placeholder loop)
+                    if (movie.poster_path && target.src !== posterPlaceholder) {
+                      target.src = posterPlaceholder;
+                    }
+                    target.style.display = 'block';
+                    target.style.opacity = '1';
+                  }}
                   style={{
-                      objectPosition: isMobile ? 'center 20%' : 'center center',
+                    objectPosition: isMobile ? posterObjectPositionMobile : 'center center',
                     opacity: isPosterLoading ? 0 : 1,
                     transition: 'opacity 0.3s ease-in-out'
                   }}
                 />
+                {hasPosterError && (
+                  <div className="absolute inset-0 bg-gradient-to-br from-gray-800 to-gray-900 flex items-center justify-center text-gray-400 text-sm z-20">
+                    <div className="flex flex-col items-center gap-2">
+                      <Film size={32} aria-hidden="true" />
+                      <span>No image available</span>
+                    </div>
+                  </div>
+                )}
                   {/* Overlay - matches poster image bounds (only covers image, not empty space) */}
                 <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent z-20" />
                   
@@ -404,7 +544,7 @@ const MovieCard: React.FC<MovieCardProps> = ({
                   <img
                     src="https://upload.wikimedia.org/wikipedia/commons/6/69/IMDB_Logo_2016.svg"
                     alt="IMDb"
-                    className="h-3 md:h-[4.6px]"
+                    className="h-4 md:h-5"
                   />
                   <span className="text-yellow-400 font-bold flex items-center gap-1 text-xs md:text-[13.8px]">
                     <Star size={12} className="md:hidden fill-current" />
@@ -417,7 +557,7 @@ const MovieCard: React.FC<MovieCardProps> = ({
             </div>
             
             {/* Movie Details - aligned relative to poster on desktop */}
-            <div className="md:w-2/3 md:ml-0 p-3 md:p-6 lg:p-8 flex flex-col flex-1 min-h-0 overflow-y-auto scrollbar-hide">
+            <div className="md:w-2/3 md:ml-0 md:min-w-0 p-3 md:p-6 lg:p-8 flex flex-col flex-1 min-h-0">
               {/* Header */}
               <div className="mb-3 md:mb-6">
                 <h2 className="text-lg md:text-2xl lg:text-4xl font-bold text-white leading-tight mb-2 md:mb-3 
@@ -482,16 +622,16 @@ const MovieCard: React.FC<MovieCardProps> = ({
                       transformOrigin: 'top center',
                       ...(isMobile ? {} : { 
                         // Desktop: use calculated height to fit text without overflowing buttons
-                        maxHeight: isTextExpanded ? 'none' : textContainerHeight,
-                        overflow: isTextExpanded ? 'visible' : 'auto', // Allow scroll only if text doesn't fit
-                        overflowY: isTextExpanded ? 'visible' : 'auto',
+                        maxHeight: isTextExpanded ? 'none' : textLayout.height,
+                        overflow: isTextExpanded ? 'visible' : (textLayout.needsScroll ? 'auto' : 'visible'),
+                        overflowY: isTextExpanded ? 'visible' : (textLayout.needsScroll ? 'auto' : 'visible'),
                         // Ensure minimum spacing from buttons below
                         marginBottom: isTextExpanded ? '0' : '0.5rem',
                       })
                     }}
                   >
                     <p 
-                      className={`text-gray-300 ${textSizeClasses} leading-relaxed ${
+                    className={`text-gray-300 ${textSizeClasses} leading-relaxed break-words hyphens-auto ${
                         isTextExpanded 
                           ? '' 
                           : isMobile && shouldShowTextExpansion
@@ -529,7 +669,7 @@ const MovieCard: React.FC<MovieCardProps> = ({
                   onClick={() => window.open(`https://www.imdb.com/title/${movie.imdb_id}`, '_blank')}
                   className="flex-1 bg-gradient-to-r from-yellow-500 to-orange-500 
                            hover:from-yellow-400 hover:to-orange-400
-                           text-black font-semibold py-3 md:py-4 px-4 md:px-6 rounded-xl md:rounded-2xl
+                           text-black font-semibold py-3 md:py-3 px-4 md:px-5 rounded-xl md:rounded-2xl
                            shadow-lg hover:shadow-xl hover:shadow-yellow-500/25
                            transform hover:scale-[1.02] active:scale-[0.98]
                            transition-all duration-200 ease-out
@@ -551,7 +691,7 @@ const MovieCard: React.FC<MovieCardProps> = ({
                     e.stopPropagation();
                     handleWatchlistToggle();
                   }}
-                  className={`flex-1 font-semibold py-3 md:py-4 px-4 md:px-6 rounded-xl md:rounded-2xl
+                  className={`flex-1 font-semibold py-3 md:py-3 px-4 md:px-5 rounded-xl md:rounded-2xl
                             shadow-lg hover:shadow-xl
                             transform hover:scale-[1.02] active:scale-[0.98]
                             transition-all duration-200 ease-out
@@ -627,8 +767,14 @@ const MovieCard: React.FC<MovieCardProps> = ({
 
 // Memoize MovieCard to prevent unnecessary re-renders
 export default React.memo(MovieCard, (prevProps, nextProps) => {
-  return prevProps.movie.id === nextProps.movie.id &&
+  // Deep comparison for movie object to prevent re-renders when movie reference changes but content is same
+  const movieChanged = prevProps.movie.id !== nextProps.movie.id ||
+                       prevProps.movie.poster_path !== nextProps.movie.poster_path ||
+                       prevProps.movie.title !== nextProps.movie.title;
+  
+  return !movieChanged &&
          prevProps.isInWatchlist === nextProps.isInWatchlist &&
          prevProps.showDescriptionButton === nextProps.showDescriptionButton &&
-         prevProps.isButtonFading === nextProps.isButtonFading;
+         prevProps.isButtonFading === nextProps.isButtonFading &&
+         prevProps.propellerAds.visible === nextProps.propellerAds.visible;
 });

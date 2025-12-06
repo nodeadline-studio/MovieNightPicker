@@ -87,6 +87,11 @@ const Home: React.FC = () => {
   useEffect(() => {
     if (propellerAds.visible && propellerAds.adType === 'interstitial') {
       setIsAdBlockingMovie(true);
+      // Hide About button only while interstitial is visible
+      setShowDescriptionButton(false);
+    } else {
+      setIsAdBlockingMovie(false);
+      setShowDescriptionButton(true);
     }
   }, [propellerAds.visible, propellerAds.adType]);
 
@@ -141,21 +146,6 @@ const Home: React.FC = () => {
     return () => clearTimeout(timer);
   }, []);
 
-  // Auto-hide description button after showing description
-  useEffect(() => {
-    if (isHeaderVisible && hasSeenDescription && showDescriptionButton) {
-      const timer = setTimeout(() => {
-        setIsButtonFading(true);
-        setTimeout(() => {
-          setShowDescriptionButton(false);
-          setIsButtonFading(false);
-        }, 300);
-      }, timers.headerVisibilityTimeout);
-      
-      return () => clearTimeout(timer);
-    }
-  }, [isHeaderVisible, hasSeenDescription, showDescriptionButton]);
-
   // Auto-hide manually opened description after 5 seconds
   useEffect(() => {
     if (isHeaderVisible && isManuallyOpened) {
@@ -202,8 +192,16 @@ const Home: React.FC = () => {
 
   // Load vignette ad after first commercial break when movie is loaded
   // MUST be before early return to follow Rules of Hooks
+  const lastAdMovieIdRef = useRef<number | null>(null);
   useEffect(() => {
-    if (currentMovie && hasFirstCommercialBreakCompleted() && loadingState === LoadingState.SUCCESS) {
+    // Only load ad once per movie, after first commercial break
+    if (
+      currentMovie && 
+      currentMovie.id !== lastAdMovieIdRef.current &&
+      hasFirstCommercialBreakCompleted() && 
+      loadingState === LoadingState.SUCCESS
+    ) {
+      lastAdMovieIdRef.current = currentMovie.id;
       // Small delay to ensure movie is fully rendered
       const timer = setTimeout(() => {
         loadVignetteAd();
@@ -211,7 +209,7 @@ const Home: React.FC = () => {
       
       return () => clearTimeout(timer);
     }
-  }, [currentMovie, loadingState]);
+  }, [currentMovie?.id, loadingState]);
 
   // Early return after all hooks are defined
   if (isInitialLoading || isLoadingGenres) {
@@ -370,7 +368,11 @@ const Home: React.FC = () => {
         <PropellerInterstitialAd
           onClose={propellerAds.close}
           onError={propellerAds.close}
-          onSuccess={() => console.log('PropellerAds interstitial loaded successfully')}
+          onSuccess={() => {
+            if (import.meta.env.DEV) {
+              console.debug('[Ads] Interstitial loaded successfully');
+            }
+          }}
         />
       )}
 

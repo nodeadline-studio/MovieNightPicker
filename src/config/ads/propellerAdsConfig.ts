@@ -232,7 +232,9 @@ export const AdPlacement = {
 export const PropellerAdsAnalytics = {
   trackAdShown: (adType: 'banner' | 'interstitial', placement: string) => {
     if (PROPELLER_ADS_CONFIG.performance.debugMode) {
-      console.log(`PropellerAds ${adType} shown at ${placement}`);
+      if (import.meta.env.DEV) {
+        console.debug(`[PropellerAds] ${adType} shown at ${placement}`);
+      }
     }
     
     // Track with your analytics system
@@ -246,7 +248,9 @@ export const PropellerAdsAnalytics = {
   
   trackAdClicked: (adType: 'banner' | 'interstitial', placement: string) => {
     if (PROPELLER_ADS_CONFIG.performance.debugMode) {
-      console.log(`PropellerAds ${adType} clicked at ${placement}`);
+      if (import.meta.env.DEV) {
+        console.debug(`[PropellerAds] ${adType} clicked at ${placement}`);
+      }
     }
     
     if (typeof window !== 'undefined' && (window as Window & { gtag?: unknown }).gtag) {
