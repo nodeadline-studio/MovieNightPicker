@@ -83,13 +83,64 @@ const PropellerInterstitialAd: React.FC<PropellerInterstitialAdProps> = ({
   }, [isVisible, adContentRendered]);
 
   // Absolute safety: allow skip after max wait even if ad failed to render
+  // Also ensure skip is always available after countdown, regardless of ad state
   useEffect(() => {
     if (!isVisible) return;
     const maxWait = setTimeout(() => {
       setCanSkip(true);
-    }, 12000); // 12s hard cap
+      setAdContentRendered(true); // Mark as rendered to enable skip button
+    }, 12000); // 12s hard cap - always allow skip after this
     return () => clearTimeout(maxWait);
   }, [isVisible]);
+  
+  // Prevent ad iframes from automatically navigating
+  useEffect(() => {
+    if (!adRef.current || !isVisible) return;
+    
+    const container = adRef.current;
+    
+    // Intercept any automatic navigation attempts from ad iframes
+    const preventAutoNav = (e: Event) => {
+      // Allow user-initiated clicks, but prevent automatic navigation
+      if (e.type === 'click' && (e as MouseEvent).isTrusted) {
+        // User clicked - allow it
+        return;
+      }
+      // Prevent automatic navigation
+      e.preventDefault();
+      e.stopPropagation();
+    };
+    
+    // Watch for iframe additions and prevent auto-navigation
+    const observer = new MutationObserver((mutations) => {
+      mutations.forEach((mutation) => {
+        mutation.addedNodes.forEach((node) => {
+          if (node.nodeName === 'IFRAME') {
+            const iframe = node as HTMLIFrameElement;
+            // Prevent iframe from automatically navigating
+            iframe.addEventListener('load', () => {
+              try {
+                // Block automatic navigation from iframe content
+                iframe.contentWindow?.addEventListener('beforeunload', (e) => {
+                  if (!canSkip) {
+                    e.preventDefault();
+                  }
+                });
+              } catch (e) {
+                // Cross-origin - can't access, but that's okay
+              }
+            });
+          }
+        });
+      });
+    });
+    
+    observer.observe(container, { childList: true, subtree: true });
+    
+    return () => {
+      observer.disconnect();
+    };
+  }, [isVisible, canSkip]);
 
   // Auto-close timer
   useEffect(() => {
@@ -375,7 +426,8 @@ const PropellerInterstitialAd: React.FC<PropellerInterstitialAdProps> = ({
       {/* Monetag Interstitial Ad - loaded directly into container */}
 
       {/* Close button and countdown - ABOVE ad content and Monetag overlay */}
-      <div className="absolute top-4 right-4 z-10 flex flex-row items-center gap-2">
+      {/* Use z-[10000] to ensure it's above ad iframes (z-9999) */}
+      <div className="absolute top-4 right-4 z-[10000] flex flex-row items-center gap-2 pointer-events-auto">
         {/* Countdown or Skip Ad text - LEFT of X button */}
           {!canSkip && remainingTime > 0 && (
           <div className="bg-black bg-opacity-70 text-white px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium">
@@ -408,6 +460,7 @@ const PropellerInterstitialAd: React.FC<PropellerInterstitialAdProps> = ({
       <div className="relative w-full max-w-[95vw] md:max-w-5xl lg:max-w-6xl h-[70vh] max-h-[600px] flex items-center justify-center">
           {/* Ad container - ALWAYS rendered for ref attachment, conditionally visible */}
           {/* Monetag interstitial ad will be injected here via data-zone attribute */}
+          {/* Prevent ad iframes from automatically navigating - require user click */}
           <div 
             ref={adRef}
             className="w-full h-full flex items-center justify-center"
@@ -415,9 +468,11 @@ const PropellerInterstitialAd: React.FC<PropellerInterstitialAdProps> = ({
               minHeight: '300px',
               visibility: isVisible ? 'visible' : 'hidden',
               display: isVisible ? 'block' : 'none',
-              opacity: isVisible ? '1' : '0'
+              opacity: isVisible ? '1' : '0',
+              pointerEvents: canSkip ? 'auto' : 'none' // Block ad interactions until skip is available
             }}
             data-zone="10184307"
+            onContextMenu={(e) => e.preventDefault()} // Prevent right-click navigation
           >
             {/* Monetag interstitial ad will render here */}
           </div>

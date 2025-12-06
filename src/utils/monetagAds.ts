@@ -92,6 +92,13 @@ function getNextNotificationZone(): string {
   return zone;
 }
 
+// Track if current request is for interstitial (user-triggered)
+let isInterstitialRequest = false;
+
+export function setInterstitialRequest(flag: boolean): void {
+  isInterstitialRequest = flag;
+}
+
 function ensureMonetagSDK(): Promise<void> {
   if (typeof window === 'undefined') return Promise.resolve();
   if ((window as any).monetag) {
@@ -103,8 +110,15 @@ function ensureMonetagSDK(): Promise<void> {
     return monetagSDKLoading;
   }
 
-  if (monetagSDKBlockedUntil && Date.now() < monetagSDKBlockedUntil) {
+  // Allow interstitials to bypass backoff (they're user-triggered, should always try)
+  // Only apply backoff for automatic/preload attempts
+  if (monetagSDKBlockedUntil && Date.now() < monetagSDKBlockedUntil && !isInterstitialRequest) {
     return Promise.reject(new Error('Monetag SDK load temporarily blocked after previous failures'));
+  }
+  
+  // For interstitials, clear backoff to allow retry
+  if (monetagSDKBlockedUntil && Date.now() < monetagSDKBlockedUntil && isInterstitialRequest) {
+    monetagSDKBlockedUntil = null;
   }
 
   monetagSDKLoading = new Promise<void>((resolve, reject) => {
@@ -138,11 +152,12 @@ function ensureMonetagSDK(): Promise<void> {
       script.onerror = (error) => {
         interstitialScriptLoaded = false;
         monetagSDKLoading = null;
-        // Backoff for repeated failures
+        // Backoff for repeated failures - but shorter for interstitials
         if (attempt + 1 >= monetagSDKHosts.length) {
-          monetagSDKBlockedUntil = Date.now() + 2 * 60 * 1000; // 2m backoff
+          // Shorter backoff (30s) to allow interstitials to retry sooner
+          monetagSDKBlockedUntil = Date.now() + 30 * 1000; // 30s backoff instead of 2min
           if (import.meta.env.DEV) {
-            console.warn('[Monetag] SDK load failed from all hosts. Backoff active for 2min.');
+            console.warn('[Monetag] SDK load failed from all hosts. Backoff active for 30s.');
           }
         }
         // Try next host if available
@@ -188,7 +203,13 @@ export function preloadInterstitialAd(): void {
 export async function loadInterstitialAd(container: HTMLElement, zoneIdParam?: string): Promise<void> {
   if (!container) return;
 
-  await ensureMonetagSDK();
+  // Mark as interstitial request to bypass backoff
+  setInterstitialRequest(true);
+  try {
+    await ensureMonetagSDK();
+  } finally {
+    setInterstitialRequest(false);
+  }
 
   // Set data-zone and ensure visibility
       const zoneId = zoneIdParam || '10184307';
@@ -322,7 +343,9 @@ export function loadNotificationsAd(): void {
       
       document.head.appendChild(script);
     } catch (error) {
-      console.warn('Error creating notifications ad script:', error);
+      if (import.meta.env.DEV) {
+        console.warn('[Monetag] Error creating notifications ad script:', error);
+      }
       notificationsScriptLoaded = false;
       notificationsBlockedUntil = Date.now() + 2 * 60 * 1000;
     }
@@ -352,24 +375,26 @@ export function getNextAdType(): 'vignette' | 'notifications' {
  * Only loads if not already loaded to prevent duplicate script injection
  */
 export function loadNextAdInCycle(): void {
-  // Prevent loading if already in progress
-  if (vignetteScriptLoaded && notificationsScriptLoaded) {
-    console.debug('[Monetag] Both ad scripts already loaded, skipping cycle');
-    return;
-  }
-
   const adType = getNextAdType();
+  
+  // Always rotate - even if scripts are loaded, they should alternate per movie
+  // Vignette and notifications can coexist, but we want to alternate which one is "active"
   if (adType === 'vignette') {
+    // Load vignette if not loaded, or if notifications failed
     if (!vignetteScriptLoaded) {
       loadVignetteAd();
+    } else if (import.meta.env.DEV) {
+      console.debug('[Monetag] Vignette already loaded, continuing rotation');
     }
   } else {
+    // Load notifications if not blocked and not loaded
     if (!notificationsScriptLoaded) {
       loadNotificationsAd();
-      // Reduced log noise - notifications rotation happens silently
       if (import.meta.env.DEV) {
         console.debug('[Monetag] Notifications ad requested');
       }
+    } else if (import.meta.env.DEV) {
+      console.debug('[Monetag] Notifications already loaded, continuing rotation');
     }
   }
 }
